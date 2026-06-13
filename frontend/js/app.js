@@ -594,7 +594,7 @@
         if (googleInitialized) return;
         try {
             if (!googleClientId) {
-                const res = await fetch('/api/v1/auth/config');
+                const res = await fetch('/api/v1/auth/config?_t=' + Date.now());
                 const json = await res.json();
                 if (json.success) {
                     googleClientId = json.googleClientId;
@@ -623,33 +623,50 @@
         const btnContainer = document.getElementById("google-signin-btn-container");
         if (!btnContainer) return;
 
-        if (googleInitialized) {
-            btnContainer.innerHTML = '';
-            google.accounts.id.renderButton(
-                btnContainer,
-                { 
-                    theme: "filled_blue", 
-                    size: "large",
-                    text: "signin_with",
-                    shape: "rectangular",
-                    width: btnContainer.offsetWidth || 250
+        try {
+            if (googleInitialized) {
+                btnContainer.innerHTML = '';
+                const widthVal = btnContainer.offsetWidth || 250;
+                const safeWidth = Math.max(200, Math.min(400, widthVal));
+                google.accounts.id.renderButton(
+                    btnContainer,
+                    { 
+                        theme: "filled_blue", 
+                        size: "large",
+                        text: "signin_with",
+                        shape: "rectangular",
+                        width: safeWidth
+                    }
+                );
+            } else {
+                if (!googleClientId) {
+                    btnContainer.innerHTML = `
+                        <div style="color: #ff5e00; font-size: 11px; text-align: center; border: 1px dashed #ff5e00; padding: 8px; border-radius: 4px; background: rgba(255, 94, 0, 0.05); width: 100%;">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Google OAuth Client ID pending in backend configurations (.env)
+                        </div>
+                    `;
+                } else if (typeof google === 'undefined' || !google.accounts) {
+                    btnContainer.innerHTML = `
+                        <div style="color: var(--text-dim); font-size: 12px; text-align: center; padding: 8px;">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Connecting to Google Auth...
+                        </div>
+                    `;
+                    setTimeout(renderGoogleButton, 250);
+                } else {
+                    btnContainer.innerHTML = `
+                        <div style="color: #ff5e00; font-size: 11px; text-align: center; border: 1px dashed #ff5e00; padding: 8px; border-radius: 4px; background: rgba(255, 94, 0, 0.05); width: 100%;">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Google Sign-in initialization failed. Check browser console.
+                        </div>
+                    `;
                 }
-            );
-        } else {
-            if (!googleClientId) {
-                btnContainer.innerHTML = `
-                    <div style="color: #ff5e00; font-size: 11px; text-align: center; border: 1px dashed #ff5e00; padding: 8px; border-radius: 4px; background: rgba(255, 94, 0, 0.05); width: 100%;">
-                        <i class="fa-solid fa-triangle-exclamation"></i> Google OAuth Client ID pending in backend configurations (.env)
-                    </div>
-                `;
-            } else if (typeof google === 'undefined' || !google.accounts) {
-                btnContainer.innerHTML = `
-                    <div style="color: var(--text-dim); font-size: 12px; text-align: center; padding: 8px;">
-                        <i class="fa-solid fa-spinner fa-spin"></i> Connecting to Google Auth...
-                    </div>
-                `;
-                setTimeout(renderGoogleButton, 250);
             }
+        } catch (err) {
+            console.error("Google button render error:", err);
+            btnContainer.innerHTML = `
+                <div style="color: #ff5e00; font-size: 11px; text-align: center; border: 1px dashed #ff5e00; padding: 8px; border-radius: 4px; background: rgba(255, 94, 0, 0.05); width: 100%;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Google Render Error: ${err.message}
+                </div>
+            `;
         }
     }
 
