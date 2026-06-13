@@ -50,7 +50,7 @@
             if (!userTeam) {
                 renderCreateTeamForm(container, user);
             } else {
-                renderTeamDashboard(container, user, userTeam);
+                await renderTeamDashboard(container, user, userTeam);
             }
         } catch (err) {
             container.innerHTML = `
@@ -223,7 +223,7 @@
 
                         <h4 class="font-orbitron" style="font-size: 12px; color: var(--neon-yellow); margin-bottom: 12px; border-bottom: 1px solid var(--glass-border); padding-bottom: 4px;">ACTIVE SQUAD ROSTER (4-MAN)</h4>
                         <div style="display: grid; gap: 10px;">
-                            ${team.members.map((m, idx) => `
+                            ${(team.members || []).map((m, idx) => `
                                 <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); padding: 10px 15px; border-radius: 4px;">
                                     <div style="display: flex; gap: 10px; align-items: center;">
                                         <span class="font-orbitron" style="color: var(--text-dim); font-size: 11px; font-family:var(--font-header);">#0${idx + 1}</span>
