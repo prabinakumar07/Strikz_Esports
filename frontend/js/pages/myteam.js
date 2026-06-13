@@ -194,18 +194,7 @@
         
         let pendingConfirmations = [];
         try {
-            const token = localStorage.getItem('strikz_jwt_token');
-            const res = await fetch('/api/v1/my-team', { // wait, let's call a custom endpoint:
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            // Let's fetch the list of pending confirmations from the server!
-            const confRes = await fetch('/api/v1/my-team/confirmations', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const confJson = await confRes.json();
-            if (confJson.success) {
-                pendingConfirmations = confJson.confirmations;
-            }
+            pendingConfirmations = await window.strikzDb.getPendingConfirmations();
         } catch(err) {
             console.error("Failed to load invitations:", err);
         }

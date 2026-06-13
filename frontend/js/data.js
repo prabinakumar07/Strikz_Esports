@@ -297,6 +297,11 @@
             return res.tickets;
         },
 
+        getPendingConfirmations: async function() {
+            const res = await apiRequest('/my-team/confirmations', 'GET');
+            return res.confirmations;
+        },
+
         resolveChatbotTicket: async function(id) {
             const res = await apiRequest(`/admin/tickets/${id}/resolve`, 'PUT');
             return res.success;

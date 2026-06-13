@@ -4,6 +4,7 @@ const {
     register,
     login,
     googleLogin,
+    getGoogleConfig,
     forgotPassword,
     resetPassword,
     getProfile,
@@ -12,6 +13,7 @@ const {
 const { protect } = require('../middleware/authMiddleware');
 
 // Public Auth Endpoints
+router.get('/config', getGoogleConfig);
 router.post('/register', register);
 router.post('/login', login);
 router.post('/google', googleLogin);

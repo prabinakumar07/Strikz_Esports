@@ -19,6 +19,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom Style Sheet -->
     <link rel="stylesheet" href="css/style.css?v=1.0.10">
+    <!-- Google Identity Services client script -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <!-- Premium Fullscreen Loading Overlay -->
@@ -200,10 +202,7 @@
             
             <!-- Login View -->
             <div class="login-methods" id="login-view-container">
-                <button class="google-sign-in-btn" id="btn-google-signin">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google Logo" class="google-g-logo">
-                    <span class="btn-text">Sign in with Google</span>
-                </button>
+                <div id="google-signin-btn-container" style="display:flex; justify-content:center; margin-bottom:15px; min-height:40px;"></div>
                 <div class="login-divider"><span>OR</span></div>
                 <div class="login-form-fields">
                     <div class="form-group">
@@ -281,16 +280,7 @@
                 <div class="loading-progress-bar"><div class="progress-fill" id="google-progress-fill"></div></div>
             </div>
 
-            <!-- Google Accounts Selector View -->
-            <div class="login-methods hidden" id="google-accounts-container">
-                <h4 class="font-orbitron" style="color:#fff; margin-bottom: 20px; font-size: 14px; text-align: center;">CHOOSE GOOGLE ACCOUNT</h4>
-                <div id="google-accounts-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
-                    <!-- Injected dynamically -->
-                </div>
-                <div style="text-align: center; margin-top: 15px;">
-                    <a href="javascript:void(0)" class="link-show-login" style="color: var(--text-dim); text-decoration: underline; font-size: 12px;">BACK TO LOGIN</a>
-                </div>
-            </div>
+
         </div>
     </div>
 

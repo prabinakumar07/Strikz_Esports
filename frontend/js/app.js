@@ -345,11 +345,11 @@
             window.dispatchEvent(new CustomEvent('strikz-auth-changed', { detail: json.user }));
             return json.user;
         },
-        googleLogin: async (name, email, avatar) => {
+        googleLogin: async (idToken) => {
             const res = await fetch('/api/v1/auth/google', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, avatar, googleId: 'google-mock-' + name })
+                body: JSON.stringify({ idToken })
             });
             const json = await res.json();
             if (!res.ok) {
@@ -396,14 +396,7 @@
     };
     window.strikzAuth = authManager;
 
-    // MOCK USER DATA FOR GOOGLE SIGN IN
-    const mockGamers = [
-        { name: "Viper.FF", email: "viper.ff@gmail.com", avatar: "https://api.dicebear.com/7.x/pixel-art/svg?seed=viper&backgroundColor=0a0a0f" },
-        { name: "Rafi.Survivor", email: "rafi.survivor@gmail.com", avatar: "https://api.dicebear.com/7.x/pixel-art/svg?seed=rafi&backgroundColor=0a0a0f" },
-        { name: "Kelly.Pro", email: "kelly.ff@gmail.com", avatar: "https://api.dicebear.com/7.x/pixel-art/svg?seed=kelly&backgroundColor=0a0a0f" },
-        { name: "Alok.King", email: "alok.king@gmail.com", avatar: "https://api.dicebear.com/7.x/pixel-art/svg?seed=alok&backgroundColor=0a0a0f" },
-        { name: "Strikz.Sniper", email: "sniper.strikz@gmail.com", avatar: "https://api.dicebear.com/7.x/pixel-art/svg?seed=sniper&backgroundColor=0a0a0f" }
-    ];
+
 
     function updateAuthUI() {
         const desktopSlot = document.getElementById('user-profile-slot');
@@ -594,6 +587,81 @@
         if (googleAccountsContainer) googleAccountsContainer.classList.add('hidden');
     }
 
+    let googleClientId = null;
+    let googleInitialized = false;
+
+    async function initGoogleSignIn() {
+        if (googleInitialized) return;
+        try {
+            if (!googleClientId) {
+                const res = await fetch('/api/v1/auth/config');
+                const json = await res.json();
+                if (json.success) {
+                    googleClientId = json.googleClientId;
+                }
+            }
+            if (!googleClientId) {
+                console.warn("Google Client ID is not configured on the backend.");
+                return;
+            }
+            if (typeof google === 'undefined' || !google.accounts) {
+                console.warn("Google Accounts client script not loaded yet.");
+                return;
+            }
+            google.accounts.id.initialize({
+                client_id: googleClientId,
+                callback: handleGoogleCredentialResponse
+            });
+            googleInitialized = true;
+        } catch (err) {
+            console.error("Failed to initialize Google Sign-in:", err);
+        }
+    }
+
+    async function renderGoogleButton() {
+        await initGoogleSignIn();
+        if (googleInitialized) {
+            const btnContainer = document.getElementById("google-signin-btn-container");
+            if (btnContainer) {
+                google.accounts.id.renderButton(
+                    btnContainer,
+                    { 
+                        theme: "filled_blue", 
+                        size: "large",
+                        text: "signin_with",
+                        shape: "rectangular",
+                        width: btnContainer.offsetWidth || 250
+                    }
+                );
+            }
+        }
+    }
+
+    async function handleGoogleCredentialResponse(response) {
+        if (!response.credential) return;
+        
+        // Show loading state
+        if (loginContainer && loginLoading && progressFill) {
+            loginContainer.classList.add('hidden');
+            loginLoading.classList.remove('hidden');
+            const loaderText = document.querySelector('#login-loading-container .loader-text');
+            if (loaderText) loaderText.textContent = "VERIFYING GOOGLE ACCOUNT...";
+        }
+
+        try {
+            await authManager.googleLogin(response.credential);
+            closeLoginModal();
+            playSound(successSfx);
+        } catch (err) {
+            alert("Google Sign-In failed: " + err.message);
+            showLogin();
+            if (loginLoading) loginLoading.classList.add('hidden');
+        } finally {
+            const loaderText = document.querySelector('#login-loading-container .loader-text');
+            if (loaderText) loaderText.textContent = "CONNECTING TO GOOGLE SECURE PORTAL...";
+        }
+    }
+
     function openLoginModal() {
         if (!loginModal) return;
         loginModal.classList.add('active');
@@ -604,6 +672,9 @@
         // Reset fields
         document.getElementById('login-input-user').value = '';
         document.getElementById('login-input-pass').value = '';
+
+        // Render Google Sign-in button
+        renderGoogleButton();
     }
 
     function closeLoginModal() {
@@ -625,73 +696,7 @@
         settingsModal.classList.remove('active');
     }
 
-    function simulateGoogleSignIn() {
-        if (!loginContainer || !loginLoading || !progressFill || !googleAccountsContainer || !googleAccountsList) return;
-        
-        loginContainer.classList.add('hidden');
-        loginLoading.classList.remove('hidden');
-        
-        let width = 0;
-        const interval = setInterval(async () => {
-            width += 5;
-            progressFill.style.width = width + '%';
-            if (width >= 100) {
-                clearInterval(interval);
-                
-                loginLoading.classList.add('hidden');
-                googleAccountsContainer.classList.remove('hidden');
-                
-                // Render list
-                googleAccountsList.innerHTML = mockGamers.map((gamer, idx) => `
-                    <div class="google-account-card" data-idx="${idx}" style="display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 10px 15px; border-radius: 4px; cursor: pointer; transition: all 0.2s ease; margin-bottom: 8px;">
-                        <img src="${gamer.avatar}" style="width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--glass-border); padding: 2px; background: rgba(0,0,0,0.5);">
-                        <div style="flex-grow: 1; text-align: left;">
-                            <div style="color: #fff; font-weight: 700; font-size: 13px; font-family: var(--font-header); letter-spacing: 0.05em;">${gamer.name}</div>
-                            <div style="color: var(--text-dim); font-size: 11px;">${gamer.email}</div>
-                        </div>
-                        <i class="fa-solid fa-chevron-right" style="color: var(--neon-orange); font-size: 12px;"></i>
-                    </div>
-                `).join('');
 
-                // Bind hover and click events
-                googleAccountsList.querySelectorAll('.google-account-card').forEach(card => {
-                    card.style.transition = 'all 0.2s ease';
-                    card.addEventListener('mouseenter', () => {
-                        card.style.background = 'rgba(255, 94, 0, 0.06)';
-                        card.style.borderColor = 'var(--neon-orange-border)';
-                        card.style.boxShadow = '0 0 10px rgba(255, 94, 0, 0.1)';
-                    });
-                    card.addEventListener('mouseleave', () => {
-                        card.style.background = 'rgba(255,255,255,0.02)';
-                        card.style.borderColor = 'var(--glass-border)';
-                        card.style.boxShadow = 'none';
-                    });
-                    card.onclick = async function() {
-                        const idx = this.dataset.idx;
-                        const gamer = mockGamers[idx];
-                        
-                        // Show loader again briefly
-                        googleAccountsContainer.classList.add('hidden');
-                        loginLoading.classList.remove('hidden');
-                        const loaderText = document.querySelector('#login-loading-container .loader-text');
-                        if (loaderText) loaderText.textContent = "AUTHORIZING GAMER...";
-                        
-                        try {
-                            await authManager.googleLogin(gamer.name, gamer.email, gamer.avatar);
-                            closeLoginModal();
-                            playSound(successSfx);
-                        } catch (err) {
-                            alert("Google auth portal failed: " + err.message);
-                            showLogin();
-                            loginLoading.classList.add('hidden');
-                        } finally {
-                            if (loaderText) loaderText.textContent = "CONNECTING TO GOOGLE SECURE PORTAL...";
-                        }
-                    };
-                });
-            }
-        }, 40);
-    }
 
     // Premium Animation Initializers
     function initScrollAnimations() {
@@ -750,14 +755,7 @@
         document.getElementById('link-show-forgot').onclick = showForgot;
         document.querySelectorAll('.link-show-login').forEach(el => el.onclick = showLogin);
 
-        // Google sign in click
-        const btnGoogleSignin = document.getElementById('btn-google-signin');
-        if (btnGoogleSignin) {
-            btnGoogleSignin.addEventListener('click', () => {
-                playSound(clickSfx);
-                simulateGoogleSignIn();
-            });
-        }
+
 
         // Login Plain user click
         const btnPlainLogin = document.getElementById('btn-plain-login');

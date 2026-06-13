@@ -99,35 +99,78 @@ const login = async (req, res, next) => {
 
 const googleLogin = async (req, res, next) => {
     try {
-        const { name, email, avatar, googleId } = req.body;
+        const { idToken } = req.body;
 
-        if (!email) {
+        if (!idToken) {
             res.status(400);
-            return next(new Error('Google login requires a valid email address'));
+            return next(new Error('Google verification token is required'));
+        }
+
+        const tokeninfoUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`;
+        const verifyRes = await fetch(tokeninfoUrl);
+        if (!verifyRes.ok) {
+            res.status(400);
+            return next(new Error('Authentication failed: Invalid Google token'));
+        }
+
+        const payload = await verifyRes.json();
+        const { email, email_verified, name, picture, sub } = payload;
+
+        if (!email || (email_verified !== 'true' && email_verified !== true)) {
+            res.status(400);
+            return next(new Error('Google login requires a verified email address'));
+        }
+
+        const client_id = process.env.GOOGLE_CLIENT_ID;
+        if (client_id && payload.aud !== client_id) {
+            res.status(400);
+            return next(new Error('Google ID token audience mismatch'));
         }
 
         let user = await models.User.findOne({
-            $or: [{ email }, { google_id: googleId || email }]
+            $or: [{ email }, { google_id: sub }]
         });
 
         if (user) {
             if (!user.google_id) {
-                user.google_id = googleId || email;
+                user.google_id = sub;
                 await user.save();
             }
         } else {
-            const uniqueUsername = name || `${email.split('@')[0]}${Math.floor(100 + Math.random() * 900)}`;
+            let uniqueUsername = name || email.split('@')[0];
+            uniqueUsername = uniqueUsername.replace(/[^a-zA-Z0-9._-]/g, '');
+            if (!uniqueUsername) {
+                uniqueUsername = 'gamer' + Math.floor(1000 + Math.random() * 9000);
+            }
+            
+            let usernameExists = await models.User.exists({ username: uniqueUsername });
+            while (usernameExists) {
+                uniqueUsername = `${uniqueUsername}${Math.floor(10 + Math.random() * 90)}`;
+                usernameExists = await models.User.exists({ username: uniqueUsername });
+            }
+
             user = await models.User.create({
                 id: await nextNumberId(models.User),
                 username: uniqueUsername,
                 email,
                 role: 'user',
-                avatar: avatar || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(uniqueUsername)}&backgroundColor=0a0a0f`,
-                google_id: googleId || email
+                avatar: picture || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(uniqueUsername)}&backgroundColor=0a0a0f`,
+                google_id: sub
             });
         }
 
         res.json({ success: true, token: generateToken(user.id), user: userPayload(user) });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const getGoogleConfig = async (req, res, next) => {
+    try {
+        res.json({
+            success: true,
+            googleClientId: process.env.GOOGLE_CLIENT_ID || ''
+        });
     } catch (err) {
         next(err);
     }
@@ -247,6 +290,7 @@ module.exports = {
     register,
     login,
     googleLogin,
+    getGoogleConfig,
     forgotPassword,
     resetPassword,
     getProfile,
