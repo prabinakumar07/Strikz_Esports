@@ -50,7 +50,7 @@ const trackRegistration = async (req, res, next) => {
 
         const [players, tourney] = await Promise.all([
             models.RegistrationPlayer.find({ registration_id: id }).select('name game_uid role confirmed real_name').lean(),
-            models.Tournament.findOne({ id: reg.tournament_id }).select('name').lean()
+            models.Tournament.findOne({ id: reg.tournament_id }).select('name image').lean()
         ]);
 
         res.json({
@@ -60,6 +60,7 @@ const trackRegistration = async (req, res, next) => {
                 type: reg.type,
                 tournamentId: reg.tournament_id,
                 tournamentName: tourney ? tourney.name : '',
+                tournamentImage: tourney ? tourney.image : '',
                 status: reg.status,
                 stage: reg.stage,
                 submissionDate: reg.submission_date,
@@ -173,11 +174,22 @@ const createRegistration = async (req, res, next) => {
                 type,
                 tournamentId,
                 tournamentName: tourney.name,
-                teamName,
-                captainName: captainName || playerName,
+                tournamentImage: tourney.image,
                 status: 'Pending',
                 stage: type === 'Solo' ? 2 : 1,
-                submissionDate
+                submissionDate,
+                teamName,
+                captainName: captainName || playerName,
+                playerName: playerName,
+                gameUid: gameUid,
+                role: role,
+                players: players ? players.map(p => ({
+                    name: p.name,
+                    game_uid: p.gameUid,
+                    role: p.role,
+                    real_name: p.realName || p.name,
+                    confirmed: !!p.confirmed
+                })) : []
             }
         });
     } catch (err) {

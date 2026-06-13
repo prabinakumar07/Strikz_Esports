@@ -564,7 +564,12 @@
                     </p>
                 </div>
 
-                <div class="ticket-wrapper" style="border-color: var(--neon-yellow); background: rgba(0,0,0,0.4);">
+                <div class="ticket-wrapper" style="border-color: var(--neon-yellow); background: rgba(0,0,0,0.4); ${reg.tournamentImage ? 'padding-top: 0px;' : ''} overflow: hidden;">
+                    ${reg.tournamentImage ? `
+                    <div class="ticket-banner" style="margin: 0 -30px 20px -30px; height: 140px; overflow: hidden; border-bottom: 2px solid var(--neon-yellow);">
+                        <img src="${reg.tournamentImage}" alt="Tournament Banner" style="width:100%; height:100%; object-fit:cover; opacity: 0.85;">
+                    </div>
+                    ` : ''}
                     <div class="ticket-header" style="border-bottom: 1px dashed var(--glass-border); padding-bottom:15px; margin-bottom:15px;">
                         <span class="ticket-title font-orbitron" style="color:var(--text-silver); font-size:10px;">STRIKZ ENTRY TICKET</span>
                         <div class="ticket-id-large font-orbitron" style="font-size:24px; color:var(--neon-yellow); font-weight:900; margin: 5px 0;">${reg.id}</div>
@@ -628,7 +633,12 @@
                 const stage = reg.stage || (reg.status === 'Approved' ? 3 : 2);
                 
                 resultMount.innerHTML = `
-                    <div class="tracker-result-panel" style="background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); padding: 20px; border-radius: 4px;">
+                    <div class="tracker-result-panel" style="background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); padding: 20px; border-radius: 4px; ${reg.tournamentImage ? 'padding-top: 0px;' : ''} overflow: hidden;">
+                        ${reg.tournamentImage ? `
+                        <div class="tracker-banner" style="margin: 0 -20px 15px -20px; height: 120px; overflow: hidden; border-bottom: 1px solid var(--glass-border);">
+                            <img src="${reg.tournamentImage}" alt="Tournament Banner" style="width:100%; height:100%; object-fit:cover; opacity: 0.85;">
+                        </div>
+                        ` : ''}
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; margin-bottom: 15px;">
                             <span class="font-orbitron" style="font-size: 13px; font-weight: 800; color: var(--neon-yellow);">${reg.id}</span>
                             <span class="badge-status ${statusClass}">${reg.status}</span>
