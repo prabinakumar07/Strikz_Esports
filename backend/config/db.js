@@ -51,6 +51,26 @@ const connectDB = async () => {
     await mongoose.connect(mongoUri);
     console.log('MongoDB connected successfully');
     await seedDatabase(models);
+
+    // Run gamer UID migration for existing users
+    try {
+        const usersWithoutUid = await models.User.find({ uid: { $exists: false } });
+        if (usersWithoutUid.length > 0) {
+            console.log(`Migrating ${usersWithoutUid.length} users to generate unique gamer UIDs...`);
+            for (const user of usersWithoutUid) {
+                let uid;
+                let exists = true;
+                while (exists) {
+                    uid = 'STRIKZ-' + Math.floor(100000 + Math.random() * 900000);
+                    exists = await models.User.exists({ uid });
+                }
+                await models.User.updateOne({ id: user.id }, { $set: { uid } });
+            }
+            console.log('User gamer UIDs migration complete.');
+        }
+    } catch (err) {
+        console.error('User UID migration failed:', err.message);
+    }
 };
 
 const nextNumberId = async (Model) => {

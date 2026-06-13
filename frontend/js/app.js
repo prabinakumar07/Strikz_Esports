@@ -404,12 +404,14 @@
         const mobileSlot = document.getElementById('mobile-auth-slot') || document.getElementById('mobile-drawer-footer');
         const user = authManager.getUser();
 
-        const desktopLoggedInHTML = (avatar, name) => `
+        const desktopLoggedInHTML = (avatar, name, uid) => `
             <div class="user-profile-card">
                 <img src="${avatar}" alt="${name}" class="user-avatar-small btn-desktop-settings-trigger" style="cursor: pointer;" title="Account Settings">
-                <div class="user-info-text btn-desktop-settings-trigger" style="cursor: pointer;" title="Account Settings">
-                    <div class="user-gamertag">${name}</div>
-                    <div class="user-status-text">AUTHORIZED</div>
+                <div class="user-info-text" style="cursor: pointer;">
+                    <div class="user-gamertag btn-desktop-settings-trigger" title="Account Settings">${name}</div>
+                    <div class="user-status-text click-to-copy-uid" style="color: var(--neon-yellow); font-size: 10px; font-weight: bold; font-family: var(--font-header); letter-spacing:0.05em; display:flex; align-items:center; gap:4px; margin-top:2px;" title="Click to copy Gamer UID" data-uid="${uid || ''}">
+                        <i class="fa-regular fa-copy" style="font-size:9px;"></i> ${uid || 'STRIKZ-XXXXXX'}
+                    </div>
                 </div>
                 <div style="display: flex; gap: 8px; justify-content: center; margin-top: 4px;">
                     <button class="btn-auth-settings btn-desktop-settings-trigger" title="Account Settings" style="color: var(--text-dim); background: none; border: none; cursor: pointer; font-size: 11px;">
@@ -421,12 +423,15 @@
                 </div>
             </div>
         `;
-
-        const mobileLoggedInHTML = (avatar, name) => `
+ 
+        const mobileLoggedInHTML = (avatar, name, uid) => `
             <div class="user-profile-card-mobile">
                 <img src="${avatar}" alt="${name}" class="user-avatar-small-mobile btn-mobile-settings-trigger" style="cursor: pointer;" title="Account Settings">
-                <div class="user-info-text-mobile btn-mobile-settings-trigger" style="cursor: pointer;" title="Account Settings">
-                    <div class="user-gamertag-mobile font-orbitron">${name}</div>
+                <div class="user-info-text-mobile" style="cursor: pointer;">
+                    <div class="user-gamertag-mobile font-orbitron btn-mobile-settings-trigger" title="Account Settings">${name}</div>
+                    <div class="user-status-text-mobile click-to-copy-uid" style="color: var(--neon-yellow); font-size: 9px; font-weight: bold; font-family: var(--font-header); letter-spacing:0.05em; display:flex; align-items:center; gap:4px; margin-top:2px;" title="Click to copy Gamer UID" data-uid="${uid || ''}">
+                        <i class="fa-regular fa-copy" style="font-size:8px;"></i> ${uid || 'STRIKZ-XXXXXX'}
+                    </div>
                 </div>
                 <div class="profile-menu-container-mobile">
                     <button class="btn-auth-logout-mobile" id="btn-mobile-menu-trigger" title="Account Options">
@@ -443,17 +448,36 @@
                 </div>
             </div>
         `;
-
+ 
         const loggedOutHTML = (btnId) => `
             <button class="login-trigger-btn btn-neon-orange w-full" id="${btnId}">
                 <i class="fa-solid fa-right-to-bracket"></i>
                 <span class="btn-text">LOGIN</span>
             </button>
         `;
-
+ 
         if (user) {
-            if (desktopSlot) desktopSlot.innerHTML = desktopLoggedInHTML(user.avatar, user.username);
-            if (mobileSlot) mobileSlot.innerHTML = mobileLoggedInHTML(user.avatar, user.username);
+            if (desktopSlot) desktopSlot.innerHTML = desktopLoggedInHTML(user.avatar, user.username, user.uid);
+            if (mobileSlot) mobileSlot.innerHTML = mobileLoggedInHTML(user.avatar, user.username, user.uid);
+
+            // Bind click-to-copy UID handler
+            document.querySelectorAll('.click-to-copy-uid').forEach(el => {
+                el.onclick = function(e) {
+                    e.stopPropagation();
+                    const uidVal = this.dataset.uid;
+                    if (!uidVal) return;
+                    navigator.clipboard.writeText(uidVal).then(() => {
+                        const originalHTML = this.innerHTML;
+                        this.innerHTML = `<i class="fa-solid fa-check" style="color:var(--neon-green);"></i> COPIED!`;
+                        if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                        setTimeout(() => {
+                            this.innerHTML = originalHTML;
+                        }, 1200);
+                    }).catch(err => {
+                        console.error('Failed to copy UID:', err);
+                    });
+                };
+            });
 
             // Bind desktop settings listeners
             document.querySelectorAll('.btn-desktop-settings-trigger').forEach(el => {

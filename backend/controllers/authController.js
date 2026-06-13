@@ -12,6 +12,7 @@ const generateToken = (id) => {
 
 const userPayload = (user) => ({
     id: user.id,
+    uid: user.uid,
     username: user.username,
     email: user.email,
     role: user.role,
@@ -43,8 +44,17 @@ const register = async (req, res, next) => {
 
         const passwordHash = await bcrypt.hash(password, await bcrypt.genSalt(10));
         const avatar = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(username)}&backgroundColor=0a0a0f`;
+        
+        let uid;
+        let exists = true;
+        while (exists) {
+            uid = 'STRIKZ-' + Math.floor(100000 + Math.random() * 900000);
+            exists = await models.User.exists({ uid });
+        }
+
         const user = await models.User.create({
             id: await nextNumberId(models.User),
+            uid,
             username,
             email,
             password_hash: passwordHash,
@@ -149,8 +159,16 @@ const googleLogin = async (req, res, next) => {
                 usernameExists = await models.User.exists({ username: uniqueUsername });
             }
 
+            let uid;
+            let exists = true;
+            while (exists) {
+                uid = 'STRIKZ-' + Math.floor(100000 + Math.random() * 900000);
+                exists = await models.User.exists({ uid });
+            }
+
             user = await models.User.create({
                 id: await nextNumberId(models.User),
+                uid,
                 username: uniqueUsername,
                 email,
                 role: 'user',

@@ -8,7 +8,7 @@ const protect = async (req, res, next) => {
         try {
             token = req.headers.authorization.split(' ')[1];
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretcyberpunkgamershieldkey2026');
-            const user = await models.User.findOne({ id: decoded.id }).select('id username email role avatar').lean();
+            const user = await models.User.findOne({ id: decoded.id }).select('id uid username email role avatar').lean();
 
             if (!user) {
                 res.status(401);

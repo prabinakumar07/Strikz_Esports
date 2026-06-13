@@ -136,16 +136,34 @@ const createRegistration = async (req, res, next) => {
         await models.Registration.create(baseRegistration);
 
         if (type !== 'Solo' && players && players.length > 0) {
+            const captainUid = req.user.uid;
+            let userTeam = await models.Team.findOne({ captain_uid: captainUid }).lean();
+            if (!userTeam) {
+                const memberRecord = await models.TeamMember.findOne({ user_uid: captainUid, confirmed: true }).lean();
+                if (memberRecord) {
+                    userTeam = await models.Team.findOne({ id: memberRecord.team_id }).lean();
+                }
+            }
+            const teamMembers = userTeam ? await models.TeamMember.find({ team_id: userTeam.id }).lean() : [];
+
             let nextId = await nextNumberId(models.RegistrationPlayer);
-            await models.RegistrationPlayer.insertMany(players.map((p) => ({
-                id: nextId++,
-                registration_id: regId,
-                name: p.name,
-                game_uid: p.gameUid,
-                role: p.role,
-                real_name: p.realName || p.name,
-                confirmed: !!p.confirmed
-            })));
+            await models.RegistrationPlayer.insertMany(players.map((p) => {
+                const matchedMember = teamMembers.find(tm => 
+                    (tm.name && tm.name.toLowerCase() === p.name.toLowerCase()) || 
+                    (tm.game_uid && tm.game_uid === p.gameUid)
+                );
+
+                return {
+                    id: nextId++,
+                    registration_id: regId,
+                    user_uid: matchedMember ? matchedMember.user_uid : (p.userUid || p.user_uid),
+                    name: p.name,
+                    game_uid: p.gameUid,
+                    role: p.role,
+                    real_name: p.realName || p.name,
+                    confirmed: !!p.confirmed
+                };
+            }));
         }
 
         res.status(201).json({
@@ -169,26 +187,50 @@ const createRegistration = async (req, res, next) => {
 
 const getMyTeam = async (req, res, next) => {
     try {
-        const username = req.user.username;
-        const usernameRegex = new RegExp(`^${escapeRegExp(username)}$`, 'i');
-        const member = await models.TeamMember.findOne({ name: usernameRegex }).lean();
-        const team = await models.Team.findOne({
-            $or: [
-                { captain: usernameRegex },
-                ...(member ? [{ id: member.team_id }] : [])
-            ]
-        }).lean();
+        const uid = req.user.uid;
+        
+        // Find if user is captain of a team
+        let team = await models.Team.findOne({ captain_uid: uid }).lean();
+        let isCaptain = true;
+        
+        if (!team) {
+            // Find if user is a confirmed member of a team
+            const member = await models.TeamMember.findOne({ user_uid: uid, confirmed: true }).lean();
+            if (member) {
+                team = await models.Team.findOne({ id: member.team_id }).lean();
+                isCaptain = false;
+            }
+        }
 
-        if (!team) return res.json({ success: true, team: null });
+        if (!team) {
+            // Find pending invitations for this user
+            const invites = await models.TeamMember.find({ user_uid: uid, confirmed: false }).lean();
+            const invitations = [];
+            for (const invite of invites) {
+                const inviteTeam = await models.Team.findOne({ id: invite.team_id }).lean();
+                if (inviteTeam) {
+                    invitations.push({
+                        teamId: inviteTeam.id,
+                        teamName: inviteTeam.name,
+                        logo: inviteTeam.logo,
+                        description: inviteTeam.description,
+                        captainName: inviteTeam.captain_name || inviteTeam.captain,
+                        role: invite.role
+                    });
+                }
+            }
+            return res.json({ success: true, team: null, invitations });
+        }
 
-        const members = await models.TeamMember.find({ team_id: team.id }).select('name game_uid role real_name').lean();
+        const members = await models.TeamMember.find({ team_id: team.id }).select('name user_uid game_uid role real_name confirmed').lean();
         res.json({
             success: true,
             team: {
                 id: team.id,
                 name: team.name,
                 logo: team.logo,
-                captain: team.captain,
+                captain: team.captain_name || team.captain,
+                captain_uid: team.captain_uid,
                 description: team.description,
                 members: members.map(publicDoc)
             }
@@ -201,39 +243,182 @@ const getMyTeam = async (req, res, next) => {
 const createMyTeam = async (req, res, next) => {
     try {
         const { name, description, members } = req.body;
-        const username = req.user.username;
+        const user = req.user;
 
         if (!name || !description || !members || members.length === 0) {
             res.status(400);
             return next(new Error('Please provide team name, description and member list'));
         }
 
-        const usernameRegex = new RegExp(`^${escapeRegExp(username)}$`, 'i');
-        const existingMember = await models.TeamMember.findOne({ name: usernameRegex }).lean();
-        const existingCaptain = await models.Team.findOne({ captain: usernameRegex }).lean();
-        if (existingMember || existingCaptain) {
+        // Check if captain is already in a team
+        const existingCaptain = await models.Team.findOne({ captain_uid: user.uid }).lean();
+        const existingMember = await models.TeamMember.findOne({ user_uid: user.uid, confirmed: true }).lean();
+        if (existingCaptain || existingMember) {
             res.status(400);
             return next(new Error('You are already registered inside an active esports squad'));
         }
 
+        // Check unique team name
+        const teamNameExists = await models.Team.findOne({ name: new RegExp('^' + escapeRegExp(name) + '$', 'i') }).lean();
+        if (teamNameExists) {
+            res.status(400);
+            return next(new Error('Team name already taken by another squad'));
+        }
+
+        // Validate captain detail (Member #1)
+        const captainDetail = members[0];
+        if (!captainDetail) {
+            res.status(400);
+            return next(new Error('Captain details are required'));
+        }
+
+        // Validate invited members
+        const invitesToCreate = [];
+        for (let i = 1; i < members.length; i++) {
+            const m = members[i];
+            if (!m.user_uid) continue; // Skip empty member inputs
+
+            const cleanUid = m.user_uid.trim().toUpperCase();
+            if (cleanUid === user.uid) {
+                res.status(400);
+                return next(new Error('You cannot invite yourself as a member.'));
+            }
+
+            const invitee = await models.User.findOne({ uid: cleanUid }).lean();
+            if (!invitee) {
+                res.status(400);
+                return next(new Error(`Invalid Strikz Gamer UID: ${cleanUid}`));
+            }
+
+            // Check if invitee is already in a team
+            const inviteeCaptain = await models.Team.findOne({ captain_uid: invitee.uid }).lean();
+            const inviteeMember = await models.TeamMember.findOne({ user_uid: invitee.uid, confirmed: true }).lean();
+            if (inviteeCaptain || inviteeMember) {
+                res.status(400);
+                return next(new Error(`Player ${invitee.username} (${cleanUid}) is already registered in an esports squad`));
+            }
+
+            invitesToCreate.push({
+                user_uid: invitee.uid,
+                name: invitee.username,
+                realName: m.realName || invitee.username,
+                gameUid: m.gameUid,
+                role: m.role
+            });
+        }
+
         const teamId = 'team-' + Date.now();
         const logo = `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(name)}&backgroundColor=0a0a0f`;
-        await models.Team.create({ id: teamId, name, logo, captain: username, description });
+        
+        await models.Team.create({ 
+            id: teamId, 
+            name, 
+            logo, 
+            captain: user.username, 
+            captain_name: user.username, 
+            captain_uid: user.uid, 
+            description 
+        });
 
         let nextId = await nextNumberId(models.TeamMember);
-        await models.TeamMember.insertMany(members.map((m) => ({
+        
+        // Insert captain
+        await models.TeamMember.create({
             id: nextId++,
             team_id: teamId,
-            name: m.name,
-            game_uid: m.gameUid,
-            role: m.role,
-            real_name: m.realName || m.name
-        })));
+            user_uid: user.uid,
+            name: user.username,
+            game_uid: captainDetail.gameUid,
+            role: captainDetail.role,
+            real_name: captainDetail.realName || user.username,
+            confirmed: true
+        });
+
+        // Insert invited members
+        if (invitesToCreate.length > 0) {
+            await models.TeamMember.insertMany(invitesToCreate.map((m) => ({
+                id: nextId++,
+                team_id: teamId,
+                user_uid: m.user_uid,
+                name: m.name,
+                game_uid: m.gameUid,
+                role: m.role,
+                real_name: m.realName,
+                confirmed: false
+            })));
+        }
 
         res.status(201).json({
             success: true,
-            team: { id: teamId, name, logo, captain: username, description, members }
+            team: { 
+                id: teamId, 
+                name, 
+                logo, 
+                captain: user.username, 
+                captain_uid: user.uid, 
+                description, 
+                members: [
+                    { name: user.username, user_uid: user.uid, gameUid: captainDetail.gameUid, role: captainDetail.role, realName: captainDetail.realName, confirmed: true },
+                    ...invitesToCreate.map(inv => ({ name: inv.name, user_uid: inv.user_uid, gameUid: inv.gameUid, role: inv.role, realName: inv.realName, confirmed: false }))
+                ]
+            }
         });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const acceptInvite = async (req, res, next) => {
+    try {
+        const { teamId } = req.body;
+        const uid = req.user.uid;
+
+        if (!teamId) {
+            res.status(400);
+            return next(new Error('Please provide the team ID to accept'));
+        }
+
+        // Check if user is already in a team
+        const existingCaptain = await models.Team.findOne({ captain_uid: uid }).lean();
+        const existingMember = await models.TeamMember.findOne({ user_uid: uid, confirmed: true }).lean();
+        if (existingCaptain || existingMember) {
+            res.status(400);
+            return next(new Error('You are already registered inside an active esports squad'));
+        }
+
+        const result = await models.TeamMember.updateOne(
+            { team_id: teamId, user_uid: uid, confirmed: false },
+            { $set: { confirmed: true } }
+        );
+
+        if (result.matchedCount === 0) {
+            res.status(404);
+            return next(new Error('No pending invitation found for this team'));
+        }
+
+        res.json({ success: true, message: 'Successfully accepted team invitation!' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const declineInvite = async (req, res, next) => {
+    try {
+        const { teamId } = req.body;
+        const uid = req.user.uid;
+
+        if (!teamId) {
+            res.status(400);
+            return next(new Error('Please provide the team ID to decline'));
+        }
+
+        const result = await models.TeamMember.deleteOne({ team_id: teamId, user_uid: uid, confirmed: false });
+        if (result.deletedCount === 0) {
+            res.status(404);
+            return next(new Error('No pending invitation found to decline'));
+        }
+
+        res.json({ success: true, message: 'Successfully declined team invitation.' });
     } catch (err) {
         next(err);
     }
@@ -242,30 +427,27 @@ const createMyTeam = async (req, res, next) => {
 const confirmJoin = async (req, res, next) => {
     try {
         const { regId } = req.body;
-        const username = req.user.username;
+        const uid = req.user.uid;
 
         if (!regId) {
             res.status(400);
             return next(new Error('Please provide the registration ID to confirm'));
         }
 
-        const player = await models.RegistrationPlayer.findOne({
-            registration_id: regId,
-            name: new RegExp(`^${escapeRegExp(username)}$`, 'i')
-        });
+        const result = await models.RegistrationPlayer.updateOne(
+            { registration_id: regId, user_uid: uid, confirmed: false },
+            { $set: { confirmed: true } }
+        );
 
-        if (!player) {
+        if (result.matchedCount === 0) {
+            const alreadyConfirmed = await models.RegistrationPlayer.exists({ registration_id: regId, user_uid: uid, confirmed: true });
+            if (alreadyConfirmed) {
+                res.status(400);
+                return next(new Error('You have already confirmed this registration invitation'));
+            }
             res.status(404);
-            return next(new Error('No pending registration invitation found for your gamertag'));
+            return next(new Error('No pending registration invitation found for your Gamer UID'));
         }
-
-        if (player.confirmed) {
-            res.status(400);
-            return next(new Error('You have already confirmed this registration invitation'));
-        }
-
-        player.confirmed = true;
-        await player.save();
 
         const allPlayers = await models.RegistrationPlayer.find({ registration_id: regId }).select('confirmed').lean();
         const allConfirmed = allPlayers.every((p) => p.confirmed === true);
@@ -282,9 +464,11 @@ const confirmJoin = async (req, res, next) => {
 
 const getPendingConfirmations = async (req, res, next) => {
     try {
-        const username = req.user.username;
+        const uid = req.user.uid;
+        if (!uid) return res.json({ success: true, confirmations: [] });
+
         const players = await models.RegistrationPlayer.find({
-            name: new RegExp(`^${escapeRegExp(username)}$`, 'i'),
+            user_uid: uid,
             confirmed: false
         }).lean();
 
@@ -313,6 +497,8 @@ module.exports = {
     createRegistration,
     getMyTeam,
     createMyTeam,
+    acceptInvite,
+    declineInvite,
     confirmJoin,
     getPendingConfirmations
 };

@@ -100,8 +100,8 @@
         // Load user's team in background to auto-fill
         let userTeam = null;
         if (window.strikzAuth && window.strikzAuth.isLoggedIn()) {
-            window.strikzDb.getMyTeam().then(t => {
-                userTeam = t;
+            window.strikzDb.getMyTeam().then(res => {
+                userTeam = res.team;
                 handleTournamentChange(); // trigger initial rendering with autofill option loaded
             }).catch(err => {
                 console.error("Failed to load user team:", err);

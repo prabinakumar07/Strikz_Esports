@@ -6,6 +6,8 @@ const {
     createRegistration,
     getMyTeam,
     createMyTeam,
+    acceptInvite,
+    declineInvite,
     confirmJoin,
     getPendingConfirmations
 } = require('../controllers/tournamentController');
@@ -20,6 +22,8 @@ router.post('/registrations', protect, createRegistration);
 router.get('/my-team', protect, getMyTeam);
 router.get('/my-team/confirmations', protect, getPendingConfirmations);
 router.post('/my-team', protect, createMyTeam);
+router.post('/my-team/accept-invite', protect, acceptInvite);
+router.post('/my-team/decline-invite', protect, declineInvite);
 router.post('/my-team/confirm-join', protect, confirmJoin);
 
 module.exports = router;

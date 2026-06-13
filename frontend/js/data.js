@@ -105,13 +105,20 @@
         },
 
         getMyTeam: async function() {
-            const res = await apiRequest('/my-team', 'GET');
-            return res.team;
+            return await apiRequest('/my-team', 'GET');
         },
 
         createMyTeam: async function(team) {
             const res = await apiRequest('/my-team', 'POST', team);
             return res.team;
+        },
+
+        acceptTeamInvite: async function(teamId) {
+            return await apiRequest('/my-team/accept-invite', 'POST', { teamId });
+        },
+
+        declineTeamInvite: async function(teamId) {
+            return await apiRequest('/my-team/decline-invite', 'POST', { teamId });
         },
 
         addChatbotTicket: async function(ticket) {
