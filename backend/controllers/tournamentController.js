@@ -503,6 +503,243 @@ const getPendingConfirmations = async (req, res, next) => {
     }
 };
 
+const getMyTeamInbox = async (req, res, next) => {
+    try {
+        const uid = req.user.uid;
+        if (!uid) {
+            return res.json({ success: true, inbox: [] });
+        }
+
+        // 1. Fetch team invitations
+        const invites = await models.TeamMember.find({ user_uid: uid, confirmed: false }).lean();
+        const teamInvites = [];
+        for (const invite of invites) {
+            const team = await models.Team.findOne({ id: invite.team_id }).lean();
+            if (!team) continue;
+            teamInvites.push({
+                id: `invite-${invite.id}-${team.id}`,
+                type: 'team_invite',
+                title: `Team Invite: ${team.name}`,
+                message: `Invite from Captain ${team.captain || 'unknown'} to join as ${invite.role}.`,
+                date: invite.created_at ? new Date(invite.created_at).toISOString() : new Date().toISOString(),
+                timestamp: invite.created_at ? new Date(invite.created_at).getTime() : Date.now(),
+                metadata: {
+                    teamId: team.id,
+                    teamName: team.name,
+                    role: invite.role,
+                    logo: team.logo,
+                    description: team.description,
+                    captainName: team.captain
+                }
+            });
+        }
+
+        // 2. Fetch tournament confirmations
+        const players = await models.RegistrationPlayer.find({ user_uid: uid, confirmed: false }).lean();
+        const tourneyConfirms = [];
+        for (const player of players) {
+            const reg = await models.Registration.findOne({ id: player.registration_id, status: 'Pending' }).lean();
+            if (!reg) continue;
+            const tourney = await models.Tournament.findOne({ id: reg.tournament_id }).select('name').lean();
+            tourneyConfirms.push({
+                id: `confirm-${player.id}-${reg.id}`,
+                type: 'tournament_confirm',
+                title: 'Tournament Roster Join Verification',
+                message: `Roster join confirmation requested for squad '${reg.team_name}' in the tournament '${tourney ? tourney.name : 'Unknown Championship'}'.`,
+                date: reg.created_at ? new Date(reg.created_at).toISOString() : new Date().toISOString(),
+                timestamp: reg.created_at ? new Date(reg.created_at).getTime() : Date.now(),
+                metadata: {
+                    regId: reg.id,
+                    tournamentId: reg.tournament_id,
+                    tournamentName: tourney ? tourney.name : '',
+                    teamName: reg.team_name
+                }
+            });
+        }
+
+        // 3. Fetch general alerts/notifications from DB
+        const alerts = await models.Notification.find({ user_uid: uid }).lean();
+        const alertList = alerts.map(a => ({
+            id: `alert-${a.id}`,
+            type: 'alert',
+            title: a.title,
+            message: a.content,
+            date: a.created_at ? new Date(a.created_at).toISOString() : new Date().toISOString(),
+            timestamp: a.created_at ? new Date(a.created_at).getTime() : Date.now(),
+            metadata: {
+                dbNotifId: a.id
+            }
+        }));
+
+        // Combine and sort by timestamp descending
+        const inbox = [...teamInvites, ...tourneyConfirms, ...alertList].sort((a, b) => b.timestamp - a.timestamp);
+
+        res.json({ success: true, inbox });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const dismissNotification = async (req, res, next) => {
+    try {
+        let { id } = req.params;
+        const uid = req.user.uid;
+
+        if (id.startsWith('alert-')) {
+            id = id.substring(6);
+        }
+
+        const numericId = Number(id);
+        await models.Notification.deleteOne({ id: isNaN(numericId) ? id : numericId, user_uid: uid });
+        res.json({ success: true, message: 'Notification dismissed' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const leaveTeam = async (req, res, next) => {
+    try {
+        const uid = req.user.uid;
+        const username = req.user.username;
+
+        const memberRecord = await models.TeamMember.findOne({ user_uid: uid }).lean();
+        if (!memberRecord) {
+            res.status(400);
+            return next(new Error('You are not currently in any squad'));
+        }
+
+        const team = await models.Team.findOne({ id: memberRecord.team_id }).lean();
+        if (!team) {
+            await models.TeamMember.deleteOne({ id: memberRecord.id });
+            res.status(400);
+            return next(new Error('Squad details not found'));
+        }
+
+        if (team.captain_uid === uid) {
+            res.status(400);
+            return next(new Error('Team Captains cannot exit the team. Use Disband Team or transfer leadership instead.'));
+        }
+
+        await models.TeamMember.deleteOne({ id: memberRecord.id });
+
+        const captainUid = team.captain_uid;
+        if (captainUid) {
+            const nextNotifId = await nextNumberId(models.Notification);
+            await models.Notification.create({
+                id: nextNotifId,
+                user_uid: captainUid,
+                title: 'Teammate Left Roster',
+                content: `Gamer ${username} has left your esports squad '${team.name}'.`,
+                type: 'alert'
+            });
+        }
+
+        const otherMembers = await models.TeamMember.find({ team_id: team.id, user_uid: { $ne: uid } }).lean();
+        for (const m of otherMembers) {
+            if (m.user_uid) {
+                const nextNotifId = await nextNumberId(models.Notification);
+                await models.Notification.create({
+                    id: nextNotifId,
+                    user_uid: m.user_uid,
+                    title: 'Squad Roster Change',
+                    content: `Gamer ${username} has left your esports squad '${team.name}'.`,
+                    type: 'alert'
+                });
+            }
+        }
+
+        res.json({ success: true, message: 'Successfully exited the squad roster' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const disbandTeam = async (req, res, next) => {
+    try {
+        const uid = req.user.uid;
+        const team = await models.Team.findOne({ captain_uid: uid }).lean();
+        if (!team) {
+            res.status(400);
+            return next(new Error('You are not the captain of any esports squad'));
+        }
+
+        const members = await models.TeamMember.find({ team_id: team.id, user_uid: { $ne: uid } }).lean();
+
+        await models.TeamMember.deleteMany({ team_id: team.id });
+        await models.Team.deleteOne({ id: team.id });
+
+        for (const member of members) {
+            if (member.user_uid) {
+                const nextNotifId = await nextNumberId(models.Notification);
+                await models.Notification.create({
+                    id: nextNotifId,
+                    user_uid: member.user_uid,
+                    title: 'Squad Disbanded',
+                    content: `Your esports squad '${team.name}' has been disbanded by the Captain.`,
+                    type: 'alert'
+                });
+            }
+        }
+
+        res.json({ success: true, message: 'Esports squad disbanded successfully' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const kickMember = async (req, res, next) => {
+    try {
+        const uid = req.user.uid;
+        const { memberUid } = req.body;
+
+        if (!memberUid) {
+            res.status(400);
+            return next(new Error('Target gamer UID is required'));
+        }
+
+        const team = await models.Team.findOne({ captain_uid: uid }).lean();
+        if (!team) {
+            res.status(400);
+            return next(new Error('Only Team Captains can remove roster members'));
+        }
+
+        const member = await models.TeamMember.findOne({ team_id: team.id, user_uid: memberUid }).lean();
+        if (!member) {
+            res.status(404);
+            return next(new Error('Gamer not found on your squad roster'));
+        }
+
+        await models.TeamMember.deleteOne({ id: member.id });
+
+        const nextNotifId = await nextNumberId(models.Notification);
+        await models.Notification.create({
+            id: nextNotifId,
+            user_uid: memberUid,
+            title: 'Removed from Roster',
+            content: `You have been removed from the esports squad '${team.name}' by the Captain.`,
+            type: 'alert'
+        });
+
+        const otherMembers = await models.TeamMember.find({ team_id: team.id, user_uid: { $ne: uid } }).lean();
+        for (const m of otherMembers) {
+            if (m.user_uid && m.user_uid !== memberUid) {
+                const nextNotifId = await nextNumberId(models.Notification);
+                await models.Notification.create({
+                    id: nextNotifId,
+                    user_uid: m.user_uid,
+                    title: 'Squad Roster Change',
+                    content: `Gamer ${member.name || 'A player'} has been removed from the roster.`,
+                    type: 'alert'
+                });
+            }
+        }
+
+        res.json({ success: true, message: 'Member successfully removed from roster' });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     getPublicSnapshot,
     trackRegistration,
@@ -512,5 +749,10 @@ module.exports = {
     acceptInvite,
     declineInvite,
     confirmJoin,
-    getPendingConfirmations
+    getPendingConfirmations,
+    getMyTeamInbox,
+    dismissNotification,
+    leaveTeam,
+    disbandTeam,
+    kickMember
 };

@@ -38,7 +38,8 @@ const models = {
     ChatbotTicket: createModel('ChatbotTicket', 'chatbot_tickets'),
     SocialFeed: createModel('SocialFeed', 'social_feed'),
     Management: createModel('Management', 'management', Number),
-    AuditLog: createModel('AuditLog', 'audit_logs', Number)
+    AuditLog: createModel('AuditLog', 'audit_logs', Number),
+    Notification: createModel('Notification', 'notifications', Number)
 };
 
 const connectDB = async () => {

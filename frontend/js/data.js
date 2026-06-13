@@ -104,6 +104,26 @@
             return res;
         },
 
+        getMyTeamInbox: async function() {
+            return await apiRequest('/my-team/inbox', 'GET');
+        },
+
+        dismissNotification: async function(id) {
+            return await apiRequest(`/my-team/inbox/${id}`, 'DELETE');
+        },
+
+        leaveTeam: async function() {
+            return await apiRequest('/my-team/leave', 'POST');
+        },
+
+        disbandTeam: async function() {
+            return await apiRequest('/my-team/disband', 'POST');
+        },
+
+        kickMember: async function(memberUid) {
+            return await apiRequest('/my-team/kick', 'POST', { memberUid });
+        },
+
         getMyTeam: async function() {
             return await apiRequest('/my-team', 'GET');
         },

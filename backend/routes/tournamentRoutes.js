@@ -9,7 +9,12 @@ const {
     acceptInvite,
     declineInvite,
     confirmJoin,
-    getPendingConfirmations
+    getPendingConfirmations,
+    getMyTeamInbox,
+    dismissNotification,
+    leaveTeam,
+    disbandTeam,
+    kickMember
 } = require('../controllers/tournamentController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -25,5 +30,11 @@ router.post('/my-team', protect, createMyTeam);
 router.post('/my-team/accept-invite', protect, acceptInvite);
 router.post('/my-team/decline-invite', protect, declineInvite);
 router.post('/my-team/confirm-join', protect, confirmJoin);
+
+router.get('/my-team/inbox', protect, getMyTeamInbox);
+router.delete('/my-team/inbox/:id', protect, dismissNotification);
+router.post('/my-team/leave', protect, leaveTeam);
+router.post('/my-team/disband', protect, disbandTeam);
+router.post('/my-team/kick', protect, kickMember);
 
 module.exports = router;
