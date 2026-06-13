@@ -122,12 +122,26 @@ const deleteRegistration = async (req, res, next) => {
 const createTournament = async (req, res, next) => {
     try {
         const { id, name, game, mode, category, prizePool, startDate, regCloseDate, rules, ruleBook, soloRegistrationEnabled, description, image, featured } = req.body;
-        if (!id || !name || !game || !mode || !category || !prizePool || !startDate || !regCloseDate) {
+        
+        let tourneyId = id;
+        if (!tourneyId && name) {
+            tourneyId = name.toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)+/g, '');
+            
+            let exists = await models.Tournament.exists({ id: tourneyId });
+            while (exists) {
+                tourneyId = `${tourneyId}-${Math.floor(100 + Math.random() * 900)}`;
+                exists = await models.Tournament.exists({ id: tourneyId });
+            }
+        }
+
+        if (!tourneyId || !name || !game || !mode || !category || !prizePool || !startDate || !regCloseDate) {
             res.status(400);
             return next(new Error('Please fill in all core tournament properties'));
         }
-        await models.Tournament.create({ id, name, game, mode, category, prizePool, startDate, regCloseDate, status: 'Open', rules, ruleBook, soloRegistrationEnabled: !!soloRegistrationEnabled, description, image, featured: !!featured });
-        await logAdminAction(req, 'CREATE_TOURNAMENT', { id, name });
+        await models.Tournament.create({ id: tourneyId, name, game, mode, category, prizePool, startDate, regCloseDate, status: 'Open', rules, ruleBook, soloRegistrationEnabled: !!soloRegistrationEnabled, description, image, featured: !!featured });
+        await logAdminAction(req, 'CREATE_TOURNAMENT', { id: tourneyId, name });
         res.status(201).json({ success: true, message: 'Tournament arena initialized successfully' });
     } catch (err) {
         next(err);
