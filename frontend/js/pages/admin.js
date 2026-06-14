@@ -35,22 +35,37 @@
     function renderLoginScreen(container) {
         container.innerHTML = `
             <section class="container admin-dashboard-root" style="padding-top: 60px; margin-bottom: 80px;">
-                <div class="glass-panel admin-login-wrapper" style="border-color: var(--neon-orange-border); box-shadow: 0 0 25px var(--neon-orange-glow);">
-                    <div class="admin-login-title font-orbitron">STRIKZ ADMIN ACCESS</div>
+                <div class="admin-login-card">
+                    <div class="admin-login-left">
+                        <div class="admin-login-left-overlay">
+                            <div class="admin-brand-name font-orbitron">strikzesports</div>
+                            <div class="admin-brand-tagline">Remix your vibe. Share your sound.</div>
+                        </div>
+                    </div>
                     
-                    <form id="admin-login-form" onsubmit="return false;">
-                        <div class="form-group">
-                            <label for="admin-user">COMMAND USERNAME</label>
-                            <input type="text" id="admin-user" placeholder="Enter Username..." required autocomplete="off" style="color: #fff;">
+                    <div class="admin-login-right">
+                        <h2 class="admin-login-heading">Sign in</h2>
+                        <p class="admin-login-subheading">Welcome back</p>
+                        
+                        <form id="admin-login-form" onsubmit="return false;">
+                            <div class="admin-form-group">
+                                <input type="text" id="admin-user" placeholder="Email or Username" required autocomplete="off">
+                            </div>
+                            <div class="admin-form-group">
+                                <input type="password" id="admin-pass" placeholder="Password" required>
+                            </div>
+                            <button type="submit" class="admin-login-submit-btn">
+                                <span class="btn-text">Sign in</span>
+                            </button>
+                        </form>
+                        
+                        <div class="admin-login-links">
+                            <a href="#/contact" class="admin-login-link-item">No account? Create account</a>
+                            <a href="#/" class="admin-login-link-item">Back to home</a>
                         </div>
-                        <div class="form-group">
-                            <label for="admin-pass">ACCESS CRYPTOKEY (PASSWORD)</label>
-                            <input type="password" id="admin-pass" placeholder="Enter Password..." required style="color: #fff;">
-                        </div>
-                        <button type="submit" class="cta-button btn-neon-orange w-full" style="margin-top: 15px;">
-                            <span class="btn-text">INITIALIZE SYSTEM SECURE</span>
-                        </button>
-                    </form>
+                        
+                        <div class="admin-decor-blur"></div>
+                    </div>
                 </div>
             </section>
         `;
@@ -130,7 +145,7 @@
             } catch (err) {
                 const msg = err.name === 'AbortError' ? 'Server timeout. Please wait a minute and try again (Render server may be cold-starting).' : err.message;
                 alert("Login Failed: " + msg);
-                if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector('.btn-text').textContent = 'INITIALIZE SYSTEM SECURE'; }
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector('.btn-text').textContent = 'Sign in'; }
             }
         };
     }

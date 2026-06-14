@@ -3992,4 +3992,160 @@ button, input, select, textarea {
     }
 }
 
+/* Custom Admin Login Card Redesign */
+.admin-login-card {
+    max-width: 900px;
+    width: 95%;
+    margin: 80px auto;
+    display: flex;
+    background: #ffffff;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.35);
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.admin-login-left {
+    width: 50%;
+    background: url('../assets/anime_gamer_login.png') no-repeat center center;
+    background-size: cover;
+    position: relative;
+    min-height: 520px;
+}
+.admin-login-left-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,0.4) 50%, rgba(15,23,42,0.95) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 40px;
+}
+.admin-brand-name {
+    font-size: 36px;
+    font-weight: 800;
+    color: #ffffff;
+    text-transform: lowercase;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+}
+.admin-brand-tagline {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    font-family: system-ui, -apple-system, sans-serif;
+}
+.admin-login-right {
+    width: 50%;
+    background: #ffffff;
+    padding: 50px 45px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+.admin-login-heading {
+    font-size: 36px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 6px;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+.admin-login-subheading {
+    font-size: 16px;
+    color: #64748b;
+    margin-bottom: 28px;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+.admin-form-group {
+    margin-bottom: 16px;
+}
+.admin-form-group input {
+    width: 100%;
+    padding: 14px 20px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background-color: #ffffff;
+    color: #0f172a !important;
+    font-size: 15px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+.admin-form-group input::placeholder {
+    color: #94a3b8;
+}
+.admin-form-group input:focus {
+    border-color: #94a3b8;
+    box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.15);
+    outline: none;
+}
+.admin-login-submit-btn {
+    width: 100%;
+    padding: 14px;
+    background-color: #dc052d;
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    margin-top: 8px;
+}
+.admin-login-submit-btn:hover {
+    background-color: #b90424;
+}
+.admin-login-submit-btn:active {
+    transform: scale(0.98);
+}
+.admin-login-submit-btn:disabled {
+    background-color: #cbd5e1;
+    cursor: not-allowed;
+}
+.admin-login-links {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.admin-login-link-item {
+    color: #64748b !important;
+    font-size: 14px;
+    text-decoration: none;
+    transition: color 0.2s;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-weight: 500;
+    width: fit-content;
+}
+.admin-login-link-item:hover {
+    color: #0f172a !important;
+    text-decoration: underline;
+}
+.admin-decor-blur {
+    background: radial-gradient(circle, rgba(167, 243, 208, 0.45) 0%, rgba(255, 255, 255, 0) 70%);
+    width: 150px;
+    height: 150px;
+    position: absolute;
+    bottom: -30px;
+    right: -30px;
+    filter: blur(20px);
+    pointer-events: none;
+    border-radius: 50%;
+}
+@media (max-width: 768px) {
+    .admin-login-card {
+        flex-direction: column;
+        max-width: 450px;
+        margin: 40px auto;
+    }
+    .admin-login-left {
+        width: 100%;
+        min-height: 250px;
+    }
+    .admin-login-right {
+        width: 100%;
+        padding: 35px 25px;
+    }
+}
+
 
