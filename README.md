@@ -51,6 +51,8 @@ JWT_SECRET=use_a_long_random_secret
 JWT_EXPIRY=24h
 SUPPORT_EMAIL=support@strikzesports.com
 PARTNER_EMAIL=partners@strikzesports.com
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL=onboarding@resend.dev
 ```
 
 Install backend dependencies:
@@ -109,6 +111,8 @@ JWT_SECRET=use_a_long_random_secret
 JWT_EXPIRY=24h
 SUPPORT_EMAIL=support@strikzesports.com
 PARTNER_EMAIL=partners@strikzesports.com
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL=onboarding@resend.dev
 ```
 
 ## Demo Login

@@ -1,7 +1,67 @@
 const nodemailer = require('nodemailer');
-const https = require('https');
 const { models, nextNumberId } = require('../config/db');
 require('dotenv').config();
+
+const getFromAddress = () => {
+    return process.env.RESEND_FROM_EMAIL || process.env.SMTP_FROM_EMAIL || process.env.SUPPORT_EMAIL || 'support@strikzesports.com';
+};
+
+const logEmail = async ({ logId, recipient, subject, type, status, messageId, error }) => {
+    await models.EmailLog.create({
+        id: logId,
+        recipient,
+        subject,
+        type: type || 'General',
+        status,
+        messageId,
+        error_message: error,
+        sent_at: new Date().toISOString()
+    });
+};
+
+const sendWithResend = async (mailOptions, type, logId) => {
+    if (!process.env.RESEND_API_KEY) return null;
+
+    const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            from: mailOptions.from,
+            to: [mailOptions.to],
+            subject: mailOptions.subject,
+            html: mailOptions.html,
+            text: mailOptions.text || undefined
+        })
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        const message = payload.message || payload.error || `Resend API failed with status ${response.status}`;
+        await logEmail({
+            logId,
+            recipient: mailOptions.to,
+            subject: mailOptions.subject,
+            type,
+            status: 'Failed',
+            error: message
+        });
+        return { success: false, error: message };
+    }
+
+    const messageId = payload.id || `resend-${Date.now()}`;
+    await logEmail({
+        logId,
+        recipient: mailOptions.to,
+        subject: mailOptions.subject,
+        type,
+        status: 'Success',
+        messageId
+    });
+    return { success: true, messageId };
+};
 
 // Create transporter helper
 const getTransporter = async () => {
@@ -35,7 +95,7 @@ const isAutomaticEnabled = async (emailType) => {
 // Send an actual email directly
 const sendEmailDirect = async (options) => {
     const transporter = await getTransporter();
-    const fromAddress = process.env.SUPPORT_EMAIL || 'support@strikzesports.com';
+    const fromAddress = getFromAddress();
     const mailOptions = {
         from: `Strikz Esports <${fromAddress}>`,
         to: options.to,
@@ -49,50 +109,51 @@ const sendEmailDirect = async (options) => {
     }
 
     const logId = 'log-' + Date.now() + '-' + Math.floor(100 + Math.random() * 900);
+
+    const resendResult = await sendWithResend(mailOptions, options.type, logId);
+    if (resendResult) {
+        if (!resendResult.success) {
+            console.error(`[RESEND EMAIL ERROR] ${resendResult.error}`);
+        }
+        return resendResult;
+    }
     
     if (transporter) {
         try {
             const info = await transporter.sendMail(mailOptions);
-            await models.EmailLog.create({
-                id: logId,
+            await logEmail({
+                logId,
                 recipient: options.to,
                 subject: options.subject,
                 type: options.type || 'General',
                 status: 'Success',
-                messageId: info.messageId,
-                sent_at: new Date().toISOString()
+                messageId: info.messageId
             });
             return { success: true, messageId: info.messageId };
         } catch (err) {
             console.error(`[EMAIL DIRECT ERROR] ${err.message}`);
-            await models.EmailLog.create({
-                id: logId,
+            await logEmail({
+                logId,
                 recipient: options.to,
                 subject: options.subject,
                 type: options.type || 'General',
                 status: 'Failed',
-                error_message: err.message,
-                sent_at: new Date().toISOString()
+                error: err.message
             });
             return { success: false, error: err.message };
         }
     } else {
-        // Mock Mail Mode
-        console.log('--- [MOCK DIRECT EMAIL] ---');
-        console.log(`To: ${mailOptions.to}`);
-        console.log(`Subject: ${mailOptions.subject}`);
-        console.log(`Type: ${options.type || 'General'}`);
-        console.log('---------------------------');
-        await models.EmailLog.create({
-            id: logId,
+        const error = 'No email provider configured. Add RESEND_API_KEY and RESEND_FROM_EMAIL, or configure SMTP credentials.';
+        console.error(`[EMAIL CONFIG ERROR] ${error}`);
+        await logEmail({
+            logId,
             recipient: options.to,
             subject: options.subject,
             type: options.type || 'General',
-            status: 'Success',
-            messageId: 'mock-id-' + Date.now(),
-            sent_at: new Date().toISOString()
+            status: 'Failed',
+            error
         });
-        return { success: true, messageId: 'mock-id-' + Date.now() };
+        return { success: false, error };
     }
 };
 
@@ -179,12 +240,18 @@ const sendOtpEmail = async (email, username, otpCode) => {
     `;
     
     const html = getHtmlWrapper(content);
-    return await sendEmailDirect({
+    const result = await sendEmailDirect({
         to: email,
         subject: 'Strikz Esports - OTP Account Activation',
         html,
         type: 'OTP Verification'
     });
+
+    if (!result || !result.success) {
+        throw new Error(result && result.error ? result.error : 'Failed to send OTP email');
+    }
+
+    return result;
 };
 
 // 2. Send Registration Confirmation Email
