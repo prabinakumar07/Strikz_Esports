@@ -70,13 +70,35 @@
 
             if (submitBtn) { submitBtn.disabled = true; submitBtn.querySelector('.btn-text').textContent = 'AUTHENTICATING...'; }
 
+            const doLogin = async () => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for Render cold start
+                try {
+                    const res = await fetch('/api/v1/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ usernameOrEmail: user, password: pass }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    return res;
+                } catch (err) {
+                    clearTimeout(timeoutId);
+                    throw err;
+                }
+            };
+
             try {
-                // Direct fetch — bypasses any window.strikzAuth initialization race
-                const res = await fetch('/api/v1/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ usernameOrEmail: user, password: pass })
-                });
+                let res;
+                try {
+                    res = await doLogin();
+                } catch (netErr) {
+                    // Render cold-start: server may be waking up, retry once with user feedback
+                    if (submitBtn) submitBtn.querySelector('.btn-text').textContent = 'SERVER WAKING UP... RETRYING';
+                    await new Promise(r => setTimeout(r, 5000));
+                    res = await doLogin();
+                }
+
                 const json = await res.json();
 
                 if (!res.ok) {
@@ -106,7 +128,8 @@
                 setTimeout(() => { window.location.hash = '#/admin'; }, 100);
 
             } catch (err) {
-                alert("Login Failed: " + err.message);
+                const msg = err.name === 'AbortError' ? 'Server timeout. Please wait a minute and try again (Render server may be cold-starting).' : err.message;
+                alert("Login Failed: " + msg);
                 if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector('.btn-text').textContent = 'INITIALIZE SYSTEM SECURE'; }
             }
         };

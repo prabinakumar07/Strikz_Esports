@@ -533,6 +533,18 @@
                 quickPortal.classList.remove('hidden');
             }
 
+            // Show/hide admin links based on user role
+            const sidebarAdminLink = document.getElementById('nav-admin');
+            const mobileAdminLi = document.getElementById('mob-admin');
+            if (user.role === 'admin') {
+                if (sidebarAdminLink) sidebarAdminLink.removeAttribute('style');
+                if (mobileAdminLi && mobileAdminLi.parentElement) mobileAdminLi.parentElement.style.removeProperty('display');
+                if (mobileAdminLi) mobileAdminLi.style.removeProperty('display');
+            } else {
+                if (sidebarAdminLink) sidebarAdminLink.style.setProperty('display', 'none', 'important');
+                if (mobileAdminLi && mobileAdminLi.parentElement) mobileAdminLi.parentElement.style.setProperty('display', 'none', 'important');
+            }
+
             setTimeout(updateInboxBadges, 100);
 
             // Bind click-to-copy UID handler
@@ -606,6 +618,12 @@
                 quickPortal.classList.add('hidden');
                 quickPortal.innerHTML = '';
             }
+
+            // Hide admin links when logged out
+            const sidebarAdminLink = document.getElementById('nav-admin');
+            const mobileAdminLi = document.getElementById('mob-admin');
+            if (sidebarAdminLink) sidebarAdminLink.style.setProperty('display', 'none', 'important');
+            if (mobileAdminLi && mobileAdminLi.parentElement) mobileAdminLi.parentElement.style.setProperty('display', 'none', 'important');
 
             if (desktopSlot) desktopSlot.innerHTML = loggedOutHTML('btn-sidebar-login');
             if (mobileSlot) mobileSlot.innerHTML = loggedOutHTML('btn-drawer-login');
