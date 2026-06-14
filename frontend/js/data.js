@@ -124,6 +124,10 @@
             return await apiRequest('/my-team/kick', 'POST', { memberUid });
         },
 
+        updateTeamLogo: async function(logo) {
+            return await apiRequest('/my-team/logo', 'PUT', { logo });
+        },
+
         getMyTeam: async function() {
             return await apiRequest('/my-team', 'GET');
         },
@@ -139,6 +143,46 @@
 
         declineTeamInvite: async function(teamId) {
             return await apiRequest('/my-team/decline-invite', 'POST', { teamId });
+        },
+
+        sendFriendRequest: async function(friendUid) {
+            return await apiRequest('/friends/request', 'POST', { friendUid });
+        },
+
+        getFriendRequests: async function() {
+            const res = await apiRequest('/friends/requests', 'GET');
+            return res.requests || [];
+        },
+
+        acceptFriendRequest: async function(friendshipId) {
+            return await apiRequest('/friends/accept', 'POST', { friendshipId });
+        },
+
+        rejectFriendRequest: async function(friendshipId) {
+            return await apiRequest('/friends/reject', 'POST', { friendshipId });
+        },
+
+        getFriends: async function() {
+            const res = await apiRequest('/friends', 'GET');
+            return res.friends || [];
+        },
+
+        sendChatMessage: async function(receiverUid, content) {
+            return await apiRequest('/chats/send', 'POST', { receiverUid, content });
+        },
+
+        getChatMessageHistory: async function(friendUid) {
+            const res = await apiRequest(`/chats/history/${friendUid}`, 'GET');
+            return res.messages || [];
+        },
+
+        sendTeamMessage: async function(content) {
+            return await apiRequest('/my-team/chat', 'POST', { content });
+        },
+
+        getTeamMessageHistory: async function() {
+            const res = await apiRequest('/my-team/chat', 'GET');
+            return res.messages || [];
         },
 
         addChatbotTicket: async function(ticket) {

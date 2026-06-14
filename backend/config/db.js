@@ -39,7 +39,11 @@ const models = {
     SocialFeed: createModel('SocialFeed', 'social_feed'),
     Management: createModel('Management', 'management', Number),
     AuditLog: createModel('AuditLog', 'audit_logs', Number),
-    Notification: createModel('Notification', 'notifications', Number)
+    Notification: createModel('Notification', 'notifications', Number),
+    UploadedFile: createModel('UploadedFile', 'uploaded_files'),
+    Friendship: createModel('Friendship', 'friendships'),
+    ChatMessage: createModel('ChatMessage', 'chat_messages'),
+    TeamMessage: createModel('TeamMessage', 'team_messages')
 };
 
 const connectDB = async () => {
@@ -55,14 +59,22 @@ const connectDB = async () => {
 
     // Run gamer UID migration for existing users
     try {
-        const usersWithoutUid = await models.User.find({ uid: { $exists: false } });
-        if (usersWithoutUid.length > 0) {
-            console.log(`Migrating ${usersWithoutUid.length} users to generate unique gamer UIDs...`);
-            for (const user of usersWithoutUid) {
+        const usersToMigrate = await models.User.find({
+            $or: [
+                { uid: { $exists: false } },
+                { uid: /^STRIKZ-/ }
+            ]
+        });
+        if (usersToMigrate.length > 0) {
+            console.log(`Migrating ${usersToMigrate.length} users to generate unique gamer UIDs...`);
+            for (const user of usersToMigrate) {
+                let base = (user.username || 'gamer').toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (!base) base = 'gamer';
                 let uid;
                 let exists = true;
                 while (exists) {
-                    uid = 'STRIKZ-' + Math.floor(100000 + Math.random() * 900000);
+                    const randomNum = Math.floor(10 + Math.random() * 900);
+                    uid = `${base}_${randomNum}`;
                     exists = await models.User.exists({ uid });
                 }
                 await models.User.updateOne({ id: user.id }, { $set: { uid } });

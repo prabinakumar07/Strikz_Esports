@@ -234,7 +234,15 @@ const getMyTeam = async (req, res, next) => {
             return res.json({ success: true, team: null, invitations });
         }
 
-        const members = await models.TeamMember.find({ team_id: team.id }).select('name user_uid game_uid role real_name confirmed').lean();
+        const members = await models.TeamMember.find({ team_id: team.id }).select('name user_uid game_uid role real_name ign confirmed').lean();
+        const populatedMembers = [];
+        for (const m of members) {
+            const u = await models.User.findOne({ uid: m.user_uid }).select('avatar').lean();
+            populatedMembers.push({
+                ...m,
+                avatar: u ? u.avatar : `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(m.name)}`
+            });
+        }
         res.json({
             success: true,
             team: {
@@ -244,7 +252,7 @@ const getMyTeam = async (req, res, next) => {
                 captain: team.captain_name || team.captain,
                 captain_uid: team.captain_uid,
                 description: team.description,
-                members: members.map(publicDoc)
+                members: populatedMembers.map(publicDoc)
             }
         });
     } catch (err) {
@@ -290,7 +298,7 @@ const createMyTeam = async (req, res, next) => {
             const m = members[i];
             if (!m.user_uid) continue; // Skip empty member inputs
 
-            const cleanUid = m.user_uid.trim().toUpperCase();
+            const cleanUid = m.user_uid.trim().toLowerCase();
             if (cleanUid === user.uid) {
                 res.status(400);
                 return next(new Error('You cannot invite yourself as a member.'));
@@ -324,7 +332,7 @@ const createMyTeam = async (req, res, next) => {
         
         await models.Team.create({ 
             id: teamId, 
-            name, 
+            name: name.toUpperCase(), 
             logo, 
             captain: user.username, 
             captain_name: user.username, 
@@ -740,6 +748,29 @@ const kickMember = async (req, res, next) => {
     }
 };
 
+const updateTeamLogo = async (req, res, next) => {
+    try {
+        const { logo } = req.body;
+        const user = req.user;
+        if (!logo) {
+            res.status(400);
+            return next(new Error('Please provide logo URL'));
+        }
+        const team = await models.Team.findOneAndUpdate(
+            { captain_uid: user.uid },
+            { logo },
+            { new: true }
+        );
+        if (!team) {
+            res.status(404);
+            return next(new Error('You must be the captain of an active squad to update the team logo'));
+        }
+        res.json({ success: true, team });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     getPublicSnapshot,
     trackRegistration,
@@ -754,5 +785,6 @@ module.exports = {
     dismissNotification,
     leaveTeam,
     disbandTeam,
-    kickMember
+    kickMember,
+    updateTeamLogo
 };

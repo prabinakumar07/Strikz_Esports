@@ -14,7 +14,8 @@ const {
     dismissNotification,
     leaveTeam,
     disbandTeam,
-    kickMember
+    kickMember,
+    updateTeamLogo
 } = require('../controllers/tournamentController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -36,5 +37,6 @@ router.delete('/my-team/inbox/:id', protect, dismissNotification);
 router.post('/my-team/leave', protect, leaveTeam);
 router.post('/my-team/disband', protect, disbandTeam);
 router.post('/my-team/kick', protect, kickMember);
+router.put('/my-team/logo', protect, updateTeamLogo);
 
 module.exports = router;

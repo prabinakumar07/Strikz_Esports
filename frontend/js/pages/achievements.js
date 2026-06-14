@@ -47,7 +47,7 @@
                                 ${latest.teamName}
                             </h3>
                             <p style="color: var(--neon-cyan); font-family: var(--font-header); font-size: 13px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;">
-                                ${latest.event} &bull; ${latest.date}
+                                ${latest.event} &bull; ${window.strikzFormatDate(latest.date)}
                             </p>
                         </div>
                     </div>
@@ -85,7 +85,7 @@
                                 </div>
                                 <h3 class="trophy-title font-orbitron">${tr.title}</h3>
                                 <div class="trophy-event font-orbitron">${tr.event}</div>
-                                <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px;">Date Secured: ${tr.date}</p>
+                                <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px;">Date Secured: ${window.strikzFormatDate(tr.date)}</p>
                                 <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; display: inline-block;">
                                     <span style="font-size: 10px; color: var(--text-dim); text-transform: uppercase; font-family: var(--font-header);">Reward: </span>
                                     <span style="font-size: 12px; font-weight: 700; color: var(--neon-green);">${tr.reward}</span>

@@ -3,6 +3,44 @@
    ========================================================================== */
 
 (function() {
+    // Google Sign-In Redirect Parameter Normalizer
+    if (window.location.search.includes('#/')) {
+        const search = window.location.search;
+        const hashIndex = search.indexOf('#/');
+        const query = search.substring(0, hashIndex);
+        const hash = search.substring(hashIndex);
+        const cleanQuery = query === '?' ? '' : query;
+        window.history.replaceState(null, '', window.location.pathname + cleanQuery + hash);
+    } else if (window.location.search.startsWith('?#')) {
+        const hash = window.location.search.slice(1);
+        window.history.replaceState(null, '', window.location.pathname + hash);
+    }
+
+    // Global Date Formatter
+    window.strikzFormatDate = function(dateStr) {
+        if (!dateStr) return '';
+        if (/^\d{2}-\d{2}-\d{2}/.test(dateStr)) {
+            return dateStr;
+        }
+        const dateObj = new Date(dateStr);
+        if (isNaN(dateObj.getTime())) {
+            return dateStr;
+        }
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = String(dateObj.getFullYear()).slice(-2);
+        const hasTime = dateStr.toString().includes(':') || dateStr.toString().includes('T');
+        if (hasTime) {
+            let hours = dateObj.getHours();
+            const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            const strTime = String(hours).padStart(2, '0') + ':' + minutes + ' ' + ampm;
+            return `${day}-${month}-${year} ${strTime}`;
+        }
+        return `${day}-${month}-${year}`;
+    };
     // Sound & Music settings state
     let soundEnabled = localStorage.getItem('strikz_sound_enabled') !== 'false';
     let musicEnabled = localStorage.getItem('strikz_music_enabled') !== 'false';
@@ -40,7 +78,8 @@
         '/contact': window.renderContact,
         '/registration': window.renderRegistration,
         '/admin': window.renderAdmin,
-        '/partners': window.renderPartners
+        '/partners': window.renderPartners,
+        '/earning': window.renderEarning
     };
 
     // SPA Router
@@ -751,6 +790,10 @@
         const user = authManager.getUser();
         if (user && settingsUserInput) {
             settingsUserInput.value = user.username;
+            const settingsInputAvatar = document.getElementById('settings-input-avatar');
+            if (settingsInputAvatar) settingsInputAvatar.value = user.avatar;
+            const settingsAvatarPreview = document.getElementById('settings-avatar-preview');
+            if (settingsAvatarPreview) settingsAvatarPreview.src = user.avatar;
         }
         settingsModal.classList.add('active');
     }
@@ -941,6 +984,24 @@
         // Settings Modal listeners
         const btnSettingsClose = document.getElementById('btn-settings-close');
         const btnSettingsSave = document.getElementById('btn-settings-save');
+        const settingsAvatarFile = document.getElementById('settings-input-avatar-file');
+        const settingsInputAvatar = document.getElementById('settings-input-avatar');
+        const settingsAvatarPreview = document.getElementById('settings-avatar-preview');
+
+        if (settingsAvatarFile) {
+            settingsAvatarFile.onchange = async function() {
+                const file = settingsAvatarFile.files[0];
+                if (!file) return;
+                try {
+                    const res = await window.strikzDb.uploadFile(file);
+                    if (settingsInputAvatar) settingsInputAvatar.value = res.imageUrl;
+                    if (settingsAvatarPreview) settingsAvatarPreview.src = res.imageUrl;
+                    alert("Gamer photo uploaded successfully!");
+                } catch (err) {
+                    alert("Photo upload failed: " + err.message);
+                }
+            };
+        }
 
         if (btnSettingsClose) {
             btnSettingsClose.addEventListener('click', () => {
@@ -956,9 +1017,10 @@
                     alert("Gamer tag cannot be left blank.");
                     return;
                 }
+                const newAvatar = settingsInputAvatar ? settingsInputAvatar.value : authManager.getUser().avatar;
 
                 try {
-                    await authManager.updateGamerProfile(newNick, authManager.getUser().avatar);
+                    await authManager.updateGamerProfile(newNick, newAvatar);
                     closeSettingsModal();
                     playSound(successSfx);
                     alert("Gamer profile settings saved!");

@@ -462,7 +462,7 @@
                         </td>
                         <td><span style="font-size: 10px; color: var(--text-silver); text-transform: uppercase;">${r.type}</span></td>
                         <td style="font-size: 12px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${r.tournamentName}</td>
-                        <td style="font-size: 12px;">${r.submissionDate}</td>
+                        <td style="font-size: 12px;">${window.strikzFormatDate(r.submissionDate)}</td>
                         <td><span class="badge-status ${statusClass}">${r.status}</span></td>
                         <td>
                             <div style="display: flex; gap: 8px;">
@@ -562,7 +562,7 @@
                     `"${r.tournamentName.replace(/"/g, '""')}"`,
                     contactEmail,
                     contactPhone,
-                    r.submissionDate,
+                    window.strikzFormatDate(r.submissionDate),
                     r.status,
                     `"${rosterStr.replace(/"/g, '""')}"`
                 ].join(",");
@@ -925,7 +925,7 @@
                     <div>
                         <span class="font-orbitron" style="font-size: 9px; color: var(--neon-cyan); border: 1px solid var(--neon-cyan-border); padding: 2px 6px; border-radius: 3px;">${n.tag.toUpperCase()}</span>
                         <h5 style="font-size: 13px; color: #fff; margin: 6px 0 2px 0; font-weight:700;">${n.title}</h5>
-                        <p style="font-size: 11px; color: var(--text-dim);">${n.date}</p>
+                        <p style="font-size: 11px; color: var(--text-dim);">${window.strikzFormatDate(n.date)}</p>
                     </div>
                     <div style="display: flex; gap: 6px;">
                         <button class="action-icon-btn approve edit-news-btn" data-id="${n.id}" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>

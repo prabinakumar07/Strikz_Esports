@@ -595,7 +595,7 @@
                         </div>
                         <div>
                             <div class="ticket-detail-lbl font-orbitron" style="font-size:9px; color:var(--text-dim);">FILED DATE</div>
-                            <div class="ticket-detail-val" style="color:#fff;">${reg.submissionDate}</div>
+                            <div class="ticket-detail-val" style="color:#fff;">${window.strikzFormatDate(reg.submissionDate)}</div>
                         </div>
                     </div>
 

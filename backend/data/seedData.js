@@ -171,6 +171,39 @@ const upsertMany = async (Model, docs) => {
 };
 
 const seedDatabase = async (models) => {
+    // Always ensure default admin user is present and has role 'admin' with password 'admin'
+    try {
+        const bcrypt = require('bcryptjs');
+        const adminHash = await bcrypt.hash('admin', 10);
+        const adminUser = await models.User.findOne({ username: 'admin' });
+        if (!adminUser) {
+            let uid = 'admin_73';
+            let exists = true;
+            while (exists) {
+                uid = 'admin_' + Math.floor(10 + Math.random() * 900);
+                exists = await models.User.exists({ uid });
+            }
+            await models.User.create({
+                id: 1,
+                uid,
+                username: 'admin',
+                email: 'admin@strikzesports.com',
+                password_hash: adminHash,
+                role: 'admin',
+                avatar: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=admin&backgroundColor=0a0a0f'
+            });
+            console.log('Seeded default admin user');
+        } else {
+            await models.User.updateOne(
+                { username: 'admin' },
+                { $set: { role: 'admin', password_hash: adminHash } }
+            );
+            console.log('Restored default admin user role and password');
+        }
+    } catch (err) {
+        console.error('Failed to seed default admin:', err.message);
+    }
+
     const hasSettings = await models.Setting.exists({ id: 1 });
     if (hasSettings) return;
 

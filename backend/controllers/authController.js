@@ -45,10 +45,13 @@ const register = async (req, res, next) => {
         const passwordHash = await bcrypt.hash(password, await bcrypt.genSalt(10));
         const avatar = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(username)}&backgroundColor=0a0a0f`;
         
+        let base = (username || 'gamer').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!base) base = 'gamer';
         let uid;
         let exists = true;
         while (exists) {
-            uid = 'STRIKZ-' + Math.floor(100000 + Math.random() * 900000);
+            const randomNum = Math.floor(10 + Math.random() * 900);
+            uid = `${base}_${randomNum}`;
             exists = await models.User.exists({ uid });
         }
 
@@ -159,10 +162,13 @@ const googleLogin = async (req, res, next) => {
                 usernameExists = await models.User.exists({ username: uniqueUsername });
             }
 
+            let base = (uniqueUsername || 'gamer').toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (!base) base = 'gamer';
             let uid;
             let exists = true;
             while (exists) {
-                uid = 'STRIKZ-' + Math.floor(100000 + Math.random() * 900000);
+                const randomNum = Math.floor(10 + Math.random() * 900);
+                uid = `${base}_${randomNum}`;
                 exists = await models.User.exists({ uid });
             }
 
@@ -304,6 +310,33 @@ const updateProfile = async (req, res, next) => {
     }
 };
 
+const searchUsers = async (req, res, next) => {
+    try {
+        const { query } = req.query;
+        if (!query || query.trim().length < 2) {
+            return res.json({ success: true, users: [] });
+        }
+
+        const cleanQuery = query.trim();
+        const escaped = cleanQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escaped, 'i');
+        const users = await models.User.find({
+            $or: [
+                { username: regex },
+                { uid: regex }
+            ],
+            id: { $ne: req.user.id } // Exclude self
+        })
+        .select('username uid avatar')
+        .limit(10)
+        .lean();
+
+        res.json({ success: true, users });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     register,
     login,
@@ -312,5 +345,6 @@ module.exports = {
     forgotPassword,
     resetPassword,
     getProfile,
-    updateProfile
+    updateProfile,
+    searchUsers
 };

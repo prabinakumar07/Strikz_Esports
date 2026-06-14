@@ -4,6 +4,7 @@
 
 (function() {
     let activeTab = 'squad'; // Track active tab globally within page scope
+    let commsPollInterval = null; // Polling timer for chat channels
 
     async function renderMyTeam(container) {
         if (!window.strikzAuth || !window.strikzAuth.isLoggedIn()) {
@@ -65,13 +66,19 @@
                     </div>
 
                     <!-- Comms Navigation Tabs -->
-                    <div class="comms-tabs-nav font-orbitron" style="display:flex; gap:10px; margin-bottom: 25px; border-bottom: 1px solid var(--glass-border); padding-bottom:12px;">
+                    <div class="comms-tabs-nav font-orbitron" style="display:flex; gap:10px; margin-bottom: 25px; border-bottom: 1px solid var(--glass-border); padding-bottom:12px; flex-wrap:wrap;">
                         <button class="tab-trigger ${activeTab === 'squad' ? 'active' : ''}" id="tab-btn-squad" style="background:none; border:none; color:${activeTab === 'squad' ? 'var(--neon-yellow)' : 'var(--text-dim)'}; font-size:14px; font-weight:800; padding: 8px 16px; cursor:pointer; font-family:var(--font-header); letter-spacing:0.05em; border-bottom: 2px solid ${activeTab === 'squad' ? 'var(--neon-yellow)' : 'transparent'}; transition: all 0.3s;">
                             <i class="fa-solid fa-users-gear"></i> SQUAD PORTAL
                         </button>
                         <button class="tab-trigger ${activeTab === 'inbox' ? 'active' : ''}" id="tab-btn-inbox" style="background:none; border:none; color:${activeTab === 'inbox' ? 'var(--neon-yellow)' : 'var(--text-dim)'}; font-size:14px; font-weight:800; padding: 8px 16px; cursor:pointer; font-family:var(--font-header); letter-spacing:0.05em; display:flex; align-items:center; gap:8px; border-bottom: 2px solid ${activeTab === 'inbox' ? 'var(--neon-yellow)' : 'transparent'}; transition: all 0.3s;">
                             <i class="fa-solid fa-envelope"></i> ARENA INBOX 
                             ${inboxCount > 0 ? `<span class="inbox-badge" style="background:var(--neon-orange); color:#fff; font-size:9px; font-weight:900; padding:2px 8px; border-radius:10px; box-shadow:0 0 8px var(--neon-orange-glow); animation: pulse 2s infinite;">${inboxCount}</span>` : ''}
+                        </button>
+                        <button class="tab-trigger ${activeTab === 'friends' ? 'active' : ''}" id="tab-btn-friends" style="background:none; border:none; color:${activeTab === 'friends' ? 'var(--neon-yellow)' : 'var(--text-dim)'}; font-size:14px; font-weight:800; padding: 8px 16px; cursor:pointer; font-family:var(--font-header); letter-spacing:0.05em; border-bottom: 2px solid ${activeTab === 'friends' ? 'var(--neon-yellow)' : 'transparent'}; transition: all 0.3s;">
+                            <i class="fa-solid fa-user-group"></i> FRIENDS & DMs
+                        </button>
+                        <button class="tab-trigger ${activeTab === 'chat' ? 'active' : ''}" id="tab-btn-chat" style="background:none; border:none; color:${activeTab === 'chat' ? 'var(--neon-yellow)' : 'var(--text-dim)'}; font-size:14px; font-weight:800; padding: 8px 16px; cursor:pointer; font-family:var(--font-header); letter-spacing:0.05em; border-bottom: 2px solid ${activeTab === 'chat' ? 'var(--neon-yellow)' : 'transparent'}; transition: all 0.3s;">
+                            <i class="fa-solid fa-comments"></i> TEAM CHAT
                         </button>
                     </div>
 
@@ -81,36 +88,52 @@
 
             const tabSquadBtn = document.getElementById('tab-btn-squad');
             const tabInboxBtn = document.getElementById('tab-btn-inbox');
+            const tabFriendsBtn = document.getElementById('tab-btn-friends');
+            const tabChatBtn = document.getElementById('tab-btn-chat');
             const tabContentMount = document.getElementById('comms-tab-content');
 
             // Switch tab function
             const switchTab = (tabId) => {
+                if (commsPollInterval) { clearInterval(commsPollInterval); commsPollInterval = null; }
                 activeTab = tabId;
+                
+                const tabs = [
+                    { id: 'squad', btn: tabSquadBtn },
+                    { id: 'inbox', btn: tabInboxBtn },
+                    { id: 'friends', btn: tabFriendsBtn },
+                    { id: 'chat', btn: tabChatBtn }
+                ];
+                
+                tabs.forEach(t => {
+                    if (t.btn) {
+                        if (t.id === activeTab) {
+                            t.btn.style.color = 'var(--neon-yellow)';
+                            t.btn.style.borderBottom = '2px solid var(--neon-yellow)';
+                        } else {
+                            t.btn.style.color = 'var(--text-dim)';
+                            t.btn.style.borderBottom = '2px solid transparent';
+                        }
+                    }
+                });
+
                 if (activeTab === 'squad') {
-                    tabSquadBtn.style.color = 'var(--neon-yellow)';
-                    tabSquadBtn.style.borderBottom = '2px solid var(--neon-yellow)';
-                    tabInboxBtn.style.color = 'var(--text-dim)';
-                    tabInboxBtn.style.borderBottom = '2px solid transparent';
                     renderSquadTab(tabContentMount, user, team, container);
-                } else {
-                    tabInboxBtn.style.color = 'var(--neon-yellow)';
-                    tabInboxBtn.style.borderBottom = '2px solid var(--neon-yellow)';
-                    tabSquadBtn.style.color = 'var(--text-dim)';
-                    tabSquadBtn.style.borderBottom = '2px solid transparent';
+                } else if (activeTab === 'inbox') {
                     renderInboxTab(tabContentMount, inbox, container);
+                } else if (activeTab === 'friends') {
+                    renderFriendsTab(tabContentMount, container);
+                } else if (activeTab === 'chat') {
+                    renderTeamChatTab(tabContentMount, team, container);
                 }
+                
                 if (window.strikzInitScrollAnimations) window.strikzInitScrollAnimations();
                 if (window.strikzInitSpotlightEffect) window.strikzInitSpotlightEffect();
             };
 
-            tabSquadBtn.onclick = () => {
-                if (window.strikzPlayClickSound) window.strikzPlayClickSound();
-                switchTab('squad');
-            };
-            tabInboxBtn.onclick = () => {
-                if (window.strikzPlayClickSound) window.strikzPlayClickSound();
-                switchTab('inbox');
-            };
+            if (tabSquadBtn) tabSquadBtn.onclick = () => { if (window.strikzPlayClickSound) window.strikzPlayClickSound(); switchTab('squad'); };
+            if (tabInboxBtn) tabInboxBtn.onclick = () => { if (window.strikzPlayClickSound) window.strikzPlayClickSound(); switchTab('inbox'); };
+            if (tabFriendsBtn) tabFriendsBtn.onclick = () => { if (window.strikzPlayClickSound) window.strikzPlayClickSound(); switchTab('friends'); };
+            if (tabChatBtn) tabChatBtn.onclick = () => { if (window.strikzPlayClickSound) window.strikzPlayClickSound(); switchTab('chat'); };
 
             // Initial Tab Render
             switchTab(activeTab);
@@ -148,9 +171,17 @@
             mount.innerHTML = `
                 <div class="glass-panel" style="border-color: var(--neon-yellow-border); padding: 30px;">
                     <div style="display: flex; gap: 20px; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px; margin-bottom: 20px; flex-wrap: wrap;">
-                        <img src="${team.logo}" alt="${team.name} Logo" style="width: 80px; height: 80px; border-radius: 4px; border: 1.5px solid var(--glass-border); padding: 5px; background: rgba(0,0,0,0.5);">
+                        <div style="position: relative; display: inline-block;">
+                            <img id="team-dashboard-logo-img" src="${team.logo}" alt="${team.name} Logo" style="width: 80px; height: 80px; border-radius: 4px; border: 1.5px solid var(--glass-border); padding: 5px; background: rgba(0,0,0,0.5); display:block; object-fit: cover;">
+                            ${team.captain_uid === user.uid ? `
+                                <button id="btn-change-team-logo" style="position: absolute; bottom:-5px; right:-5px; background:var(--neon-yellow); color:#000; border:none; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:11px; box-shadow:0 0 10px rgba(0,0,0,0.5);" title="Upload Team Logo">
+                                    <i class="fa-solid fa-camera"></i>
+                                </button>
+                                <input type="file" id="team-logo-upload-file" accept="image/*" style="display:none;">
+                            ` : ''}
+                        </div>
                         <div style="flex-grow: 1;">
-                            <h3 class="font-orbitron" style="font-size: 22px; color: #fff; margin:0; text-shadow: 0 0 10px rgba(255,255,255,0.1);">${team.name}</h3>
+                            <h3 class="font-orbitron" style="font-size: 22px; color: #fff; margin:0; text-shadow: 0 0 10px rgba(255,255,255,0.1); text-transform: uppercase;">${team.name}</h3>
                             <div style="font-size: 11px; color: var(--neon-yellow); letter-spacing: 0.1em; font-weight: 800; font-family: var(--font-header); margin-top:6px; text-transform: uppercase;">CAPTAIN: ${team.captain}</div>
                         </div>
                         <div>
@@ -169,8 +200,9 @@
                     <div style="display: grid; gap: 10px;">
                         ${(team.members || []).map((m, idx) => `
                             <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); padding: 10px 15px; border-radius: 4px; gap: 15px;">
-                                <div style="display: flex; gap: 10px; align-items: center;">
+                                <div style="display: flex; gap: 12px; align-items: center;">
                                     <span class="font-orbitron" style="color: var(--text-dim); font-size: 11px; font-family:var(--font-header);">#0${idx + 1}</span>
+                                    <img src="${m.avatar || 'assets/default-avatar.png'}" alt="Player Photo" style="width:36px; height:36px; border-radius:50%; border: 1px solid var(--glass-border); object-fit:cover; background:rgba(0,0,0,0.5);">
                                     <div>
                                         <div style="font-weight: 700; color: #fff; font-size: 13px; display:flex; align-items:center; gap:8px;">
                                             ${m.name}
@@ -178,7 +210,7 @@
                                                 ${m.confirmed ? 'CONFIRMED' : 'PENDING'}
                                             </span>
                                         </div>
-                                        <div style="font-size: 10px; color: var(--text-dim);">${m.real_name || m.realName || 'N/A'}</div>
+                                        <div style="font-size: 10px; color: var(--text-silver);">${m.real_name || m.realName || 'N/A'} ${m.ign ? `| IGN: <span style="color:var(--neon-yellow);">${m.ign}</span>` : ''}</div>
                                     </div>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 15px; text-align: right;">
@@ -210,6 +242,26 @@
                     </div>
                 </div>
             `;
+
+            // Bind team logo change if captain
+            const changeLogoBtn = document.getElementById('btn-change-team-logo');
+            const logoUploadFile = document.getElementById('team-logo-upload-file');
+            if (changeLogoBtn && logoUploadFile) {
+                changeLogoBtn.onclick = () => logoUploadFile.click();
+                logoUploadFile.onchange = async function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        try {
+                            const res = await window.strikzDb.uploadFile(file);
+                            await window.strikzDb.updateTeamLogo(res.imageUrl);
+                            renderMyTeam(container);
+                            alert("Team logo updated successfully!");
+                        } catch (err) {
+                            alert("Logo update failed: " + err.message);
+                        }
+                    }
+                };
+            }
 
             // Bind kick buttons
             document.querySelectorAll('.btn-kick-member').forEach(btn => {
@@ -302,7 +354,7 @@
                                         <h4 class="font-orbitron" style="font-size: 15px; color: #fff; margin:0;">${item.title}</h4>
                                         <div style="font-size: 11px; color: var(--neon-yellow); margin-top:4px; font-weight:700;">CAPTAIN: ${item.metadata.captainName} | ROLE: ${item.metadata.role}</div>
                                         <p style="font-size:12px; color:var(--text-dim); margin: 6px 0 0 0; line-height:1.4;">${item.metadata.description}</p>
-                                        <span style="font-size:9px; color:var(--text-dim); display:block; margin-top:6px;"><i class="fa-solid fa-clock"></i> ${new Date(item.date).toLocaleString()}</span>
+                                        <span style="font-size:9px; color:var(--text-dim); display:block; margin-top:6px;"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 10px;">
@@ -324,7 +376,7 @@
                                     </h4>
                                     <p style="font-size:13px; color:var(--text-silver); margin: 8px 0 0 0; line-height:1.4;">${item.message}</p>
                                     <div style="font-size:11px; color:var(--text-dim); margin-top:5px;">Ticket Code: <strong>${item.metadata.regId}</strong></div>
-                                    <span style="font-size:9px; color:var(--text-dim); display:block; margin-top:6px;"><i class="fa-solid fa-clock"></i> ${new Date(item.date).toLocaleString()}</span>
+                                    <span style="font-size:9px; color:var(--text-dim); display:block; margin-top:6px;"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
                                 </div>
                                 <div>
                                     <button class="cta-button btn-neon-yellow btn-inbox-confirm-join" data-reg-id="${item.metadata.regId}" style="padding: 8px 16px; font-size: 11px; font-weight:800; color:#000 !important; white-space:nowrap;">
@@ -342,7 +394,7 @@
                                         <i class="fa-solid fa-circle-info"></i> ${item.title}
                                     </h4>
                                     <p style="font-size:12px; color:var(--text-silver); margin: 6px 0 0 0; line-height:1.4;">${item.message}</p>
-                                    <span style="font-size:9px; color:var(--text-dim); display:block; margin-top:4px;"><i class="fa-solid fa-clock"></i> ${new Date(item.date).toLocaleString()}</span>
+                                    <span style="font-size:9px; color:var(--text-dim); display:block; margin-top:4px;"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
                                 </div>
                                 <div>
                                     <button class="btn-inbox-dismiss" data-notif-id="${item.id}" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:6px; transition:color 0.2s;" title="Dismiss message">
@@ -421,13 +473,438 @@
         });
     }
 
+    // FRIENDS & DM TAB RENDERING
+    async function renderFriendsTab(mount, container) {
+        if (commsPollInterval) { clearInterval(commsPollInterval); commsPollInterval = null; }
+
+        mount.innerHTML = `
+            <div class="loading-screen" style="padding: 40px 0;">
+                <div class="loader-spinner"></div>
+                <div class="loader-text font-orbitron">SYNCING FREQUENCY...</div>
+            </div>
+        `;
+
+        try {
+            const [friends, requests] = await Promise.all([
+                window.strikzDb.getFriends(),
+                window.strikzDb.getFriendRequests()
+            ]);
+
+            mount.innerHTML = `
+                <div style="display: grid; grid-template-columns: 320px 1fr; gap: 20px; min-height: 480px; align-items: start; flex-wrap: wrap;">
+                    <!-- Left Column: Friends List & Requests -->
+                    <div style="display:flex; flex-direction:column; gap:20px;">
+                        <!-- Send Request Form -->
+                        <div class="glass-panel" style="padding:15px; border-color:var(--glass-border);">
+                            <h4 class="font-orbitron" style="font-size: 11px; color: var(--neon-cyan); margin-bottom:12px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">ADD FREQUENCY (FRIEND)</h4>
+                            <div style="position:relative; display:flex; gap:6px;">
+                                <input type="text" id="friend-search-input" placeholder="Enter gamer uid" style="flex-grow:1; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); padding:8px 12px; color:#fff; border-radius:4px; font-size:12px; text-transform: lowercase;">
+                                <button class="cta-button btn-neon-cyan" id="btn-send-friend-request" style="padding:8px 12px; font-size:11px; font-weight:800; white-space:nowrap;">
+                                    ADD
+                                </button>
+                                <div id="friend-autocomplete-dropdown" class="autocomplete-dropdown glass-panel" style="display:none; position:absolute; z-index:100; left:0; right:0; top:38px; max-height:150px; overflow-y:auto; background:#0e0e12; border:1px solid var(--glass-border);"></div>
+                            </div>
+                        </div>
+
+                        <!-- Pending Requests -->
+                        <div class="glass-panel" style="padding:15px; border-color:var(--glass-border);">
+                            <h4 class="font-orbitron" style="font-size: 11px; color: var(--neon-orange); margin-bottom:10px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">PENDING REQUESTS</h4>
+                            <div id="friends-requests-list" style="display:flex; flex-direction:column; gap:8px;">
+                                ${requests.length === 0 ? `
+                                    <div style="font-size:11px; color:var(--text-dim); text-align:center; padding:10px 0;">No pending signals</div>
+                                ` : requests.map(r => `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.01); border:1px solid var(--glass-border); padding:8px; border-radius:4px; gap:8px;">
+                                        <div style="display:flex; gap:6px; align-items:center; min-width:0;">
+                                            <img src="${r.sender.avatar || 'assets/default-avatar.png'}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">
+                                            <div style="min-width:0;">
+                                                <div style="font-size:11px; font-weight:700; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${r.sender.username}</div>
+                                                <div style="font-size:9px; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${r.sender.uid}</div>
+                                            </div>
+                                        </div>
+                                        <div style="display:flex; gap:4px; flex-shrink:0;">
+                                            <button class="btn-accept-friend font-orbitron" data-id="${r.id}" style="background:var(--neon-yellow); color:#000; border:none; padding:4px 8px; border-radius:2px; font-size:9px; font-weight:800; cursor:pointer;" title="Accept">ACCEPT</button>
+                                            <button class="btn-reject-friend font-orbitron" data-id="${r.id}" style="background:rgba(255,94,0,0.2); color:var(--neon-orange); border:1px solid rgba(255,94,0,0.3); padding:3px 6px; border-radius:2px; font-size:9px; font-weight:800; cursor:pointer;" title="Decline">DECLINE</button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Friends List -->
+                        <div class="glass-panel" style="padding:15px; border-color:var(--glass-border); flex-grow:1; min-height:200px;">
+                            <h4 class="font-orbitron" style="font-size: 11px; color: var(--neon-yellow); margin-bottom:10px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">COMMS LINKS (FRIENDS)</h4>
+                            <div id="friends-list-items" style="display:flex; flex-direction:column; gap:8px;">
+                                ${friends.length === 0 ? `
+                                    <div style="font-size:11px; color:var(--text-dim); text-align:center; padding:20px 0;">No active comms. Add friends to start chatting!</div>
+                                ` : friends.map(f => `
+                                    <div class="friend-list-item" data-uid="${f.uid}" data-username="${f.username}" style="display:flex; gap:10px; align-items:center; padding:8px 10px; border:1px solid var(--glass-border); border-radius:4px; cursor:pointer; background:rgba(255,255,255,0.01); transition:all 0.2s;">
+                                        <img src="${f.avatar || 'assets/default-avatar.png'}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border:1px solid var(--glass-border);">
+                                        <div style="flex-grow:1; min-width:0;">
+                                            <div style="font-size:12px; font-weight:700; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${f.username}</div>
+                                            <div style="font-size:9px; color:var(--neon-cyan); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${f.uid}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: DM Chat Box -->
+                    <div class="glass-panel" style="display:flex; flex-direction:column; height:480px; border-color:var(--glass-border); padding:0; overflow:hidden; position:relative;">
+                        <div id="dm-chat-placeholder" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:30px; text-align:center; background:rgba(0,0,0,0.15);">
+                            <i class="fa-solid fa-comments" style="font-size:48px; color:rgba(255,255,255,0.03); margin-bottom:15px; filter:drop-shadow(0 0 8px rgba(0,240,255,0.02));"></i>
+                            <h4 class="font-orbitron" style="font-size:13px; color:#fff; letter-spacing:0.05em; margin-bottom:6px;">SELECT FREQUENCY LINK</h4>
+                            <p style="font-size:11px; color:var(--text-dim); max-width:280px; line-height:1.4; margin:0;">
+                                Click on a friend from your links to open a secure direct-message channel.
+                            </p>
+                        </div>
+                        <div id="dm-chat-active-window" style="display:none; flex-direction:column; height:100%;">
+                            <!-- Header -->
+                            <div style="display:flex; gap:10px; align-items:center; padding:12px 15px; border-bottom:1px solid var(--glass-border); background:rgba(0,0,0,0.2);">
+                                <img id="dm-active-avatar" src="" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border:1px solid var(--glass-border);">
+                                <div>
+                                    <div id="dm-active-username" style="font-size:12px; font-weight:700; color:#fff; line-height:1.2;"></div>
+                                    <div id="dm-active-uid" style="font-size:9px; color:var(--neon-cyan); line-height:1.2;"></div>
+                                </div>
+                            </div>
+                            <!-- Messages -->
+                            <div class="chat-messages-container" id="dm-chat-messages-mount">
+                                <!-- Loaded dynamically -->
+                            </div>
+                            <!-- Input -->
+                            <form id="dm-chat-input-form" class="chat-input-row" onsubmit="return false;">
+                                <input type="text" id="dm-chat-message-text" placeholder="Type transmission..." required autocomplete="off">
+                                <button type="submit" class="chat-send-btn">
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Bind Friend Search Autocomplete
+            const searchInput = document.getElementById('friend-search-input');
+            const searchDropdown = document.getElementById('friend-autocomplete-dropdown');
+            if (searchInput && searchDropdown) {
+                searchInput.oninput = async function() {
+                    const query = searchInput.value.trim().toLowerCase();
+                    if (!query || query.length < 2) {
+                        searchDropdown.style.display = 'none';
+                        searchDropdown.innerHTML = '';
+                        return;
+                    }
+                    try {
+                        const response = await fetch(`/api/v1/auth/users/search?query=${encodeURIComponent(query)}`, {
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('strikz_jwt_token') || sessionStorage.getItem('strikz_jwt_token')}`
+                            }
+                        });
+                        const resData = await response.json();
+                        const users = resData.users || [];
+                        if (users.length === 0) {
+                            searchDropdown.innerHTML = `<div style="padding:8px 12px; color:var(--text-dim); font-size:11px;">No gamers found</div>`;
+                        } else {
+                            searchDropdown.innerHTML = users.map(u => `
+                                <div class="autocomplete-item" data-uid="${u.uid}" style="display:flex; gap:8px; align-items:center; padding:6px 10px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.02); transition:background 0.2s;">
+                                    <img src="${u.avatar || 'assets/default-avatar.png'}" style="width:20px; height:20px; border-radius:50%; object-fit:cover;">
+                                    <div>
+                                        <div style="font-size:11px; color:#fff; font-weight:700;">${u.username}</div>
+                                        <div style="font-size:9px; color:var(--neon-cyan);">${u.uid}</div>
+                                    </div>
+                                </div>
+                            `).join('');
+                            
+                            searchDropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+                                item.onclick = function() {
+                                    searchInput.value = this.dataset.uid;
+                                    searchDropdown.style.display = 'none';
+                                };
+                            });
+                        }
+                        searchDropdown.style.display = 'block';
+                    } catch (err) {
+                        console.error(err);
+                    }
+                };
+
+                document.addEventListener('click', function(e) {
+                    if (e.target !== searchInput && e.target !== searchDropdown && !searchDropdown.contains(e.target)) {
+                        searchDropdown.style.display = 'none';
+                    }
+                });
+            }
+
+            // Bind Friend Request submission
+            const requestBtn = document.getElementById('btn-send-friend-request');
+            if (requestBtn && searchInput) {
+                requestBtn.onclick = async function() {
+                    const friendUid = searchInput.value.trim().toLowerCase();
+                    if (!friendUid) return;
+                    if (window.strikzPlayClickSound) window.strikzPlayClickSound();
+                    try {
+                        await window.strikzDb.sendFriendRequest(friendUid);
+                        searchInput.value = '';
+                        alert(`Signal sent successfully! Pending approval from ${friendUid}.`);
+                        renderFriendsTab(mount, container);
+                    } catch (err) {
+                        alert("Friend request failed: " + err.message);
+                    }
+                };
+            }
+
+            // Bind Pending Request Accept/Reject
+            mount.querySelectorAll('.btn-accept-friend').forEach(btn => {
+                btn.onclick = async function() {
+                    const reqId = this.dataset.id;
+                    if (window.strikzPlayClickSound) window.strikzPlayClickSound();
+                    try {
+                        await window.strikzDb.acceptFriendRequest(reqId);
+                        if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                        alert("Friend request accepted!");
+                        renderFriendsTab(mount, container);
+                    } catch (err) {
+                        alert("Accept request failed: " + err.message);
+                    }
+                };
+            });
+
+            mount.querySelectorAll('.btn-reject-friend').forEach(btn => {
+                btn.onclick = async function() {
+                    const reqId = this.dataset.id;
+                    if (window.strikzPlayClickSound) window.strikzPlayClickSound();
+                    try {
+                        await window.strikzDb.rejectFriendRequest(reqId);
+                        alert("Friend request declined.");
+                        renderFriendsTab(mount, container);
+                    } catch (err) {
+                        alert("Decline request failed: " + err.message);
+                    }
+                };
+            });
+
+            // Bind Friend Clicks for DMs
+            const placeholder = document.getElementById('dm-chat-placeholder');
+            const activeWindow = document.getElementById('dm-chat-active-window');
+            const dmAvatar = document.getElementById('dm-active-avatar');
+            const dmUsername = document.getElementById('dm-active-username');
+            const dmUid = document.getElementById('dm-active-uid');
+            const messagesMount = document.getElementById('dm-chat-messages-mount');
+            const chatForm = document.getElementById('dm-chat-input-form');
+            const chatMsgText = document.getElementById('dm-chat-message-text');
+
+            let activeFriendUid = null;
+
+            const pollMessages = async () => {
+                if (!activeFriendUid || activeTab !== 'friends') return;
+                try {
+                    const history = await window.strikzDb.getChatMessageHistory(activeFriendUid);
+                    const wasScrolledToBottom = messagesMount.scrollHeight - messagesMount.clientHeight <= messagesMount.scrollTop + 30;
+
+                    messagesMount.innerHTML = history.map(msg => {
+                        const isMe = msg.sender_uid !== activeFriendUid;
+                        return `
+                            <div class="chat-msg-bubble ${isMe ? 'sent' : 'received'}">
+                                <div style="font-weight:700; font-size:10px; color:${isMe ? 'var(--neon-cyan)' : 'var(--neon-yellow)'}; margin-bottom:3px;">
+                                    ${isMe ? 'YOU' : dmUsername.textContent}
+                                </div>
+                                <div>${msg.content}</div>
+                                <span style="font-size:8px; color:rgba(255,255,255,0.3); display:block; text-align:right; margin-top:4px;">
+                                    ${window.strikzFormatDate(msg.created_at)}
+                                </span>
+                            </div>
+                        `;
+                    }).join('');
+
+                    if (wasScrolledToBottom) {
+                        messagesMount.scrollTop = messagesMount.scrollHeight;
+                    }
+                } catch (err) {
+                    console.error("DM polling failed:", err.message);
+                }
+            };
+
+            mount.querySelectorAll('.friend-list-item').forEach(item => {
+                item.onclick = async function() {
+                    if (window.strikzPlayClickSound) window.strikzPlayClickSound();
+                    
+                    mount.querySelectorAll('.friend-list-item').forEach(x => {
+                        x.style.background = 'rgba(255,255,255,0.01)';
+                        x.style.borderColor = 'var(--glass-border)';
+                    });
+                    item.style.background = 'rgba(0, 240, 255, 0.05)';
+                    item.style.borderColor = 'rgba(0, 240, 255, 0.3)';
+
+                    const uidVal = this.dataset.uid;
+                    const usernameVal = this.dataset.username;
+                    const imgVal = this.querySelector('img').src;
+
+                    activeFriendUid = uidVal;
+                    dmAvatar.src = imgVal;
+                    dmUsername.textContent = usernameVal;
+                    dmUid.textContent = uidVal;
+
+                    placeholder.style.display = 'none';
+                    activeWindow.style.display = 'flex';
+
+                    messagesMount.innerHTML = `<div style="text-align:center; padding:20px; font-size:11px; color:var(--text-dim);">SYNCING TRANS-RECEIVERS...</div>`;
+                    
+                    await pollMessages();
+                    messagesMount.scrollTop = messagesMount.scrollHeight;
+
+                    if (commsPollInterval) clearInterval(commsPollInterval);
+                    commsPollInterval = setInterval(pollMessages, 3000);
+                };
+            });
+
+            if (chatForm) {
+                chatForm.onsubmit = async function(e) {
+                    if (e) e.preventDefault();
+                    const text = chatMsgText.value.trim();
+                    if (!text || !activeFriendUid) return;
+
+                    try {
+                        await window.strikzDb.sendChatMessage(activeFriendUid, text);
+                        chatMsgText.value = '';
+                        await pollMessages();
+                        messagesMount.scrollTop = messagesMount.scrollHeight;
+                    } catch (err) {
+                        alert("Transmission failure: " + err.message);
+                    }
+                };
+            }
+
+        } catch (err) {
+            mount.innerHTML = `
+                <div class="glass-panel text-center" style="padding:40px;">
+                    <h4 class="font-orbitron" style="color:var(--neon-orange);">FREQUENCY ERROR</h4>
+                    <p style="font-size:12px; color:var(--text-silver); margin-top:8px;">${err.message}</p>
+                </div>
+            `;
+        }
+    }
+
+    // TEAM GROUP CHAT RENDERING
+    async function renderTeamChatTab(mount, team, container) {
+        if (commsPollInterval) { clearInterval(commsPollInterval); commsPollInterval = null; }
+
+        if (!team) {
+            mount.innerHTML = `
+                <div class="glass-panel text-center" style="border-color: var(--neon-orange-border); padding: 60px 20px; background: rgba(255,94,0,0.015);">
+                    <i class="fa-solid fa-lock" style="font-size: 50px; color: var(--neon-orange); margin-bottom: 20px; filter:drop-shadow(0 0 10px rgba(255,94,0,0.2));"></i>
+                    <h4 class="font-orbitron" style="font-size: 14px; color:#fff; letter-spacing:0.05em; margin-bottom:8px; text-transform:uppercase;">TEAM FREQUENCY ENCRYPTED</h4>
+                    <p style="font-size: 12px; color: var(--text-silver); max-width:385px; margin:0 auto; line-height:1.5;">
+                        You must create or join an active Esports Squad to unlock the secure squad-wide communication frequency.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        mount.innerHTML = `
+            <div class="glass-panel" style="display:flex; flex-direction:column; height:500px; border-color:var(--neon-yellow-border); padding:0; overflow:hidden;">
+                <!-- Header -->
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 20px; border-bottom:1px solid var(--glass-border); background:rgba(0,0,0,0.25);">
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <img src="${team.logo}" style="width:36px; height:36px; border-radius:4px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.5); padding:2px; object-fit: cover;">
+                        <div>
+                            <h4 class="font-orbitron" style="font-size:14px; color:#fff; margin:0; text-transform:uppercase;">${team.name} SQUAD FREQUENCY</h4>
+                            <div style="font-size:9px; color:var(--neon-yellow); letter-spacing:0.05em; font-weight:800; text-transform:uppercase;">SECURE TEAM COMM-LINK</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Messages -->
+                <div class="chat-messages-container" id="team-chat-messages-mount">
+                    <div style="text-align:center; padding:20px; font-size:11px; color:var(--text-dim);">SYNCING TEAM TRANS-RECEIVERS...</div>
+                </div>
+                <!-- Input -->
+                <form id="team-chat-input-form" class="chat-input-row" onsubmit="return false;">
+                    <input type="text" id="team-chat-message-text" placeholder="Broadcast to squad..." required autocomplete="off">
+                    <button type="submit" class="chat-send-btn">
+                        <i class="fa-solid fa-paper-plane" style="color:var(--neon-yellow);"></i>
+                    </button>
+                </form>
+            </div>
+        `;
+
+        const messagesMount = document.getElementById('team-chat-messages-mount');
+        const chatForm = document.getElementById('team-chat-input-form');
+        const chatMsgText = document.getElementById('team-chat-message-text');
+
+        const pollTeamMessages = async () => {
+            if (activeTab !== 'chat') return;
+            try {
+                const history = await window.strikzDb.getTeamMessageHistory();
+                const wasScrolledToBottom = messagesMount.scrollHeight - messagesMount.clientHeight <= messagesMount.scrollTop + 30;
+
+                messagesMount.innerHTML = history.map(msg => {
+                    const isMe = msg.sender_uid === window.strikzAuth.getUser().uid;
+                    return `
+                        <div class="chat-msg-bubble ${isMe ? 'sent' : 'received'}" style="${isMe ? 'background:rgba(255,230,0,0.08); border-color:rgba(255,230,0,0.25);' : ''}">
+                            <div style="font-weight:700; font-size:10px; color:${isMe ? 'var(--neon-yellow)' : 'var(--neon-cyan)'}; margin-bottom:3px;">
+                                ${isMe ? 'YOU' : msg.sender_name}
+                            </div>
+                            <div>${msg.content}</div>
+                            <span style="font-size:8px; color:rgba(255,255,255,0.3); display:block; text-align:right; margin-top:4px;">
+                                ${window.strikzFormatDate(msg.created_at)}
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+
+                if (wasScrolledToBottom) {
+                    messagesMount.scrollTop = messagesMount.scrollHeight;
+                }
+            } catch (err) {
+                console.error("Team polling failed:", err.message);
+            }
+        };
+
+        await pollTeamMessages();
+        messagesMount.scrollTop = messagesMount.scrollHeight;
+
+        commsPollInterval = setInterval(pollTeamMessages, 3000);
+
+        if (chatForm) {
+            chatForm.onsubmit = async function(e) {
+                if (e) e.preventDefault();
+                const text = chatMsgText.value.trim();
+                if (!text) return;
+
+                try {
+                    await window.strikzDb.sendTeamMessage(text);
+                    chatMsgText.value = '';
+                    await pollTeamMessages();
+                    messagesMount.scrollTop = messagesMount.scrollHeight;
+                } catch (err) {
+                    alert("Transmission failure: " + err.message);
+                }
+            };
+        }
+    }
+
     // GET CREATE TEAM FORM TEMPLATE
     function getCreateTeamFormHTML(user) {
         return `
             <form id="create-team-form" onsubmit="return false;">
                 <div class="form-group">
                     <label>TEAM SQUAD NAME</label>
-                    <input type="text" id="new-team-name" placeholder="E.g. Odisha Overlords" required style="color:#fff;">
+                    <input type="text" id="new-team-name" placeholder="E.g. ODISHA OVERLORDS" required style="color:#fff; text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label>TEAM LOGO (SQUAD ICON)</label>
+                    <div style="display:flex; gap:15px; align-items:center;">
+                        <div id="create-team-logo-preview" style="width:60px; height:60px; border-radius:4px; border:1px solid var(--glass-border); background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                            <i class="fa-solid fa-users" style="font-size:24px; color:var(--text-dim);"></i>
+                        </div>
+                        <div>
+                            <input type="file" id="new-team-logo-file" accept="image/*" style="display:none;">
+                            <button type="button" class="cta-button btn-neon-yellow" id="btn-upload-create-team-logo" style="padding:6px 12px; font-size:11px; font-weight:800; color:#000 !important;">
+                                UPLOAD IMAGE
+                            </button>
+                            <input type="hidden" id="new-team-logo-url" value="">
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>TEAM DESCRIPTION / BIO</label>
@@ -455,8 +932,18 @@
                             <input type="text" class="team-member-real" placeholder="Your Full Name" value="${user.username}" required style="color:#fff;">
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
+                            <label>In-Game Name (IGN)</label>
+                            <input type="text" class="team-member-ign" placeholder="E.g. IGL_Viper" required style="color:#fff;">
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px; margin-bottom:0;">
+                        <div class="form-group" style="margin-bottom:0;">
                             <label>Free Fire Max UID</label>
                             <input type="text" class="team-member-uid" placeholder="UID-XXXXXXX" required style="color:#fff;">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Combat Roster Role</label>
+                            <input type="text" value="IGL" readonly disabled style="color:#888; background: rgba(0,0,0,0.2);">
                         </div>
                     </div>
                     <input type="hidden" class="team-member-role" value="IGL">
@@ -466,10 +953,11 @@
                 ${[2, 3, 4].map(num => `
                     <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); padding: 15px; border-radius: 4px; margin-bottom: 15px;">
                         <span class="font-orbitron" style="font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 10px;">CORE MEMBER #${num} (Invitation via UID)</span>
-                        <div class="form-row" style="margin-bottom:0;">
+                        <div class="form-row" style="margin-bottom:0; position: relative;">
                             <div class="form-group" style="margin-bottom:0;">
-                                <label>Strikz Gamer UID (STRIKZ-XXXXXX)</label>
-                                <input type="text" class="team-member-strikz-uid" placeholder="STRIKZ-XXXXXX" style="color:#fff; text-transform: uppercase;">
+                                <label>Strikz Gamer UID</label>
+                                <input type="text" class="team-member-strikz-uid search-gamer-input" placeholder="e.g. gamer_123" style="color:#fff; text-transform: lowercase;">
+                                <div class="autocomplete-dropdown glass-panel" style="display:none; position:absolute; z-index:100; left:0; right:0; top:64px; max-height:150px; overflow-y:auto; background:#0e0e12; border:1px solid var(--glass-border);"></div>
                             </div>
                             <div class="form-group" style="margin-bottom:0;">
                                 <label>Combat Roster Role</label>
@@ -487,8 +975,16 @@
                                 <input type="text" class="team-member-real" placeholder="Player's Real Name" style="color:#fff;">
                             </div>
                             <div class="form-group" style="margin-bottom:0;">
+                                <label>In-Game Name (IGN)</label>
+                                <input type="text" class="team-member-ign" placeholder="Player's IGN" style="color:#fff;">
+                            </div>
+                        </div>
+                        <div class="form-row" style="margin-top:10px; margin-bottom:0;">
+                            <div class="form-group" style="margin-bottom:0;">
                                 <label>Free Fire Max UID</label>
                                 <input type="text" class="team-member-uid" placeholder="UID-XXXXXXX" style="color:#fff;">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
                             </div>
                         </div>
                     </div>
@@ -506,15 +1002,101 @@
         const form = document.getElementById('create-team-form');
         if (!form) return;
 
+        // Bind Logo Upload trigger inside form
+        const logoFileInput = document.getElementById('new-team-logo-file');
+        const uploadLogoBtn = document.getElementById('btn-upload-create-team-logo');
+        const logoPreview = document.getElementById('create-team-logo-preview');
+        const logoUrlInput = document.getElementById('new-team-logo-url');
+
+        if (uploadLogoBtn && logoFileInput) {
+            uploadLogoBtn.onclick = () => logoFileInput.click();
+            logoFileInput.onchange = async function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    try {
+                        const res = await window.strikzDb.uploadFile(file);
+                        logoUrlInput.value = res.imageUrl;
+                        logoPreview.innerHTML = `<img src="${res.imageUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+                        alert("Team logo uploaded successfully!");
+                    } catch (err) {
+                        alert("Logo upload failed: " + err.message);
+                    }
+                }
+            };
+        }
+
+        // Bind Autocomplete Dropdown Search
+        const searchInputs = form.querySelectorAll('.search-gamer-input');
+        searchInputs.forEach(input => {
+            const dropdown = input.parentNode.querySelector('.autocomplete-dropdown');
+            if (dropdown) {
+                input.oninput = async function() {
+                    const query = input.value.trim().toLowerCase();
+                    if (!query || query.length < 2) {
+                        dropdown.style.display = 'none';
+                        dropdown.innerHTML = '';
+                        return;
+                    }
+                    try {
+                        const response = await fetch(`/api/v1/auth/users/search?query=${encodeURIComponent(query)}`, {
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('strikz_jwt_token') || sessionStorage.getItem('strikz_jwt_token')}`
+                            }
+                        });
+                        const resData = await response.json();
+                        const users = resData.users || [];
+                        if (users.length === 0) {
+                            dropdown.innerHTML = `<div style="padding:8px 12px; color:var(--text-dim); font-size:11px;">No gamers found</div>`;
+                        } else {
+                            dropdown.innerHTML = users.map(u => `
+                                <div class="autocomplete-item" data-uid="${u.uid}" data-username="${u.username}" style="display:flex; gap:8px; align-items:center; padding:6px 10px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.02); transition:background 0.2s;">
+                                    <img src="${u.avatar || 'assets/default-avatar.png'}" style="width:20px; height:20px; border-radius:50%; object-fit:cover;">
+                                    <div>
+                                        <div style="font-size:11px; color:#fff; font-weight:700;">${u.username}</div>
+                                        <div style="font-size:9px; color:var(--neon-cyan);">${u.uid}</div>
+                                    </div>
+                                </div>
+                            `).join('');
+                            
+                            dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+                                item.onclick = function() {
+                                    input.value = this.dataset.uid;
+                                    dropdown.style.display = 'none';
+                                    
+                                    // Autofill Real Name with Username
+                                    const card = input.closest('div[style*="background"]');
+                                    if (card) {
+                                        const realInput = card.querySelector('.team-member-real');
+                                        if (realInput) realInput.value = this.dataset.username;
+                                    }
+                                };
+                            });
+                        }
+                        dropdown.style.display = 'block';
+                    } catch (err) {
+                        console.error(err);
+                    }
+                };
+
+                document.addEventListener('click', function(e) {
+                    if (e.target !== input && e.target !== dropdown && !dropdown.contains(e.target)) {
+                        dropdown.style.display = 'none';
+                    }
+                });
+            }
+        });
+
         form.onsubmit = async function(e) {
             if (e) e.preventDefault();
-            const teamName = document.getElementById('new-team-name').value.trim();
+            const teamName = document.getElementById('new-team-name').value.trim().toUpperCase();
             const teamDesc = document.getElementById('new-team-desc').value.trim();
+            const teamLogo = logoUrlInput ? logoUrlInput.value.trim() : '';
 
             const stUids = document.querySelectorAll('.team-member-strikz-uid');
             const memberReals = document.querySelectorAll('.team-member-real');
             const memberUids = document.querySelectorAll('.team-member-uid');
             const memberRoles = document.querySelectorAll('.team-member-role');
+            const memberIgns = document.querySelectorAll('.team-member-ign');
 
             const members = [];
             
@@ -524,19 +1106,21 @@
                 name: user.username,
                 realName: memberReals[0].value.trim(),
                 gameUid: memberUids[0].value.trim(),
+                ign: memberIgns[0].value.trim(),
                 role: 'IGL'
             });
 
             // Invited members
             for (let i = 1; i <= 3; i++) {
-                const uidVal = stUids[i].value.trim().toUpperCase();
+                const uidVal = stUids[i].value.trim().toLowerCase();
                 if (uidVal) {
                     const realVal = memberReals[i].value.trim();
                     const ffUidVal = memberUids[i].value.trim();
                     const roleVal = memberRoles[i].value;
+                    const ignVal = memberIgns[i].value.trim();
 
-                    if (!realVal || !ffUidVal) {
-                        alert(`Please fill in all details (Real Name and Free Fire UID) for Member #${i+1}.`);
+                    if (!realVal || !ffUidVal || !ignVal) {
+                        alert(`Please fill in all details (Real Name, IGN and Free Fire UID) for Member #${i+1}.`);
                         return;
                     }
 
@@ -544,6 +1128,7 @@
                         user_uid: uidVal,
                         realName: realVal,
                         gameUid: ffUidVal,
+                        ign: ignVal,
                         role: roleVal
                     });
                 }
@@ -553,6 +1138,7 @@
                 await window.strikzDb.createMyTeam({
                     name: teamName,
                     description: teamDesc,
+                    logo: teamLogo || undefined,
                     members
                 });
 

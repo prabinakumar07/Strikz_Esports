@@ -15,6 +15,7 @@ const tournamentRoutes = require('./routes/tournamentRoutes');
 const ticketRoutes = require('./routes/ticketRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const socialRoutes = require('./routes/socialRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -74,6 +75,22 @@ app.use('/api/v1/auth/register', authLimiter);
 app.use('/css', express.static(path.join(frontendDir, 'css'), { maxAge: 0, etag: false }));
 app.use('/js', express.static(path.join(frontendDir, 'js'), { maxAge: 0, etag: false }));
 app.use('/assets', express.static(path.join(frontendDir, 'assets'), { maxAge: '1d' }));
+// Persistent database-backed uploads interceptor
+app.get('/uploads/:filename', async (req, res, next) => {
+    try {
+        const { models } = require('./config/db');
+        const file = await models.UploadedFile.findOne({ filename: req.params.filename }).lean();
+        if (file) {
+            res.setHeader('Content-Type', file.mimetype || 'image/png');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            return res.send(Buffer.from(file.data, 'base64'));
+        }
+        next();
+    } catch (err) {
+        next();
+    }
+});
+
 app.use('/uploads', express.static(uploadsDir));
 
 // ==========================================
@@ -85,6 +102,7 @@ app.use('/api/v1', tournamentRoutes);
 app.use('/api/v1', ticketRoutes);
 app.use('/api/v1', uploadRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1', socialRoutes);
 
 app.get('/health', (req, res) => {
     res.status(200).json({
@@ -96,6 +114,11 @@ app.get('/health', (req, res) => {
 
 app.use('/api', (req, res) => {
     res.status(404).json({ success: false, message: 'API route not found' });
+});
+
+// Google OAuth redirect POST interceptor for root
+app.post('/', (req, res) => {
+    res.redirect(303, '/');
 });
 
 // Serve the frontend for the Render backend URL and client-side routes.

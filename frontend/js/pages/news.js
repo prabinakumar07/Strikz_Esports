@@ -108,7 +108,7 @@
                                 <span class="tournament-badge" style="background: rgba(255,204,0,0.15); border-color: var(--neon-orange); color: var(--neon-orange);">${item.tag}</span>
                             </div>
                             <div class="tournament-info">
-                                <div class="tournament-game" style="color: var(--text-dim);">${item.date}</div>
+                                <div class="tournament-game" style="color: var(--text-dim);">${window.strikzFormatDate(item.date)}</div>
                                 <h3 class="tournament-name" style="font-size: 16px; min-height: 48px;">${item.title}</h3>
                                 <p style="font-size: 13px; color: var(--text-silver); margin-bottom: 20px;">${item.summary}</p>
                                 <a href="${item.redirectLink}" target="_blank" class="cta-button ${btnClass} w-full text-center" style="display: block; text-decoration: none; line-height: 2.2;">
@@ -125,7 +125,7 @@
                                 <span class="tournament-badge" style="background: rgba(255,204,0,0.15); border-color: var(--neon-orange); color: var(--neon-orange);">${item.tag}</span>
                             </div>
                             <div class="tournament-info">
-                                <div class="tournament-game" style="color: var(--text-dim);">${item.date}</div>
+                                <div class="tournament-game" style="color: var(--text-dim);">${window.strikzFormatDate(item.date)}</div>
                                 <h3 class="tournament-name" style="font-size: 16px; min-height: 48px;">${item.title}</h3>
                                 <p style="font-size: 13px; color: var(--text-silver); margin-bottom: 20px;">${item.summary}</p>
                                 <button class="cta-button ${btnClass} w-full read-btn" data-id="${item.id}">${btnText}</button>
@@ -144,7 +144,7 @@
                         readerImg.src = article.image;
                         readerTag.textContent = article.tag;
                         readerTitle.textContent = article.title;
-                        readerDate.textContent = article.date;
+                        readerDate.textContent = window.strikzFormatDate(article.date);
                         readerContent.innerHTML = article.content.replace(/\n/g, '<br><br>');
                         
                         modal.classList.add('active');

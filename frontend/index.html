@@ -65,7 +65,6 @@
                     <li><a href="#/registration" class="nav-link" id="nav-register"><i class="fa-solid fa-gamepad"></i> <span class="link-text">Competitions</span></a></li>
                     <li><a href="#/about" class="nav-link" id="nav-about"><i class="fa-solid fa-shield-halved"></i> <span class="link-text">About Us</span></a></li>
                     <li><a href="#/team" class="nav-link" id="nav-team"><i class="fa-solid fa-users"></i> <span class="link-text">Official Esports Team</span></a></li>
-                    <li><a href="#/myteam" class="nav-link" id="nav-myteam"><i class="fa-solid fa-users-gear"></i> <span class="link-text">My Team</span></a></li>
                     <li><a href="#/history" class="nav-link" id="nav-history"><i class="fa-solid fa-calendar-days"></i> <span class="link-text">History</span></a></li>
                     <li><a href="#/achievements" class="nav-link" id="nav-achievements"><i class="fa-solid fa-trophy"></i> <span class="link-text">Winners</span></a></li>
                     <li><a href="#/partners" class="nav-link" id="nav-partners"><i class="fa-solid fa-handshake"></i> <span class="link-text">Partners</span></a></li>
@@ -73,8 +72,16 @@
                     <li><a href="#/gallery" class="nav-link" id="nav-gallery"><i class="fa-solid fa-images"></i> <span class="link-text">Gallery</span></a></li>
                     <li><a href="#/news" class="nav-link" id="nav-news"><i class="fa-solid fa-newspaper"></i> <span class="link-text">News</span></a></li>
                     <li><a href="#/contact" class="nav-link" id="nav-contact"><i class="fa-solid fa-envelope"></i> <span class="link-text">Support</span></a></li>
+                    <li><a href="#/earning" class="nav-link" id="nav-earning"><i class="fa-solid fa-hand-holding-dollar"></i> <span class="link-text">Earning</span></a></li>
                 </ul>
             </nav>
+
+            <!-- Special Highlighted My Team Area -->
+            <div class="sidebar-special-action">
+                <a href="#/myteam" class="my-team-banner-btn font-orbitron" id="desktop-my-team-btn">
+                    <i class="fa-solid fa-shield-halved"></i> MY SQUAD PORTAL
+                </a>
+            </div>
 
             <!-- Sidebar Actions & Profile Footer -->
             <div class="sidebar-footer">
@@ -107,8 +114,13 @@
                     <img src="assets/logo.png" alt="Strikz Esports Logo" class="brand-logo">
                     <span class="brand-name font-orbitron">STRIKZ <span class="brand-highlight">ESPORTS</span></span>
                 </a>
-                <div class="mobile-auth-btn-slot" id="mobile-auth-slot">
-                    <!-- Populated by JS -->
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <a href="#/myteam" class="mobile-header-myteam-btn font-orbitron" id="mobile-my-team-btn" title="My Squad Portal">
+                        <i class="fa-solid fa-shield-halved"></i> SQUAD
+                    </a>
+                    <div class="mobile-auth-btn-slot" id="mobile-auth-slot">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
             </div>
             <nav class="mobile-horizontal-nav">
@@ -117,12 +129,12 @@
                     <li><a href="#/registration" class="mobile-link" id="mob-register"><i class="fa-solid fa-gamepad"></i> Competitions</a></li>
                     <li><a href="#/about" class="mobile-link" id="mob-about"><i class="fa-solid fa-shield-halved"></i> About</a></li>
                     <li><a href="#/team" class="mobile-link" id="mob-team"><i class="fa-solid fa-users"></i> Team</a></li>
-                    <li><a href="#/myteam" class="mobile-link" id="mob-myteam"><i class="fa-solid fa-users-gear"></i> My Team</a></li>
                     <li><a href="#/achievements" class="mobile-link" id="mob-achievements"><i class="fa-solid fa-trophy"></i> Winners</a></li>
                     <li><a href="#/partners" class="mobile-link" id="mob-partners"><i class="fa-solid fa-handshake"></i> Partners</a></li>
                     <li><a href="#/sponsors" class="mobile-link" id="mob-sponsors"><i class="fa-solid fa-rectangle-ad"></i> Sponsors</a></li>
                     <li><a href="#/gallery" class="mobile-link" id="mob-gallery"><i class="fa-solid fa-images"></i> Gallery</a></li>
                     <li><a href="#/news" class="mobile-link" id="mob-news"><i class="fa-solid fa-newspaper"></i> News</a></li>
+                    <li><a href="#/earning" class="mobile-link" id="mob-earning"><i class="fa-solid fa-hand-holding-dollar"></i> Earning</a></li>
                     <li><a href="#/contact" class="mobile-link" id="mob-contact"><i class="fa-solid fa-envelope"></i> Support</a></li>
                     <li><a href="#/admin" class="mobile-link" id="mob-admin"><i class="fa-solid fa-lock"></i> Admin</a></li>
                 </ul>
@@ -296,9 +308,15 @@
                 <p>Modify your gamer identifier and update your digital terminal details.</p>
             </div>
             <div class="login-form-fields">
+                <div class="form-group" style="text-align: center; margin-bottom: 15px;">
+                    <img id="settings-avatar-preview" src="" style="width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--neon-orange); object-fit: cover; margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px;">GAMER PHOTO (AVATAR)</label>
+                    <input type="file" id="settings-input-avatar-file" accept="image/*" style="background: rgba(255,255,255,0.02); border: 1px dashed var(--glass-border); padding: 8px; border-radius: 4px; color:#fff; font-size: 11px; width: 100%;">
+                    <input type="hidden" id="settings-input-avatar">
+                </div>
                 <div class="form-group">
                     <label>GAMER IDENTIFIER</label>
-                    <input type="text" placeholder="Enter new nick..." id="settings-input-user">
+                    <input type="text" placeholder="Enter new nick..." id="settings-input-user" style="color: #fff;">
                 </div>
                 <button class="cta-button btn-neon-orange w-full" id="btn-settings-save">SAVE CHANGES</button>
             </div>
@@ -327,6 +345,7 @@
     <script src="js/pages/registration.js"></script>
     <script src="js/pages/myteam.js"></script>
     <script src="js/pages/admin.js"></script>
+    <script src="js/pages/earning.js"></script>
     <script src="js/app.js?v=1.0.10"></script>
 </body>
 </html>

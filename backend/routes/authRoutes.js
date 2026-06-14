@@ -8,7 +8,8 @@ const {
     forgotPassword,
     resetPassword,
     getProfile,
-    updateProfile
+    updateProfile,
+    searchUsers
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -23,5 +24,6 @@ router.post('/reset-password', resetPassword);
 // Private User Profile Endpoints
 router.get('/profile', protect, getProfile);
 router.put('/profile', protect, updateProfile);
+router.get('/users/search', protect, searchUsers);
 
 module.exports = router;

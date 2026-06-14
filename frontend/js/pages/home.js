@@ -191,7 +191,7 @@
                             </div>
                             <div class="social-footer">
                                 <span class="social-likes"><i class="fa-solid fa-heart"></i> ${post.likes}</span>
-                                <span>${post.date}</span>
+                                <span>${window.strikzFormatDate(post.date)}</span>
                             </div>
                         </div>
                     `).join('')}
@@ -264,9 +264,9 @@
                         <h3 class="tournament-name">${t.name}</h3>
                         <div class="tournament-stats-grid">
                             <div class="stat-item"><i class="fa-solid fa-trophy"></i> <span>Pool: ${t.prizePool}</span></div>
-                            <div class="stat-item"><i class="fa-solid fa-calendar-days"></i> <span>Starts: ${t.startDate}</span></div>
+                            <div class="stat-item"><i class="fa-solid fa-calendar-days"></i> <span>Starts: ${window.strikzFormatDate(t.startDate)}</span></div>
                             <div class="stat-item"><i class="fa-solid fa-gamepad"></i> <span>Mode: ${t.mode}</span></div>
-                            <div class="stat-item"><i class="fa-solid fa-clock"></i> <span>Reg Close: ${t.regCloseDate}</span></div>
+                            <div class="stat-item"><i class="fa-solid fa-clock"></i> <span>Reg Close: ${window.strikzFormatDate(t.regCloseDate)}</span></div>
                         </div>
                         <a href="#/registration" class="cta-button btn-neon-orange w-full btn-register-intercept">REGISTER NOW</a>
                     </div>
