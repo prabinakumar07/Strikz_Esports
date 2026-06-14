@@ -44,7 +44,7 @@
                     </div>
                     
                     <div class="admin-login-right">
-                        <h2 class="admin-login-heading">Sign in</h2>
+                        <h2 class="admin-login-heading">Admin Sign in</h2>
                         <p class="admin-login-subheading">Welcome back</p>
                         
                         <form id="admin-login-form" onsubmit="return false;">
@@ -55,12 +55,11 @@
                                 <input type="password" id="admin-pass" placeholder="Password" required>
                             </div>
                             <button type="submit" class="admin-login-submit-btn">
-                                <span class="btn-text">Sign in</span>
+                                <span class="btn-text">Admin Sign in</span>
                             </button>
                         </form>
                         
                         <div class="admin-login-links">
-                            <a href="#/contact" class="admin-login-link-item">No account? Create account</a>
                             <a href="#/" class="admin-login-link-item">Back to home</a>
                         </div>
                         
@@ -145,7 +144,7 @@
             } catch (err) {
                 const msg = err.name === 'AbortError' ? 'Server timeout. Please wait a minute and try again (Render server may be cold-starting).' : err.message;
                 alert("Login Failed: " + msg);
-                if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector('.btn-text').textContent = 'Sign in'; }
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector('.btn-text').textContent = 'Admin Sign in'; }
             }
         };
     }

@@ -4007,8 +4007,8 @@ button, input, select, textarea {
 }
 .admin-login-left {
     width: 50%;
-    background: url('../assets/anime_gamer_login.png') no-repeat center center;
-    background-size: cover;
+    background: #0a0a0f url('../assets/logo.png') no-repeat center center;
+    background-size: 75% auto;
     position: relative;
     min-height: 520px;
 }
