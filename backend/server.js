@@ -118,6 +118,10 @@ app.use('/api', (req, res) => {
 
 // Google OAuth redirect POST interceptor for root
 app.post('/', (req, res) => {
+    const credential = req.body && req.body.credential;
+    if (credential) {
+        return res.redirect(303, `/?google_credential=${encodeURIComponent(credential)}#/`);
+    }
     res.redirect(303, '/');
 });
 

@@ -76,12 +76,7 @@
                 </ul>
             </nav>
 
-            <!-- Special Highlighted My Team Area -->
-            <div class="sidebar-special-action">
-                <a href="#/myteam" class="my-team-banner-btn font-orbitron" id="desktop-my-team-btn">
-                    <i class="fa-solid fa-shield-halved"></i> MY SQUAD PORTAL
-                </a>
-            </div>
+
 
             <!-- Sidebar Actions & Profile Footer -->
             <div class="sidebar-footer">
@@ -115,9 +110,6 @@
                     <span class="brand-name font-orbitron">STRIKZ <span class="brand-highlight">ESPORTS</span></span>
                 </a>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <a href="#/myteam" class="mobile-header-myteam-btn font-orbitron" id="mobile-my-team-btn" title="My Squad Portal">
-                        <i class="fa-solid fa-shield-halved"></i> SQUAD
-                    </a>
                     <div class="mobile-auth-btn-slot" id="mobile-auth-slot">
                         <!-- Populated by JS -->
                     </div>
@@ -319,6 +311,25 @@
                     <input type="text" placeholder="Enter new nick..." id="settings-input-user" style="color: #fff;">
                 </div>
                 <button class="cta-button btn-neon-orange w-full" id="btn-settings-save">SAVE CHANGES</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Username Selection Modal for New Google Sign-Ins -->
+    <div class="login-modal-overlay" id="username-selection-modal">
+        <div class="login-modal-content glass-panel" style="border-color: var(--neon-cyan-border);">
+            <div class="login-modal-header text-center">
+                <i class="fa-solid fa-gamepad" style="font-size: 44px; color: var(--neon-cyan); filter: drop-shadow(0 0 12px var(--neon-cyan-glow)); margin-bottom: 20px;"></i>
+                <h3 class="font-orbitron">CHOOSE YOUR GAMER TAG</h3>
+                <p>Welcome to Strikz Esports! Please select a unique username for your gamer profile.</p>
+            </div>
+            <div class="login-form-fields">
+                <div class="form-group">
+                    <label>UNIQUE GAMER TAG</label>
+                    <input type="text" placeholder="Enter custom username..." id="username-selection-input" style="color: #fff;">
+                    <div style="font-size: 9px; color: var(--text-dim); margin-top: 5px;">Your Unique Gamer UID will be generated based on this tag (e.g. gamername_98).</div>
+                </div>
+                <button class="cta-button btn-neon-cyan w-full" id="btn-username-selection-save">CONFIRM GAMER TAG</button>
             </div>
         </div>
     </div>

@@ -94,6 +94,16 @@
                 </div>
             </section>
 
+            <!-- Inbox Signals Widget (If Logged In) -->
+            <div id="home-inbox-section" class="container reveal hidden" style="margin-bottom: 50px;">
+                <div class="glass-panel" style="padding: 25px; border-color: var(--neon-orange-border); background: rgba(255, 94, 0, 0.02); box-shadow: 0 0 20px rgba(255,94,0,0.05);">
+                    <h3 class="font-orbitron" style="font-size: 16px; color: #fff; margin-bottom: 15px; letter-spacing: 0.05em; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-bell logo-spin-glow" style="color: var(--neon-orange);"></i> ARENA SIGNALS & ALERTS
+                    </h3>
+                    <div id="home-inbox-mount"></div>
+                </div>
+            </div>
+
             <!-- Featured Tournaments Section -->
             <section class="container reveal" style="margin-bottom: 80px;">
                 <div class="section-header">
@@ -305,6 +315,27 @@
                 }
             });
         });
+
+        // FETCH AND RENDER HOME INBOX ALERTS
+        if (window.strikzAuth && window.strikzAuth.isLoggedIn()) {
+            window.strikzDb.getMyTeamInbox().then(res => {
+                const inbox = res.inbox || [];
+                const section = document.getElementById('home-inbox-section');
+                const mount = document.getElementById('home-inbox-mount');
+                if (section && mount) {
+                    if (inbox.length > 0) {
+                        section.classList.remove('hidden');
+                        if (window.renderInboxTab) {
+                            window.renderInboxTab(mount, inbox, container);
+                        }
+                    } else {
+                        section.classList.add('hidden');
+                    }
+                }
+            }).catch(err => {
+                console.error("Home inbox fetch error:", err);
+            });
+        }
 
         // Subtitle and description are statically defined in the template above.
     }

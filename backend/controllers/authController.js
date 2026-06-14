@@ -144,12 +144,14 @@ const googleLogin = async (req, res, next) => {
             $or: [{ email }, { google_id: sub }]
         });
 
+        let isNew = false;
         if (user) {
             if (!user.google_id) {
                 user.google_id = sub;
                 await user.save();
             }
         } else {
+            isNew = true;
             let uniqueUsername = name || email.split('@')[0];
             uniqueUsername = uniqueUsername.replace(/[^a-zA-Z0-9._-]/g, '');
             if (!uniqueUsername) {
@@ -183,7 +185,7 @@ const googleLogin = async (req, res, next) => {
             });
         }
 
-        res.json({ success: true, token: generateToken(user.id), user: userPayload(user) });
+        res.json({ success: true, token: generateToken(user.id), user: userPayload(user), isNewUser: isNew });
     } catch (err) {
         next(err);
     }
@@ -298,9 +300,21 @@ const updateProfile = async (req, res, next) => {
             return next(new Error('Gamer tag already claimed by another survivor'));
         }
 
+        let newUid = req.user.uid;
+        if (username !== req.user.username) {
+            let base = username.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (!base) base = 'gamer';
+            let exists = true;
+            while (exists) {
+                const randomNum = Math.floor(10 + Math.random() * 900);
+                newUid = `${base}_${randomNum}`;
+                exists = await models.User.exists({ uid: newUid, id: { $ne: userId } });
+            }
+        }
+
         const user = await models.User.findOneAndUpdate(
             { id: userId },
-            { $set: { username, avatar: avatar || req.user.avatar } },
+            { $set: { username, uid: newUid, avatar: avatar || req.user.avatar } },
             { new: true }
         ).lean();
 

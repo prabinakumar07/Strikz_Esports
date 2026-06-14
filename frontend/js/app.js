@@ -70,6 +70,8 @@
         '/about': window.renderAbout,
         '/team': window.renderTeam,
         '/myteam': window.renderMyTeam,
+        '/friends': window.renderFriendsPage,
+        '/inbox': window.renderInboxPage,
         '/history': window.renderHistory,
         '/achievements': window.renderAchievements,
         '/gallery': window.renderGallery,
@@ -407,7 +409,7 @@
             updateAuthUI();
             router();
             window.dispatchEvent(new CustomEvent('strikz-auth-changed', { detail: json.user }));
-            return json.user;
+            return json;
         },
         updateGamerProfile: async (username, avatar) => {
             const token = localStorage.getItem('strikz_jwt_token');
@@ -458,6 +460,14 @@
                         <i class="fa-regular fa-copy" style="font-size:9px;"></i> ${uid || 'STRIKZ-XXXXXX'}
                     </div>
                 </div>
+                <div style="display: flex; gap: 15px; justify-content: center; margin-top: 8px; border-top: 1px solid var(--glass-border); padding-top: 8px; width: 100%;">
+                    <a href="#/myteam" title="Squad HQ" style="color: var(--neon-yellow); font-size: 14px;"><i class="fa-solid fa-users"></i></a>
+                    <a href="#/friends" title="Friends & DMs" style="color: var(--neon-cyan); font-size: 14px;"><i class="fa-solid fa-comment-dots"></i></a>
+                    <a href="#/inbox" title="Arena Inbox" style="color: var(--neon-orange); font-size: 14px; position: relative;">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span id="desktop-inbox-badge" class="badge-dot hidden" style="position: absolute; top: -3px; right: -5px; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-orange);"></span>
+                    </a>
+                </div>
                 <div style="display: flex; gap: 8px; justify-content: center; margin-top: 4px;">
                     <button class="btn-auth-settings btn-desktop-settings-trigger" title="Account Settings" style="color: var(--text-dim); background: none; border: none; cursor: pointer; font-size: 11px;">
                         <i class="fa-solid fa-user-gear"></i>
@@ -477,6 +487,15 @@
                     <div class="user-status-text-mobile click-to-copy-uid" style="color: var(--neon-yellow); font-size: 9px; font-weight: bold; font-family: var(--font-header); letter-spacing:0.05em; display:flex; align-items:center; gap:4px; margin-top:2px;" title="Click to copy Gamer UID" data-uid="${uid || ''}">
                         <i class="fa-regular fa-copy" style="font-size:8px;"></i> ${uid || 'STRIKZ-XXXXXX'}
                     </div>
+                </div>
+                <!-- Quick Portal Links on Mobile Header -->
+                <div style="display: flex; gap: 12px; align-items: center; margin-left: 8px; margin-right: 8px; border-left: 1px solid var(--glass-border); padding-left: 10px;">
+                    <a href="#/myteam" title="Squad HQ" style="color: var(--neon-yellow); font-size: 13px;"><i class="fa-solid fa-users"></i></a>
+                    <a href="#/friends" title="Friends & DMs" style="color: var(--neon-cyan); font-size: 13px;"><i class="fa-solid fa-comment-dots"></i></a>
+                    <a href="#/inbox" title="Arena Inbox" style="color: var(--neon-orange); font-size: 13px; position: relative;">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span id="mobile-inbox-badge" class="badge-dot hidden" style="position: absolute; top: -3px; right: -5px; width: 5px; height: 5px; border-radius: 50%; background: var(--neon-orange);"></span>
+                    </a>
                 </div>
                 <div class="profile-menu-container-mobile">
                     <button class="btn-auth-logout-mobile" id="btn-mobile-menu-trigger" title="Account Options">
@@ -504,6 +523,8 @@
         if (user) {
             if (desktopSlot) desktopSlot.innerHTML = desktopLoggedInHTML(user.avatar, user.username, user.uid);
             if (mobileSlot) mobileSlot.innerHTML = mobileLoggedInHTML(user.avatar, user.username, user.uid);
+            
+            setTimeout(updateInboxBadges, 100);
 
             // Bind click-to-copy UID handler
             document.querySelectorAll('.click-to-copy-uid').forEach(el => {
@@ -660,6 +681,60 @@
     let googleClientId = null;
     let googleInitialized = false;
 
+    async function prefetchGoogleConfig() {
+        try {
+            if (!googleClientId) {
+                const res = await fetch('/api/v1/auth/config?_t=' + Date.now());
+                const json = await res.json();
+                if (json.success) {
+                    googleClientId = json.googleClientId;
+                    initGoogleSignIn();
+                }
+            }
+        } catch (err) {
+            console.error("Prefetch Google Config failed:", err);
+        }
+    }
+
+    function promptUsernameSelection() {
+        const usernameModal = document.getElementById('username-selection-modal');
+        if (usernameModal) {
+            usernameModal.classList.add('active');
+            const input = document.getElementById('username-selection-input');
+            const user = authManager.getUser();
+            if (input && user) {
+                input.value = user.username;
+            }
+        }
+    }
+
+    async function handleGoogleRedirectLogin(credential) {
+        if (loginContainer && loginLoading && progressFill) {
+            loginContainer.classList.add('hidden');
+            loginLoading.classList.remove('hidden');
+            const loaderText = document.querySelector('#login-loading-container .loader-text');
+            if (loaderText) loaderText.textContent = "VERIFYING GOOGLE ACCOUNT...";
+            const loginModal = document.getElementById('login-modal');
+            if (loginModal) loginModal.classList.add('active');
+        }
+
+        try {
+            const loginResult = await authManager.googleLogin(credential);
+            closeLoginModal();
+            playSound(successSfx);
+            if (loginResult && loginResult.isNewUser) {
+                promptUsernameSelection();
+            }
+        } catch (err) {
+            alert("Google Sign-In failed: " + err.message);
+            showLogin();
+            if (loginLoading) loginLoading.classList.add('hidden');
+        } finally {
+            const loaderText = document.querySelector('#login-loading-container .loader-text');
+            if (loaderText) loaderText.textContent = "CONNECTING TO GOOGLE SECURE PORTAL...";
+        }
+    }
+
     async function initGoogleSignIn() {
         if (googleInitialized) return;
         try {
@@ -711,10 +786,11 @@
             } else {
                 if (!googleClientId) {
                     btnContainer.innerHTML = `
-                        <div style="color: #ff5e00; font-size: 11px; text-align: center; border: 1px dashed #ff5e00; padding: 8px; border-radius: 4px; background: rgba(255, 94, 0, 0.05); width: 100%;">
-                            <i class="fa-solid fa-triangle-exclamation"></i> Google OAuth Client ID pending in backend configurations (.env)
+                        <div style="color: var(--text-dim); font-size: 12px; text-align: center; padding: 8px;">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Loading Google Config...
                         </div>
                     `;
+                    setTimeout(renderGoogleButton, 250);
                 } else if (typeof google === 'undefined' || !google.accounts) {
                     btnContainer.innerHTML = `
                         <div style="color: var(--text-dim); font-size: 12px; text-align: center; padding: 8px;">
@@ -752,9 +828,12 @@
         }
 
         try {
-            await authManager.googleLogin(response.credential);
+            const loginResult = await authManager.googleLogin(response.credential);
             closeLoginModal();
             playSound(successSfx);
+            if (loginResult && loginResult.isNewUser) {
+                promptUsernameSelection();
+            }
         } catch (err) {
             alert("Google Sign-In failed: " + err.message);
             showLogin();
@@ -764,6 +843,27 @@
             if (loaderText) loaderText.textContent = "CONNECTING TO GOOGLE SECURE PORTAL...";
         }
     }
+
+    async function updateInboxBadges() {
+        if (!authManager.isLoggedIn()) return;
+        try {
+            const res = await window.strikzDb.getMyTeamInbox();
+            const count = (res && res.inbox) ? res.inbox.length : 0;
+            const desktopBadge = document.getElementById('desktop-inbox-badge');
+            const mobileBadge = document.getElementById('mobile-inbox-badge');
+            if (desktopBadge) {
+                if (count > 0) desktopBadge.classList.remove('hidden');
+                else desktopBadge.classList.add('hidden');
+            }
+            if (mobileBadge) {
+                if (count > 0) mobileBadge.classList.remove('hidden');
+                else mobileBadge.classList.add('hidden');
+            }
+        } catch (e) {
+            console.error('Failed to update inbox badges', e);
+        }
+    }
+    window.updateInboxBadges = updateInboxBadges;
 
     function openLoginModal() {
         if (!loginModal) return;
@@ -837,10 +937,23 @@
     // Initial Bindings
     window.addEventListener('hashchange', router);
     window.addEventListener('DOMContentLoaded', () => {
+        prefetchGoogleConfig();
+
         router();
         initSoundToggle();
         initMusicToggle();
         updateAuthUI();
+
+        // Check for redirect Google Sign-in credential
+        const urlParams = new URLSearchParams(window.location.search);
+        const googleCred = urlParams.get('google_credential');
+        if (googleCred) {
+            urlParams.delete('google_credential');
+            const newSearch = urlParams.toString();
+            const searchPart = newSearch ? '?' + newSearch : '';
+            window.history.replaceState(null, '', window.location.pathname + searchPart + (window.location.hash || '#/'));
+            handleGoogleRedirectLogin(googleCred);
+        }
 
         // Hamburger buttons
         if (mobileToggle) mobileToggle.addEventListener('click', openMobileDrawer);
@@ -1033,6 +1146,31 @@
             settingsModal.addEventListener('click', (e) => {
                 if (e.target === settingsModal) {
                     closeSettingsModal();
+                }
+            });
+        }
+
+        const btnUsernameSave = document.getElementById('btn-username-selection-save');
+        if (btnUsernameSave) {
+            btnUsernameSave.addEventListener('click', async () => {
+                playSound(clickSfx);
+                const input = document.getElementById('username-selection-input');
+                const username = input ? input.value.trim() : '';
+                if (!username) {
+                    alert('Please enter a username.');
+                    return;
+                }
+                try {
+                    const user = authManager.getUser();
+                    const updatedUser = await authManager.updateGamerProfile(username, user ? user.avatar : '');
+                    const usernameModal = document.getElementById('username-selection-modal');
+                    if (usernameModal) {
+                        usernameModal.classList.remove('active');
+                    }
+                    playSound(successSfx);
+                    alert(`Welcome, ${updatedUser.username}! Your Gamer UID is now ${updatedUser.uid}.`);
+                } catch (err) {
+                    alert('Failed to set username: ' + err.message);
                 }
             });
         }

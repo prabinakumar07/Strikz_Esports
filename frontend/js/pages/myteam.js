@@ -46,22 +46,19 @@
         `;
 
         try {
-            // Load both Team details and Inbox simultaneously
-            const [teamRes, inboxRes] = await Promise.all([
-                window.strikzDb.getMyTeam(),
-                window.strikzDb.getMyTeamInbox()
-            ]);
-
+            const teamRes = await window.strikzDb.getMyTeam();
             const team = teamRes.team;
-            const inbox = inboxRes.inbox || [];
-            const inboxCount = inbox.length;
+
+            if (activeTab !== 'squad' && activeTab !== 'chat') {
+                activeTab = 'squad';
+            }
 
             // Render Page Frame with Tab Bar
             container.innerHTML = `
                 <section class="container bg-section-black reveal" style="padding-top: 40px; margin-bottom: 80px; max-width: 900px;">
                     <div class="section-header" style="margin-bottom: 30px;">
                         <span class="section-subtitle">GAMER PORTAL</span>
-                        <h2 class="section-title">COMMUNICATION <span>CENTER</span></h2>
+                        <h2 class="section-title">SQUAD <span>HQ</span></h2>
                         <div class="section-divider"></div>
                     </div>
 
@@ -69,13 +66,6 @@
                     <div class="comms-tabs-nav font-orbitron" style="display:flex; gap:10px; margin-bottom: 25px; border-bottom: 1px solid var(--glass-border); padding-bottom:12px; flex-wrap:wrap;">
                         <button class="tab-trigger ${activeTab === 'squad' ? 'active' : ''}" id="tab-btn-squad" style="background:none; border:none; color:${activeTab === 'squad' ? 'var(--neon-yellow)' : 'var(--text-dim)'}; font-size:14px; font-weight:800; padding: 8px 16px; cursor:pointer; font-family:var(--font-header); letter-spacing:0.05em; border-bottom: 2px solid ${activeTab === 'squad' ? 'var(--neon-yellow)' : 'transparent'}; transition: all 0.3s;">
                             <i class="fa-solid fa-users-gear"></i> SQUAD PORTAL
-                        </button>
-                        <button class="tab-trigger ${activeTab === 'inbox' ? 'active' : ''}" id="tab-btn-inbox" style="background:none; border:none; color:${activeTab === 'inbox' ? 'var(--neon-yellow)' : 'var(--text-dim)'}; font-size:14px; font-weight:800; padding: 8px 16px; cursor:pointer; font-family:var(--font-header); letter-spacing:0.05em; display:flex; align-items:center; gap:8px; border-bottom: 2px solid ${activeTab === 'inbox' ? 'var(--neon-yellow)' : 'transparent'}; transition: all 0.3s;">
-                            <i class="fa-solid fa-envelope"></i> ARENA INBOX 
-                            ${inboxCount > 0 ? `<span class="inbox-badge" style="background:var(--neon-orange); color:#fff; font-size:9px; font-weight:900; padding:2px 8px; border-radius:10px; box-shadow:0 0 8px var(--neon-orange-glow); animation: pulse 2s infinite;">${inboxCount}</span>` : ''}
-                        </button>
-                        <button class="tab-trigger ${activeTab === 'friends' ? 'active' : ''}" id="tab-btn-friends" style="background:none; border:none; color:${activeTab === 'friends' ? 'var(--neon-yellow)' : 'var(--text-dim)'}; font-size:14px; font-weight:800; padding: 8px 16px; cursor:pointer; font-family:var(--font-header); letter-spacing:0.05em; border-bottom: 2px solid ${activeTab === 'friends' ? 'var(--neon-yellow)' : 'transparent'}; transition: all 0.3s;">
-                            <i class="fa-solid fa-user-group"></i> FRIENDS & DMs
                         </button>
                         <button class="tab-trigger ${activeTab === 'chat' ? 'active' : ''}" id="tab-btn-chat" style="background:none; border:none; color:${activeTab === 'chat' ? 'var(--neon-yellow)' : 'var(--text-dim)'}; font-size:14px; font-weight:800; padding: 8px 16px; cursor:pointer; font-family:var(--font-header); letter-spacing:0.05em; border-bottom: 2px solid ${activeTab === 'chat' ? 'var(--neon-yellow)' : 'transparent'}; transition: all 0.3s;">
                             <i class="fa-solid fa-comments"></i> TEAM CHAT
@@ -87,8 +77,6 @@
             `;
 
             const tabSquadBtn = document.getElementById('tab-btn-squad');
-            const tabInboxBtn = document.getElementById('tab-btn-inbox');
-            const tabFriendsBtn = document.getElementById('tab-btn-friends');
             const tabChatBtn = document.getElementById('tab-btn-chat');
             const tabContentMount = document.getElementById('comms-tab-content');
 
@@ -99,8 +87,6 @@
                 
                 const tabs = [
                     { id: 'squad', btn: tabSquadBtn },
-                    { id: 'inbox', btn: tabInboxBtn },
-                    { id: 'friends', btn: tabFriendsBtn },
                     { id: 'chat', btn: tabChatBtn }
                 ];
                 
@@ -118,10 +104,6 @@
 
                 if (activeTab === 'squad') {
                     renderSquadTab(tabContentMount, user, team, container);
-                } else if (activeTab === 'inbox') {
-                    renderInboxTab(tabContentMount, inbox, container);
-                } else if (activeTab === 'friends') {
-                    renderFriendsTab(tabContentMount, container);
                 } else if (activeTab === 'chat') {
                     renderTeamChatTab(tabContentMount, team, container);
                 }
@@ -131,8 +113,6 @@
             };
 
             if (tabSquadBtn) tabSquadBtn.onclick = () => { if (window.strikzPlayClickSound) window.strikzPlayClickSound(); switchTab('squad'); };
-            if (tabInboxBtn) tabInboxBtn.onclick = () => { if (window.strikzPlayClickSound) window.strikzPlayClickSound(); switchTab('inbox'); };
-            if (tabFriendsBtn) tabFriendsBtn.onclick = () => { if (window.strikzPlayClickSound) window.strikzPlayClickSound(); switchTab('friends'); };
             if (tabChatBtn) tabChatBtn.onclick = () => { if (window.strikzPlayClickSound) window.strikzPlayClickSound(); switchTab('chat'); };
 
             // Initial Tab Render
@@ -327,6 +307,35 @@
         }
     }
 
+    async function refreshCurrentInbox(container) {
+        const hash = window.location.hash || '#/';
+        if (hash.startsWith('#/myteam')) {
+            renderMyTeam(container);
+        } else if (hash.startsWith('#/inbox')) {
+            renderInboxPage(container);
+        } else {
+            // Home page or other pages
+            const mount = document.getElementById('home-inbox-mount');
+            const section = document.getElementById('home-inbox-section');
+            if (mount && section) {
+                try {
+                    const res = await window.strikzDb.getMyTeamInbox();
+                    const inbox = res.inbox || [];
+                    if (inbox.length > 0) {
+                        section.classList.remove('hidden');
+                        renderInboxTab(mount, inbox, container);
+                    } else {
+                        section.classList.add('hidden');
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        }
+        if (window.updateInboxBadges) window.updateInboxBadges();
+    }
+    window.refreshCurrentInbox = refreshCurrentInbox;
+
     // INBOX TAB VIEW RENDERING
     function renderInboxTab(mount, inbox, container) {
         if (inbox.length === 0) {
@@ -417,7 +426,7 @@
                     await window.strikzDb.acceptTeamInvite(teamId);
                     if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
                     alert("Welcome to the squad! Team invitation accepted.");
-                    renderMyTeam(container);
+                    refreshCurrentInbox(container);
                 } catch(err) {
                     alert("Accept failed: " + err.message);
                 }
@@ -433,7 +442,7 @@
                 try {
                     await window.strikzDb.declineTeamInvite(teamId);
                     alert("Invitation declined.");
-                    renderMyTeam(container);
+                    refreshCurrentInbox(container);
                 } catch(err) {
                     alert("Decline failed: " + err.message);
                 }
@@ -449,7 +458,7 @@
                     await window.strikzDb.confirmJoin(regId);
                     if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
                     alert("Roster join invitation confirmed successfully!");
-                    renderMyTeam(container);
+                    refreshCurrentInbox(container);
                 } catch (err) {
                     alert("Roster confirmation failed: " + err.message);
                 }
@@ -465,7 +474,7 @@
                 if (window.strikzPlayClickSound) window.strikzPlayClickSound();
                 try {
                     await window.strikzDb.dismissNotification(notifId);
-                    renderMyTeam(container);
+                    refreshCurrentInbox(container);
                 } catch (err) {
                     alert("Failed to dismiss notification: " + err.message);
                 }
@@ -696,7 +705,7 @@
             let activeFriendUid = null;
 
             const pollMessages = async () => {
-                if (!activeFriendUid || activeTab !== 'friends') return;
+                if (!activeFriendUid || !document.getElementById('dm-chat-active-window')) return;
                 try {
                     const history = await window.strikzDb.getChatMessageHistory(activeFriendUid);
                     const wasScrolledToBottom = messagesMount.scrollHeight - messagesMount.clientHeight <= messagesMount.scrollTop + 30;
@@ -1152,6 +1161,114 @@
         };
     }
 
+    async function renderFriendsPage(container) {
+        if (commsPollInterval) { clearInterval(commsPollInterval); commsPollInterval = null; }
+
+        if (!window.strikzAuth || !window.strikzAuth.isLoggedIn()) {
+            container.innerHTML = `
+                <section class="container bg-section-black reveal" style="padding-top: 80px; margin-bottom: 80px; max-width: 600px; text-align: center;">
+                    <div style="padding: 20px 10px;">
+                        <i class="fa-solid fa-user-group" style="font-size: 58px; color: var(--neon-cyan); filter: drop-shadow(0 0 12px var(--neon-cyan-glow)); margin-bottom: 20px;"></i>
+                        <h2 class="font-orbitron" style="font-size: 24px; color: #fff; margin-bottom: 10px; letter-spacing: 0.05em;">SECURE FRIENDS ACCESS</h2>
+                        <p style="color: var(--text-silver); font-size: 14px; line-height: 1.6; margin-bottom: 30px;">
+                            You must log in to your gamer profile to add friends, accept requests, and send direct messages.
+                        </p>
+                        <button class="cta-button btn-neon-cyan w-full" id="btn-friends-login-trigger" style="padding: 15px;">
+                            <i class="fa-solid fa-right-to-bracket"></i> LOGIN TO ARENA
+                        </button>
+                    </div>
+                </section>
+            `;
+            const btn = document.getElementById('btn-friends-login-trigger');
+            if (btn) {
+                btn.onclick = function() {
+                    if (window.strikzPlayClickSound) window.strikzPlayClickSound();
+                    const loginModal = document.getElementById('login-modal');
+                    if (loginModal) {
+                        loginModal.classList.add('active');
+                    }
+                };
+            }
+            return;
+        }
+
+        container.innerHTML = `
+            <section class="container bg-section-black reveal" style="padding-top: 40px; margin-bottom: 80px; max-width: 900px;">
+                <div class="section-header" style="margin-bottom: 30px;">
+                    <span class="section-subtitle">COMMS NETWORK</span>
+                    <h2 class="section-title">FRIENDS & <span>DIRECT MESSAGES</span></h2>
+                    <div class="section-divider"></div>
+                </div>
+                <div id="friends-page-mount"></div>
+            </section>
+        `;
+        const mount = document.getElementById('friends-page-mount');
+        await renderFriendsTab(mount, container);
+
+        if (window.strikzInitScrollAnimations) window.strikzInitScrollAnimations();
+        if (window.strikzInitSpotlightEffect) window.strikzInitSpotlightEffect();
+    }
+
+    async function renderInboxPage(container) {
+        if (commsPollInterval) { clearInterval(commsPollInterval); commsPollInterval = null; }
+
+        if (!window.strikzAuth || !window.strikzAuth.isLoggedIn()) {
+            container.innerHTML = `
+                <section class="container bg-section-black reveal" style="padding-top: 80px; margin-bottom: 80px; max-width: 600px; text-align: center;">
+                    <div style="padding: 20px 10px;">
+                        <i class="fa-solid fa-envelope" style="font-size: 58px; color: var(--neon-orange); filter: drop-shadow(0 0 12px var(--neon-orange-glow)); margin-bottom: 20px;"></i>
+                        <h2 class="font-orbitron" style="font-size: 24px; color: #fff; margin-bottom: 10px; letter-spacing: 0.05em;">SECURE INBOX ACCESS</h2>
+                        <p style="color: var(--text-silver); font-size: 14px; line-height: 1.6; margin-bottom: 30px;">
+                            You must log in to your gamer profile to view team invites and tournament join requests.
+                        </p>
+                        <button class="cta-button btn-neon-orange w-full" id="btn-inbox-login-trigger" style="padding: 15px;">
+                            <i class="fa-solid fa-right-to-bracket"></i> LOGIN TO ARENA
+                        </button>
+                    </div>
+                </section>
+            `;
+            const btn = document.getElementById('btn-inbox-login-trigger');
+            if (btn) {
+                btn.onclick = function() {
+                    if (window.strikzPlayClickSound) window.strikzPlayClickSound();
+                    const loginModal = document.getElementById('login-modal');
+                    if (loginModal) {
+                        loginModal.classList.add('active');
+                    }
+                };
+            }
+            return;
+        }
+
+        container.innerHTML = `
+            <section class="container bg-section-black reveal" style="padding-top: 40px; margin-bottom: 80px; max-width: 900px;">
+                <div class="section-header" style="margin-bottom: 30px;">
+                    <span class="section-subtitle">COMMUNICATION CENTER</span>
+                    <h2 class="section-title">ARENA <span>INBOX</span></h2>
+                    <div class="section-divider"></div>
+                </div>
+                <div id="inbox-page-mount"></div>
+            </section>
+        `;
+        const mount = document.getElementById('inbox-page-mount');
+        try {
+            const res = await window.strikzDb.getMyTeamInbox();
+            renderInboxTab(mount, res.inbox || [], container);
+        } catch (err) {
+            mount.innerHTML = `
+                <div class="text-center" style="padding:40px;">
+                    <p style="color:var(--neon-orange);">${err.message}</p>
+                </div>
+            `;
+        }
+
+        if (window.strikzInitScrollAnimations) window.strikzInitScrollAnimations();
+        if (window.strikzInitSpotlightEffect) window.strikzInitSpotlightEffect();
+    }
+
     // Attach to global window
     window.renderMyTeam = renderMyTeam;
+    window.renderFriendsPage = renderFriendsPage;
+    window.renderInboxPage = renderInboxPage;
+    window.renderInboxTab = renderInboxTab;
 })();
