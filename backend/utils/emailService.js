@@ -3,7 +3,11 @@ const { models, nextNumberId } = require('../config/db');
 require('dotenv').config();
 
 const getFromAddress = () => {
-    return process.env.RESEND_FROM_EMAIL || process.env.SMTP_FROM_EMAIL || process.env.SUPPORT_EMAIL || 'support@strikzesports.com';
+    return process.env.BREVO_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || process.env.SMTP_FROM_EMAIL || process.env.SUPPORT_EMAIL || 'support@strikzesports.com';
+};
+
+const getFromName = () => {
+    return process.env.EMAIL_FROM_NAME || 'Strikz Esports';
 };
 
 const logEmail = async ({ logId, recipient, subject, type, status, messageId, error }) => {
@@ -63,6 +67,54 @@ const sendWithResend = async (mailOptions, type, logId) => {
     return { success: true, messageId };
 };
 
+const sendWithBrevo = async (mailOptions, type, logId) => {
+    if (!process.env.BREVO_API_KEY) return null;
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'api-key': process.env.BREVO_API_KEY,
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+        },
+        body: JSON.stringify({
+            sender: {
+                name: getFromName(),
+                email: process.env.BREVO_FROM_EMAIL || getFromAddress()
+            },
+            to: [{ email: mailOptions.to }],
+            subject: mailOptions.subject,
+            htmlContent: mailOptions.html,
+            textContent: mailOptions.text || undefined
+        })
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        const message = payload.message || payload.error || `Brevo API failed with status ${response.status}`;
+        await logEmail({
+            logId,
+            recipient: mailOptions.to,
+            subject: mailOptions.subject,
+            type,
+            status: 'Failed',
+            error: message
+        });
+        return { success: false, error: message };
+    }
+
+    const messageId = payload.messageId || payload.messageIds?.[0] || `brevo-${Date.now()}`;
+    await logEmail({
+        logId,
+        recipient: mailOptions.to,
+        subject: mailOptions.subject,
+        type,
+        status: 'Success',
+        messageId
+    });
+    return { success: true, messageId };
+};
+
 // Create transporter helper
 const getTransporter = async () => {
     // Dynamically query SMTP settings from database or fallback to .env
@@ -97,7 +149,7 @@ const sendEmailDirect = async (options) => {
     const transporter = await getTransporter();
     const fromAddress = getFromAddress();
     const mailOptions = {
-        from: `Strikz Esports <${fromAddress}>`,
+        from: `${getFromName()} <${fromAddress}>`,
         to: options.to,
         subject: options.subject,
         html: options.html,
@@ -109,6 +161,14 @@ const sendEmailDirect = async (options) => {
     }
 
     const logId = 'log-' + Date.now() + '-' + Math.floor(100 + Math.random() * 900);
+
+    const brevoResult = await sendWithBrevo(mailOptions, options.type, logId);
+    if (brevoResult) {
+        if (!brevoResult.success) {
+            console.error(`[BREVO EMAIL ERROR] ${brevoResult.error}`);
+        }
+        return brevoResult;
+    }
 
     const resendResult = await sendWithResend(mailOptions, options.type, logId);
     if (resendResult) {
@@ -143,7 +203,7 @@ const sendEmailDirect = async (options) => {
             return { success: false, error: err.message };
         }
     } else {
-        const error = 'No email provider configured. Add RESEND_API_KEY and RESEND_FROM_EMAIL, or configure SMTP credentials.';
+        const error = 'No email provider configured. Add BREVO_API_KEY and BREVO_FROM_EMAIL, or configure Resend/SMTP credentials.';
         console.error(`[EMAIL CONFIG ERROR] ${error}`);
         await logEmail({
             logId,

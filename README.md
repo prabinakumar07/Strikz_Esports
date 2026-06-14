@@ -51,6 +51,9 @@ JWT_SECRET=use_a_long_random_secret
 JWT_EXPIRY=24h
 SUPPORT_EMAIL=support@strikzesports.com
 PARTNER_EMAIL=partners@strikzesports.com
+BREVO_API_KEY=your_brevo_api_key
+BREVO_FROM_EMAIL=your_verified_brevo_sender_email
+EMAIL_FROM_NAME=Strikz Esports
 RESEND_API_KEY=your_resend_api_key
 RESEND_FROM_EMAIL=onboarding@resend.dev
 ```
@@ -111,6 +114,9 @@ JWT_SECRET=use_a_long_random_secret
 JWT_EXPIRY=24h
 SUPPORT_EMAIL=support@strikzesports.com
 PARTNER_EMAIL=partners@strikzesports.com
+BREVO_API_KEY=your_brevo_api_key
+BREVO_FROM_EMAIL=your_verified_brevo_sender_email
+EMAIL_FROM_NAME=Strikz Esports
 RESEND_API_KEY=your_resend_api_key
 RESEND_FROM_EMAIL=onboarding@resend.dev
 ```
