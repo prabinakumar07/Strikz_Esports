@@ -87,7 +87,7 @@
                     <button class="sound-toggle-btn" id="sound-toggle" title="Toggle Sound FX">
                         <i class="fa-solid fa-volume-high"></i>
                     </button>
-                    <a href="#/admin" class="admin-link" id="nav-admin" title="Admin Portal">
+                    <a href="#/admin" class="admin-link" id="nav-admin" title="Admin Portal" style="display: none !important;">
                         <i class="fa-solid fa-lock"></i>
                     </a>
                 </div>
@@ -128,10 +128,13 @@
                     <li><a href="#/news" class="mobile-link" id="mob-news"><i class="fa-solid fa-newspaper"></i> News</a></li>
                     <li><a href="#/earning" class="mobile-link" id="mob-earning"><i class="fa-solid fa-hand-holding-dollar"></i> Earning</a></li>
                     <li><a href="#/contact" class="mobile-link" id="mob-contact"><i class="fa-solid fa-envelope"></i> Support</a></li>
-                    <li><a href="#/admin" class="mobile-link" id="mob-admin"><i class="fa-solid fa-lock"></i> Admin</a></li>
+                    <li style="display: none !important;"><a href="#/admin" class="mobile-link" id="mob-admin"><i class="fa-solid fa-lock"></i> Admin</a></li>
                 </ul>
             </nav>
         </header>
+
+        <!-- Quick Portal Bar (Squad HQ, DMs, Inbox) -->
+        <div id="quick-portal-bar" class="quick-portal-bar hidden"></div>
 
         <!-- Main Content Area where SPA page components mount -->
         <main class="main-content" id="app-content">
@@ -330,6 +333,32 @@
                     <div style="font-size: 9px; color: var(--text-dim); margin-top: 5px;">Your Unique Gamer UID will be generated based on this tag (e.g. gamername_98).</div>
                 </div>
                 <button class="cta-button btn-neon-cyan w-full" id="btn-username-selection-save">CONFIRM GAMER TAG</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OTP Verification Modal -->
+    <div class="login-modal-overlay" id="otp-verification-modal">
+        <div class="login-modal-content glass-panel" style="border-color: var(--neon-cyan-border);">
+            <button class="login-modal-close" id="btn-otp-close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="login-modal-header text-center">
+                <i class="fa-solid fa-key" style="font-size: 44px; color: var(--neon-cyan); filter: drop-shadow(0 0 12px var(--neon-cyan-glow)); margin-bottom: 20px;"></i>
+                <h3 class="font-orbitron">ACTIVATING PROFILE</h3>
+                <p>A 6-digit OTP code has been dispatched. Check your inbox to activate your profile.</p>
+                <div id="otp-email-display" style="font-size: 13px; color: var(--neon-yellow); font-weight: bold; margin-top: 5px;"></div>
+            </div>
+            <div class="login-form-fields">
+                <div class="form-group">
+                    <label>6-DIGIT VERIFICATION KEY</label>
+                    <input type="text" placeholder="E.g. 123456" id="otp-input-code" maxlength="6" style="color: #fff; text-align: center; font-size: 20px; letter-spacing: 0.3em; font-family: monospace;">
+                </div>
+                <button class="cta-button btn-neon-cyan w-full" id="btn-otp-submit">ACTIVATE PROFILE</button>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="javascript:void(0)" id="link-otp-resend" style="color: var(--text-dim); text-decoration: underline; font-size: 12px;">RESEND VERIFICATION KEY</a>
+                    <span id="otp-countdown-display" class="hidden" style="font-size: 11px; color: var(--text-dim);">Resend in <span id="otp-seconds">60</span>s</span>
+                </div>
             </div>
         </div>
     </div>

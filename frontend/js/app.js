@@ -356,6 +356,9 @@
                 body: JSON.stringify({ usernameOrEmail, password })
             });
             const json = await res.json();
+            if (json.requiresVerification) {
+                return { requiresVerification: true, email: json.email };
+            }
             if (!res.ok) {
                 throw new Error(json.message || 'Authentication failed');
             }
@@ -380,6 +383,9 @@
                 body: JSON.stringify({ username, email, password })
             });
             const json = await res.json();
+            if (json.requiresVerification) {
+                return { requiresVerification: true, email: json.email };
+            }
             if (!res.ok) {
                 throw new Error(json.message || 'Registration failed');
             }
@@ -460,20 +466,12 @@
                         <i class="fa-regular fa-copy" style="font-size:9px;"></i> ${uid || 'STRIKZ-XXXXXX'}
                     </div>
                 </div>
-                <div style="display: flex; gap: 15px; justify-content: center; margin-top: 8px; border-top: 1px solid var(--glass-border); padding-top: 8px; width: 100%;">
-                    <a href="#/myteam" title="Squad HQ" style="color: var(--neon-yellow); font-size: 14px;"><i class="fa-solid fa-users"></i></a>
-                    <a href="#/friends" title="Friends & DMs" style="color: var(--neon-cyan); font-size: 14px;"><i class="fa-solid fa-comment-dots"></i></a>
-                    <a href="#/inbox" title="Arena Inbox" style="color: var(--neon-orange); font-size: 14px; position: relative;">
-                        <i class="fa-solid fa-envelope"></i>
-                        <span id="desktop-inbox-badge" class="badge-dot hidden" style="position: absolute; top: -3px; right: -5px; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-orange);"></span>
-                    </a>
-                </div>
-                <div style="display: flex; gap: 8px; justify-content: center; margin-top: 4px;">
+                <div style="display: flex; gap: 8px; justify-content: center; margin-top: 10px; border-top: 1px solid var(--glass-border); padding-top: 8px; width: 100%;">
                     <button class="btn-auth-settings btn-desktop-settings-trigger" title="Account Settings" style="color: var(--text-dim); background: none; border: none; cursor: pointer; font-size: 11px;">
-                        <i class="fa-solid fa-user-gear"></i>
+                        <i class="fa-solid fa-user-gear"></i> Settings
                     </button>
-                    <button class="btn-auth-logout btn-desktop-logout-trigger" title="Log Out / Exit Arena" style="color: var(--text-dim); background: none; border: none; cursor: pointer; font-size: 11px;">
-                        <i class="fa-solid fa-right-from-bracket"></i>
+                    <button class="btn-auth-logout btn-desktop-logout-trigger" title="Log Out / Exit Arena" style="color: var(--text-dim); background: none; border: none; cursor: pointer; font-size: 11px; margin-left: 10px;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
                     </button>
                 </div>
             </div>
@@ -487,15 +485,6 @@
                     <div class="user-status-text-mobile click-to-copy-uid" style="color: var(--neon-yellow); font-size: 9px; font-weight: bold; font-family: var(--font-header); letter-spacing:0.05em; display:flex; align-items:center; gap:4px; margin-top:2px;" title="Click to copy Gamer UID" data-uid="${uid || ''}">
                         <i class="fa-regular fa-copy" style="font-size:8px;"></i> ${uid || 'STRIKZ-XXXXXX'}
                     </div>
-                </div>
-                <!-- Quick Portal Links on Mobile Header -->
-                <div style="display: flex; gap: 12px; align-items: center; margin-left: 8px; margin-right: 8px; border-left: 1px solid var(--glass-border); padding-left: 10px;">
-                    <a href="#/myteam" title="Squad HQ" style="color: var(--neon-yellow); font-size: 13px;"><i class="fa-solid fa-users"></i></a>
-                    <a href="#/friends" title="Friends & DMs" style="color: var(--neon-cyan); font-size: 13px;"><i class="fa-solid fa-comment-dots"></i></a>
-                    <a href="#/inbox" title="Arena Inbox" style="color: var(--neon-orange); font-size: 13px; position: relative;">
-                        <i class="fa-solid fa-envelope"></i>
-                        <span id="mobile-inbox-badge" class="badge-dot hidden" style="position: absolute; top: -3px; right: -5px; width: 5px; height: 5px; border-radius: 50%; background: var(--neon-orange);"></span>
-                    </a>
                 </div>
                 <div class="profile-menu-container-mobile">
                     <button class="btn-auth-logout-mobile" id="btn-mobile-menu-trigger" title="Account Options">
@@ -520,10 +509,30 @@
             </button>
         `;
  
+        const quickPortal = document.getElementById('quick-portal-bar');
+
         if (user) {
             if (desktopSlot) desktopSlot.innerHTML = desktopLoggedInHTML(user.avatar, user.username, user.uid);
             if (mobileSlot) mobileSlot.innerHTML = mobileLoggedInHTML(user.avatar, user.username, user.uid);
             
+            document.body.classList.add('logged-in');
+
+            if (quickPortal) {
+                quickPortal.innerHTML = `
+                    <a href="#/myteam" class="portal-btn font-orbitron" title="Squad HQ">
+                        <i class="fa-solid fa-users"></i> <span>Squad HQ</span>
+                    </a>
+                    <a href="#/friends" class="portal-btn font-orbitron" title="Friends & DMs">
+                        <i class="fa-solid fa-comment-dots"></i> <span>DMs</span>
+                    </a>
+                    <a href="#/inbox" class="portal-btn font-orbitron" title="Arena Inbox" style="position: relative;">
+                        <i class="fa-solid fa-envelope"></i> <span>Inbox</span>
+                        <span id="portal-inbox-badge" class="badge-dot hidden" style="position: absolute; top: -1px; right: -4px; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-orange);"></span>
+                    </a>
+                `;
+                quickPortal.classList.remove('hidden');
+            }
+
             setTimeout(updateInboxBadges, 100);
 
             // Bind click-to-copy UID handler
@@ -592,6 +601,12 @@
                 });
             });
         } else {
+            document.body.classList.remove('logged-in');
+            if (quickPortal) {
+                quickPortal.classList.add('hidden');
+                quickPortal.innerHTML = '';
+            }
+
             if (desktopSlot) desktopSlot.innerHTML = loggedOutHTML('btn-sidebar-login');
             if (mobileSlot) mobileSlot.innerHTML = loggedOutHTML('btn-drawer-login');
 
@@ -859,6 +874,11 @@
                 if (count > 0) mobileBadge.classList.remove('hidden');
                 else mobileBadge.classList.add('hidden');
             }
+            const portalBadge = document.getElementById('portal-inbox-badge');
+            if (portalBadge) {
+                if (count > 0) portalBadge.classList.remove('hidden');
+                else portalBadge.classList.add('hidden');
+            }
         } catch (e) {
             console.error('Failed to update inbox badges', e);
         }
@@ -901,6 +921,36 @@
     function closeSettingsModal() {
         if (!settingsModal) return;
         settingsModal.classList.remove('active');
+    }
+
+    let currentOtpEmail = '';
+
+    function openOtpModal(email) {
+        const otpModal = document.getElementById('otp-verification-modal');
+        const emailDisplay = document.getElementById('otp-email-display');
+        const codeInput = document.getElementById('otp-input-code');
+        
+        if (!otpModal) return;
+        
+        currentOtpEmail = email;
+        if (emailDisplay) emailDisplay.textContent = email;
+        if (codeInput) {
+            codeInput.value = '';
+            codeInput.focus();
+        }
+        
+        otpModal.classList.add('active');
+        
+        // Hide resend countdown and show link initially
+        const resendLink = document.getElementById('link-otp-resend');
+        const countdownDisp = document.getElementById('otp-countdown-display');
+        if (resendLink) resendLink.classList.remove('hidden');
+        if (countdownDisp) countdownDisp.classList.add('hidden');
+    }
+
+    function closeOtpModal() {
+        const otpModal = document.getElementById('otp-verification-modal');
+        if (otpModal) otpModal.classList.remove('active');
     }
 
 
@@ -972,6 +1022,108 @@
             });
         }
 
+        // OTP Close Button
+        const btnOtpClose = document.getElementById('btn-otp-close');
+        if (btnOtpClose) {
+            btnOtpClose.onclick = () => {
+                playSound(clickSfx);
+                closeOtpModal();
+            };
+        }
+
+        // OTP Submit Button
+        const btnOtpSubmit = document.getElementById('btn-otp-submit');
+        if (btnOtpSubmit) {
+            btnOtpSubmit.onclick = async () => {
+                playSound(clickSfx);
+                const code = document.getElementById('otp-input-code').value.trim();
+                
+                if (!code || code.length !== 6 || isNaN(code)) {
+                    alert("Please enter a valid 6-digit OTP code.");
+                    return;
+                }
+
+                try {
+                    btnOtpSubmit.disabled = true;
+                    btnOtpSubmit.textContent = 'ACTIVATING...';
+                    
+                    const res = await fetch('/api/v1/auth/verify-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: currentOtpEmail, code })
+                    });
+                    const json = await res.json();
+                    
+                    if (!res.ok) {
+                        throw new Error(json.message || 'OTP verification failed');
+                    }
+
+                    // Success: Save token & user
+                    localStorage.setItem('strikz_jwt_token', json.token);
+                    localStorage.setItem('strikz_user_profile', JSON.stringify(json.user));
+
+                    updateAuthUI();
+                    closeOtpModal();
+                    playSound(successSfx);
+                    alert("Your profile has been activated and authenticated! Welcome to Strikz Esports Arena.");
+                    
+                    // Dispatch change event
+                    window.dispatchEvent(new CustomEvent('strikz-auth-changed', { detail: json.user }));
+                    router();
+                } catch (err) {
+                    alert("Verification failed: " + err.message);
+                } finally {
+                    btnOtpSubmit.disabled = false;
+                    btnOtpSubmit.textContent = 'ACTIVATE PROFILE';
+                }
+            };
+        }
+
+        // OTP Resend Link
+        const linkOtpResend = document.getElementById('link-otp-resend');
+        if (linkOtpResend) {
+            linkOtpResend.onclick = async () => {
+                playSound(clickSfx);
+                if (!currentOtpEmail) return;
+
+                try {
+                    const res = await fetch('/api/v1/auth/resend-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: currentOtpEmail })
+                    });
+                    const json = await res.json();
+
+                    if (!res.ok) {
+                        throw new Error(json.message || 'Resend request failed');
+                    }
+
+                    alert("A new verification key has been sent to your email.");
+                    
+                    // Start countdown
+                    linkOtpResend.classList.add('hidden');
+                    const countdownDisp = document.getElementById('otp-countdown-display');
+                    const secondsSpan = document.getElementById('otp-seconds');
+                    if (countdownDisp) countdownDisp.classList.remove('hidden');
+                    
+                    let seconds = 60;
+                    if (secondsSpan) secondsSpan.textContent = seconds;
+                    
+                    const timer = setInterval(() => {
+                        seconds--;
+                        if (secondsSpan) secondsSpan.textContent = seconds;
+                        if (seconds <= 0) {
+                            clearInterval(timer);
+                            if (countdownDisp) countdownDisp.classList.add('hidden');
+                            linkOtpResend.classList.remove('hidden');
+                        }
+                    }, 1000);
+                } catch (err) {
+                    alert("Resend failed: " + err.message);
+                }
+            };
+        }
+
         // Setup Form toggles
         document.getElementById('link-show-register').onclick = showRegister;
         document.getElementById('link-show-forgot').onclick = showForgot;
@@ -993,9 +1145,14 @@
                 }
 
                 try {
-                    await authManager.loginUser(userVal, passVal);
-                    closeLoginModal();
-                    playSound(successSfx);
+                    const result = await authManager.loginUser(userVal, passVal);
+                    if (result && result.requiresVerification) {
+                        closeLoginModal();
+                        openOtpModal(result.email);
+                    } else {
+                        closeLoginModal();
+                        playSound(successSfx);
+                    }
                 } catch (err) {
                     alert(err.message);
                 }
@@ -1017,10 +1174,15 @@
                 }
 
                 try {
-                    await authManager.registerUser(user, email, pass);
-                    closeLoginModal();
-                    playSound(successSfx);
-                    alert("Gamer registration complete. Welcome to the arena!");
+                    const result = await authManager.registerUser(user, email, pass);
+                    if (result && result.requiresVerification) {
+                        closeLoginModal();
+                        openOtpModal(result.email);
+                    } else {
+                        closeLoginModal();
+                        playSound(successSfx);
+                        alert("Gamer registration complete. Welcome to the arena!");
+                    }
                 } catch (err) {
                     alert("Registration failed: " + err.message);
                 }

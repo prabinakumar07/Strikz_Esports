@@ -43,7 +43,12 @@ const models = {
     UploadedFile: createModel('UploadedFile', 'uploaded_files'),
     Friendship: createModel('Friendship', 'friendships'),
     ChatMessage: createModel('ChatMessage', 'chat_messages'),
-    TeamMessage: createModel('TeamMessage', 'team_messages')
+    TeamMessage: createModel('TeamMessage', 'team_messages'),
+    EmailSetting: createModel('EmailSetting', 'email_settings', Number),
+    EmailTemplate: createModel('EmailTemplate', 'email_templates'),
+    EmailLog: createModel('EmailLog', 'email_logs'),
+    EmailQueue: createModel('EmailQueue', 'email_queue'),
+    OtpCode: createModel('OtpCode', 'otp_codes')
 };
 
 const connectDB = async () => {

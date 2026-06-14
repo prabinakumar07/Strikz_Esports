@@ -14,9 +14,9 @@ const seed = {
     users: [
         {
             id: 1,
-            username: 'admin',
+            username: 'strikz_admin',
             email: 'admin@strikzesports.com',
-            password_hash: '$2a$10$2MoW.9MONil/e28dSNBfx.KynzAey3oqv8cZuUqgb/2.mN5hz/Nf2',
+            password_hash: '$2a$10$2MoW.9MONil/e28dSNBfx.KynzAey3oqv8cZuUqgb/2.mN5hz/Nf2', // This will be overwritten by the seedDatabase function with the correct hash
             role: 'admin',
             avatar: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=admin&backgroundColor=0a0a0f'
         }
@@ -171,11 +171,15 @@ const upsertMany = async (Model, docs) => {
 };
 
 const seedDatabase = async (models) => {
-    // Always ensure default admin user is present and has role 'admin' with password 'admin'
+    // Always ensure default admin user is present and has role 'admin'
     try {
         const bcrypt = require('bcryptjs');
-        const adminHash = await bcrypt.hash('admin', 10);
-        const adminUser = await models.User.findOne({ username: 'admin' });
+        const adminHash = await bcrypt.hash('strikz_password_2026', 10);
+        
+        // Remove old 'admin' user if exists
+        await models.User.deleteOne({ username: 'admin' });
+
+        const adminUser = await models.User.findOne({ username: 'strikz_admin' });
         if (!adminUser) {
             let uid = 'admin_73';
             let exists = true;
@@ -186,19 +190,20 @@ const seedDatabase = async (models) => {
             await models.User.create({
                 id: 1,
                 uid,
-                username: 'admin',
+                username: 'strikz_admin',
                 email: 'admin@strikzesports.com',
                 password_hash: adminHash,
                 role: 'admin',
-                avatar: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=admin&backgroundColor=0a0a0f'
+                avatar: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=admin&backgroundColor=0a0a0f',
+                isVerified: true
             });
-            console.log('Seeded default admin user');
+            console.log('Seeded secure admin user: strikz_admin');
         } else {
             await models.User.updateOne(
-                { username: 'admin' },
+                { username: 'strikz_admin' },
                 { $set: { role: 'admin', password_hash: adminHash } }
             );
-            console.log('Restored default admin user role and password');
+            console.log('Updated secure admin user password and role');
         }
     } catch (err) {
         console.error('Failed to seed default admin:', err.message);

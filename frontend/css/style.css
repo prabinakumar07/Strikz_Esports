@@ -3878,4 +3878,118 @@ button, input, select, textarea {
     background: rgba(0, 240, 255, 0.08) !important;
 }
 
+/* ==========================================================================
+   QUICK PORTAL HEADER BAR (SQUAD HQ, DMs, INBOX)
+   ========================================================================== */
+.quick-portal-bar {
+    display: none;
+    z-index: 1000;
+}
+
+.quick-portal-bar:not(.hidden) {
+    display: flex;
+}
+
+/* Desktop styles */
+@media (min-width: 769px) {
+    .quick-portal-bar {
+        position: fixed;
+        top: 15px;
+        right: 25px;
+        align-items: center;
+        gap: 15px;
+        padding: 8px 20px;
+        background: rgba(10, 10, 15, 0.75);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid var(--neon-cyan-border);
+        border-radius: 50px;
+        box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+    }
+    body.logged-in .main-content {
+        padding-top: 75px !important; /* Push main content down to avoid overlapping floating bar */
+    }
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+    .quick-portal-bar {
+        position: fixed;
+        top: 95px;
+        left: 0;
+        width: 100%;
+        height: 40px;
+        background: rgba(5, 5, 5, 0.95);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--glass-border);
+        justify-content: space-around;
+        align-items: center;
+        padding: 0;
+    }
+    
+    body.logged-in .main-content {
+        margin-top: 135px !important; /* Offset for mobile-header (95px) + quick-portal-bar (40px) */
+    }
+}
+
+.portal-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-header);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 20px;
+    transition: all 0.2s ease;
+}
+
+/* Individual Portal Themes */
+.portal-btn[href="#/myteam"] {
+    color: var(--neon-yellow);
+    border: 1px solid transparent;
+}
+.portal-btn[href="#/myteam"]:hover {
+    background: rgba(255, 230, 0, 0.1);
+    border-color: rgba(255, 230, 0, 0.2);
+    box-shadow: 0 0 10px rgba(255, 230, 0, 0.1);
+}
+
+.portal-btn[href="#/friends"] {
+    color: var(--neon-cyan);
+    border: 1px solid transparent;
+}
+.portal-btn[href="#/friends"]:hover {
+    background: rgba(0, 240, 255, 0.1);
+    border-color: rgba(0, 240, 255, 0.2);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+}
+
+.portal-btn[href="#/inbox"] {
+    color: var(--neon-orange);
+    border: 1px solid transparent;
+}
+.portal-btn[href="#/inbox"]:hover {
+    background: rgba(255, 94, 0, 0.1);
+    border-color: rgba(255, 94, 0, 0.2);
+    box-shadow: 0 0 10px rgba(255, 94, 0, 0.1);
+}
+
+.portal-btn span {
+    letter-spacing: 0.05em;
+}
+
+@media (max-width: 480px) {
+    .portal-btn span {
+        display: none; /* Icon only on extra small viewports to prevent wrapping */
+    }
+    .portal-btn {
+        padding: 8px;
+        font-size: 14px;
+    }
+}
+
 

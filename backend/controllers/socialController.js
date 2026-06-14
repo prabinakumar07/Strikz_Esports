@@ -326,6 +326,141 @@ const getTeamMessageHistory = async (req, res, next) => {
     }
 };
 
+const confirmAttendance = async (req, res, next) => {
+    try {
+        const { regId, status } = req.query;
+        if (!regId || !status) {
+            return res.status(400).send(`
+                <html>
+                <head><title>Invalid Request</title></head>
+                <body style="background:#0a0a0f; color:#fff; font-family:sans-serif; text-align:center; padding:100px;">
+                    <h1 style="color:#ef4444;">INVALID VERIFICATION TRANSMISSION</h1>
+                    <p>Parameters regId and status are required.</p>
+                </body>
+                </html>
+            `);
+        }
+
+        const registration = await models.Registration.findOne({ id: regId }).lean();
+        if (!registration) {
+            return res.status(404).send(`
+                <html>
+                <head><title>Not Found</title></head>
+                <body style="background:#0a0a0f; color:#fff; font-family:sans-serif; text-align:center; padding:100px;">
+                    <h1 style="color:#ef4444;">REGISTRATION NOT FOUND</h1>
+                    <p>We could not retrieve the tournament entry for registration ID: ${regId}.</p>
+                </body>
+                </html>
+            `);
+        }
+
+        let dbStatus = 'Pending';
+        let stage = registration.stage || 1;
+        let responseMessage = '';
+
+        if (status === 'Confirmed') {
+            dbStatus = 'Approved';
+            stage = 3;
+            responseMessage = 'Your attendance has been confirmed and locked. Good luck on the battlefield!';
+        } else if (status === 'Declined') {
+            dbStatus = 'Rejected';
+            responseMessage = 'You have declined attendance. Your registration slot has been released.';
+        } else {
+            return res.status(400).send(`
+                <html>
+                <head><title>Invalid Status</title></head>
+                <body style="background:#0a0a0f; color:#fff; font-family:sans-serif; text-align:center; padding:100px;">
+                    <h1 style="color:#ef4444;">INVALID STATUS VALUE</h1>
+                    <p>Status must be Confirmed or Declined.</p>
+                </body>
+                </html>
+            `);
+        }
+
+        await models.Registration.updateOne(
+            { id: regId },
+            { $set: { status: dbStatus, stage } }
+        );
+
+        // Render a modern, professional, responsive HTML page matching the theme of Strikz Esports
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Attendance Locked - Strikz Esports</title>
+                <style>
+                    @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700;800&display=swap');
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        background-color: #050508;
+                        color: #ffffff;
+                        font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 100vh;
+                    }
+                    .container {
+                        background-color: #0a0a0f;
+                        border: 1.5px solid ${status === 'Confirmed' ? '#ffe600' : '#ef4444'};
+                        border-radius: 8px;
+                        padding: 40px;
+                        max-width: 500px;
+                        width: 90%;
+                        text-align: center;
+                        box-shadow: 0 0 30px ${status === 'Confirmed' ? 'rgba(255, 230, 0, 0.15)' : 'rgba(239, 68, 68, 0.15)'};
+                    }
+                    h1 {
+                        color: ${status === 'Confirmed' ? '#ffe600' : '#ef4444'};
+                        font-size: 28px;
+                        font-weight: 800;
+                        letter-spacing: 0.1em;
+                        text-transform: uppercase;
+                        margin-top: 0;
+                    }
+                    p {
+                        color: #d1d5db;
+                        font-size: 16px;
+                        line-height: 1.6;
+                    }
+                    .btn {
+                        background: ${status === 'Confirmed' ? '#ffe600' : 'rgba(255,255,255,0.05)'};
+                        color: ${status === 'Confirmed' ? '#000000' : '#ffffff'};
+                        border: ${status === 'Confirmed' ? 'none' : '1px solid rgba(255,255,255,0.2)'};
+                        padding: 12px 30px;
+                        border-radius: 4px;
+                        font-weight: 800;
+                        font-size: 14px;
+                        letter-spacing: 0.05em;
+                        text-decoration: none;
+                        display: inline-block;
+                        margin-top: 25px;
+                        cursor: pointer;
+                        transition: transform 0.2s;
+                    }
+                    .btn:hover {
+                        transform: scale(1.05);
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <img src="https://strikz-esports.onrender.com/assets/logo.png" alt="Strikz Logo" style="width: 80px; height: 80px; margin-bottom: 20px;">
+                    <h1>${status === 'Confirmed' ? 'ATTENDANCE LOCKED' : 'REGISTRATION DECLINED'}</h1>
+                    <p>${responseMessage}</p>
+                    <a href="https://strikz-esports.onrender.com/#/" class="btn">RETURN TO MAIN TERMINAL</a>
+                </div>
+            </body>
+            </html>
+        `);
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     sendFriendRequest,
     getFriendRequests,
@@ -335,5 +470,6 @@ module.exports = {
     sendChatMessage,
     getChatMessageHistory,
     sendTeamMessage,
-    getTeamMessageHistory
+    getTeamMessageHistory,
+    confirmAttendance
 };

@@ -41,17 +41,16 @@
                     <form id="admin-login-form" onsubmit="return false;">
                         <div class="form-group">
                             <label for="admin-user">COMMAND USERNAME</label>
-                            <input type="text" id="admin-user" placeholder="E.g. admin" required autocomplete="off" style="color: #fff;">
+                            <input type="text" id="admin-user" placeholder="Enter Username..." required autocomplete="off" style="color: #fff;">
                         </div>
                         <div class="form-group">
                             <label for="admin-pass">ACCESS CRYPTOKEY (PASSWORD)</label>
-                            <input type="password" id="admin-pass" placeholder="E.g. admin" required style="color: #fff;">
+                            <input type="password" id="admin-pass" placeholder="Enter Password..." required style="color: #fff;">
                         </div>
                         <button type="submit" class="cta-button btn-neon-orange w-full" style="margin-top: 15px;">
                             <span class="btn-text">INITIALIZE SYSTEM SECURE</span>
                         </button>
                     </form>
-                    <p style="font-size: 11px; color: var(--text-dim); text-align: center; margin-top: 20px;">Use user: <strong>admin</strong> and pass: <strong>admin</strong> for demonstration login.</p>
                 </div>
             </section>
         `;
@@ -142,6 +141,7 @@
                         <button class="admin-tab-btn" data-tab="management"><i class="fa-solid fa-users-gear"></i> Management</button>
                         <button class="admin-tab-btn" data-tab="settings"><i class="fa-solid fa-gears"></i> Website Settings</button>
                         <button class="admin-tab-btn" data-tab="chatbot"><i class="fa-solid fa-comments"></i> Chatbot Inbox</button>
+                        <button class="admin-tab-btn" data-tab="email"><i class="fa-solid fa-envelope"></i> Email Center</button>
                     </aside>
 
                     <!-- Main Dynamic Panels -->
@@ -230,6 +230,10 @@
                     const tickets = await window.strikzDb.getTickets();
                     db = { ...db, chatbotTickets: tickets };
                     renderChatbotTab(panelContent, db);
+                }
+                else if (tab === 'email') {
+                    db = await window.strikzDb.fetchSnapshot();
+                    renderEmailTab(panelContent, db);
                 }
             } catch (err) {
                 console.error("Error loading admin tab " + tab + ":", err);
@@ -2387,6 +2391,665 @@
                 alert("Error updating settings: " + err.message);
             }
         };
+    }
+
+            try {
+                await window.strikzDb.updateSettings(updated);
+                alert("Global site settings updated successfully!");
+                
+                if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+            } catch (err) {
+                alert("Error updating settings: " + err.message);
+            }
+        };
+    }
+
+    // 13. EMAIL SYSTEM CONTROL CENTER Tab Panel
+    async function renderEmailTab(mount, db) {
+        const token = localStorage.getItem('strikz_jwt_token');
+        const adminFetch = async (url, options = {}) => {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                ...(options.headers || {})
+            };
+            const res = await fetch(url, { ...options, headers });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || 'Request failed');
+            }
+            return data;
+        };
+
+        mount.innerHTML = `
+            <div style="padding: 10px;">
+                <h3 class="font-orbitron" style="font-size: 18px; color: var(--neon-cyan); margin-bottom: 25px;">
+                    <i class="fa-solid fa-envelope"></i> EMAIL TRANSMISSION CONTROL CENTER
+                </h3>
+                
+                <!-- Tab sub-navigation -->
+                <div class="admin-table-controls" style="margin-bottom: 25px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px;">
+                    <button class="cta-button btn-neon-cyan active sub-tab-btn" data-subtab="smtp-config" style="padding: 8px 16px; font-size: 11px;">SMTP CONFIG & CONTROLS</button>
+                    <button class="cta-button btn-neon-yellow sub-tab-btn" data-subtab="templates-editor" style="padding: 8px 16px; font-size: 11px; margin-left: 10px;">TEMPLATES</button>
+                    <button class="cta-button btn-neon-orange sub-tab-btn" data-subtab="broadcasts" style="padding: 8px 16px; font-size: 11px; margin-left: 10px;">BROADCAST ENGINE</button>
+                    <button class="cta-button btn-neon-cyan sub-tab-btn" data-subtab="logs-queue" style="padding: 8px 16px; font-size: 11px; margin-left: 10px;">LOGS & QUEUE</button>
+                </div>
+
+                <!-- SUB TAB CONTENTS -->
+                <div id="email-subtab-container"></div>
+            </div>
+        `;
+
+        // Bind Sub-Tab navigation buttons
+        const subTabBtns = mount.querySelectorAll('.sub-tab-btn');
+        subTabBtns.forEach(btn => {
+            btn.onclick = function() {
+                subTabBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const subtab = this.dataset.subtab;
+                loadSubTab(subtab);
+            };
+        });
+
+        // Initialize first subtab
+        loadSubTab('smtp-config');
+
+        async function loadSubTab(subtab) {
+            const container = document.getElementById('email-subtab-container');
+            container.innerHTML = `<div style="text-align:center; padding:40px;"><div class="loader-spinner"></div><p style="margin-top:10px; color:var(--text-dim);">FETCHING EMAIL SECTOR FILES...</p></div>`;
+            
+            try {
+                if (subtab === 'smtp-config') {
+                    const settingsRes = await adminFetch('/api/v1/admin/email/settings');
+                    const analyticsRes = await adminFetch('/api/v1/admin/email/analytics');
+                    renderSmtpConfig(container, settingsRes.settings, analyticsRes.analytics);
+                } else if (subtab === 'templates-editor') {
+                    const templatesRes = await adminFetch('/api/v1/admin/email/templates');
+                    renderTemplatesEditor(container, templatesRes.templates);
+                } else if (subtab === 'broadcasts') {
+                    renderBroadcasts(container);
+                } else if (subtab === 'logs-queue') {
+                    const logsRes = await adminFetch('/api/v1/admin/email/history');
+                    const queueRes = await adminFetch('/api/v1/admin/email/queue');
+                    renderLogsQueue(container, logsRes.logs, queueRes.queue);
+                }
+            } catch (err) {
+                container.innerHTML = `
+                    <div class="glass-panel" style="padding: 30px; text-align: center; border-color: var(--neon-orange-border);">
+                        <i class="fa-solid fa-triangle-exclamation" style="font-size: 30px; color: var(--neon-orange); margin-bottom: 15px;"></i>
+                        <p style="color: #fff; font-weight: bold;">FAILED TO READ EMAIL SUBSYSTEM CONFIGS</p>
+                        <p style="font-size: 13px; color: var(--text-dim);">${err.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Subtab 1: SMTP Settings, Switches, Test Email & Analytics
+        function renderSmtpConfig(target, settings, analytics) {
+            target.innerHTML = `
+                <div class="grid-2" style="align-items: start; gap: 20px;">
+                    <!-- Left: SMTP Form & Switches -->
+                    <div>
+                        <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.03); margin-bottom: 20px;">
+                            <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-cyan); margin-bottom: 20px;">
+                                <i class="fa-solid fa-server"></i> SMTP HOST GATEWAY DETAILS
+                            </h4>
+                            <form id="smtp-settings-form" onsubmit="return false;">
+                                <div class="form-group">
+                                    <label>SMTP Relay Server Host</label>
+                                    <input type="text" id="smtp-host" value="${settings.smtpHost || ''}" placeholder="smtp.mailtrap.io" required style="color:#fff;">
+                                </div>
+                                <div class="form-group">
+                                    <label>SMTP Secure Port</label>
+                                    <input type="number" id="smtp-port" value="${settings.smtpPort || 2525}" placeholder="2525 or 587" required style="color:#fff;">
+                                </div>
+                                <div class="form-group">
+                                    <label>SMTP Credentials Username</label>
+                                    <input type="text" id="smtp-user" value="${settings.smtpUser || ''}" placeholder="SMTP Username..." style="color:#fff;">
+                                </div>
+                                <div class="form-group">
+                                    <label>SMTP Gateway Password</label>
+                                    <input type="password" id="smtp-pass" value="${settings.smtpPass || ''}" placeholder="SMTP Password..." style="color:#fff;">
+                                </div>
+                                
+                                <h4 class="font-orbitron" style="font-size: 12px; color: var(--neon-orange); margin-top: 30px; margin-bottom: 15px; border-top: 1px solid var(--glass-border); padding-top: 15px;">
+                                    <i class="fa-solid fa-sliders"></i> EMAIL AUTOMATION SWITCHES
+                                </h4>
+                                <p style="font-size: 11px; color: var(--text-dim); margin-bottom: 15px;">
+                                    Set each channel to <strong>Automatic</strong> to send emails immediately on actions (like team creation/tournament matches), or <strong>Manual</strong> to place them in the Queue for review.
+                                </p>
+                                
+                                <div style="display:flex; flex-direction:column; gap:12px;">
+                                    ${renderSwitchRow('Account Activation OTP', 'regConfirmation', settings.regConfirmation)}
+                                    ${renderSwitchRow('Registration Confirmation', 'invites', settings.invites)}
+                                    ${renderSwitchRow('Tournament Invitation alerts', 'reminders', settings.reminders)}
+                                    ${renderSwitchRow('Attendance Lock Confirmations', 'attendanceConfirm', settings.attendanceConfirm)}
+                                    ${renderSwitchRow('Tournament Live Rules & Notices', 'updates', settings.updates)}
+                                    ${renderSwitchRow('Bracket Results & Certificates', 'results', settings.results)}
+                                </div>
+
+                                <button type="submit" class="cta-button btn-neon-cyan w-full" style="margin-top: 25px; padding: 12px;">
+                                    <span class="btn-text">APPLY CONFIGURATION OVERRIDES</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Right: Analytics Monitor & Test Send -->
+                    <div>
+                        <!-- Analytics Overview -->
+                        <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.03); margin-bottom: 20px;">
+                            <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-cyan); margin-bottom: 20px;">
+                                <i class="fa-solid fa-chart-pie"></i> LIVE TRANSACTION MONITOR
+                            </h4>
+                            <div class="analytics-grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+                                <div class="analytics-card" style="padding: 10px;">
+                                    <span class="analytics-lbl" style="font-size:8px;">SENT SUCCESS</span>
+                                    <div class="analytics-val cyan" style="font-size:18px;">${analytics.totalSent}</div>
+                                </div>
+                                <div class="analytics-card" style="padding: 10px;">
+                                    <span class="analytics-lbl" style="font-size:8px;">FAILED TRANS</span>
+                                    <div class="analytics-val orange" style="font-size:18px;">${analytics.totalFailed}</div>
+                                </div>
+                                <div class="analytics-card" style="padding: 10px;">
+                                    <span class="analytics-lbl" style="font-size:8px;">ACTIVE QUEUED</span>
+                                    <div class="analytics-val yellow" style="font-size:18px;">${analytics.totalQueue}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Test Send Box -->
+                        <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.03);">
+                            <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 15px;">
+                                <i class="fa-solid fa-paper-plane"></i> SMTP INTEGRATION VERIFICATION
+                            </h4>
+                            <form id="smtp-test-form" onsubmit="return false;">
+                                <div class="form-group">
+                                    <label>Recipient verification email</label>
+                                    <input type="email" id="test-email-to" placeholder="E.g. gamer@gmail.com" required style="color:#fff;">
+                                </div>
+                                <button type="submit" class="cta-button btn-neon-orange w-full" style="margin-top: 15px; padding: 10px;">
+                                    <span class="btn-text">DISPATCH VERIFICATION EMAIL</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            function renderSwitchRow(label, key, val) {
+                const isAuto = val === 'automatic' || val === true;
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.02); padding-bottom:8px;">
+                        <span style="font-size:12px; color:#fff;">${label}</span>
+                        <select id="switch-${key}" style="background:#101015; color:#fff; border:1px solid var(--glass-border); padding:4px 8px; border-radius:4px; font-size:11px;">
+                            <option value="automatic" ${isAuto ? 'selected' : ''}>Automatic</option>
+                            <option value="manual" ${!isAuto ? 'selected' : ''}>Manual Queue</option>
+                        </select>
+                    </div>
+                `;
+            }
+
+            // Save Settings Submit Handler
+            const settingsForm = document.getElementById('smtp-settings-form');
+            settingsForm.onsubmit = async function(e) {
+                if (e) e.preventDefault();
+                const updated = {
+                    smtpHost: document.getElementById('smtp-host').value.trim(),
+                    smtpPort: parseInt(document.getElementById('smtp-port').value) || 2525,
+                    smtpUser: document.getElementById('smtp-user').value.trim(),
+                    smtpPass: document.getElementById('smtp-pass').value.trim(),
+                    regConfirmation: document.getElementById('switch-regConfirmation').value,
+                    invites: document.getElementById('switch-invites').value,
+                    reminders: document.getElementById('switch-reminders').value,
+                    attendanceConfirm: document.getElementById('switch-attendanceConfirm').value,
+                    updates: document.getElementById('switch-updates').value,
+                    results: document.getElementById('switch-results').value
+                };
+
+                try {
+                    const saveBtn = settingsForm.querySelector('button[type="submit"]');
+                    saveBtn.disabled = true;
+                    saveBtn.querySelector('.btn-text').textContent = 'APPLYING CONFIGS...';
+                    
+                    const res = await adminFetch('/api/v1/admin/email/settings', {
+                        method: 'PUT',
+                        body: JSON.stringify(updated)
+                    });
+
+                    alert("Email gateway and automation configurations updated successfully!");
+                    if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                    loadSubTab('smtp-config');
+                } catch (err) {
+                    alert("Gateway override failed: " + err.message);
+                }
+            };
+
+            // Test Email Submit Handler
+            const testForm = document.getElementById('smtp-test-form');
+            testForm.onsubmit = async function(e) {
+                if (e) e.preventDefault();
+                const toEmail = document.getElementById('test-email-to').value.trim();
+                try {
+                    const testBtn = testForm.querySelector('button[type="submit"]');
+                    testBtn.disabled = true;
+                    testBtn.querySelector('.btn-text').textContent = 'SENDING KEY...';
+                    
+                    await adminFetch('/api/v1/admin/email/test', {
+                        method: 'POST',
+                        body: JSON.stringify({ toEmail })
+                    });
+
+                    alert(`Test SMTP transmission successfully dispatched to: ${toEmail}!`);
+                    if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                    testForm.reset();
+                } catch (err) {
+                    alert("Verification dispatch failed: " + err.message);
+                } finally {
+                    const testBtn = testForm.querySelector('button[type="submit"]');
+                    testBtn.disabled = false;
+                    testBtn.querySelector('.btn-text').textContent = 'DISPATCH VERIFICATION EMAIL';
+                }
+            };
+        }
+
+        // Subtab 2: Templates Editor
+        function renderTemplatesEditor(target, templates) {
+            target.innerHTML = `
+                <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.03);">
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-cyan); margin-bottom: 20px;">
+                        <i class="fa-solid fa-rectangle-list"></i> TRANSMISSION FORMAT TEMPLATE LIBRARY
+                    </h4>
+                    
+                    <div style="display:grid; grid-template-columns: 250px 1fr; gap:25px;">
+                        <!-- Left Selector -->
+                        <div style="border-right: 1px solid var(--glass-border); padding-right:15px; display:flex; flex-direction:column; gap:8px;">
+                            ${templates.map((t, idx) => `
+                                <button class="cta-button w-full template-select-btn ${idx === 0 ? 'btn-neon-cyan active' : 'btn-neon-yellow'}" 
+                                        data-tempid="${t.id}" style="padding:10px 15px; font-size:11px; text-align:left;">
+                                    ${t.name}
+                                </button>
+                            `).join('')}
+                        </div>
+                        
+                        <!-- Right Edit Form -->
+                        <div id="template-editor-form-mount"></div>
+                    </div>
+                </div>
+            `;
+
+            // Bind Selector Clicks
+            const tempBtns = target.querySelectorAll('.template-select-btn');
+            tempBtns.forEach(btn => {
+                btn.onclick = function() {
+                    tempBtns.forEach(b => {
+                        b.classList.remove('btn-neon-cyan', 'active');
+                        b.classList.add('btn-neon-yellow');
+                    });
+                    this.classList.remove('btn-neon-yellow');
+                    this.classList.add('btn-neon-cyan', 'active');
+                    const temp = templates.find(t => t.id === this.dataset.tempid);
+                    renderEditForm(temp);
+                };
+            });
+
+            // Initialize first template form
+            if (templates.length > 0) {
+                renderEditForm(templates[0]);
+            }
+
+            function renderEditForm(t) {
+                const mount = document.getElementById('template-editor-form-mount');
+                mount.innerHTML = `
+                    <form id="template-edit-form" onsubmit="return false;">
+                        <h4 class="font-orbitron" style="font-size:14px; color:#fff; margin-bottom:15px; border-bottom:1px dashed var(--glass-border); padding-bottom:5px;">
+                            EDIT FORMAT: ${t.name}
+                        </h4>
+                        <div class="form-group">
+                            <label>Default Mail Subject</label>
+                            <input type="text" id="temp-subject" value="${t.subject || ''}" required style="color:#fff;">
+                        </div>
+                        <div class="form-group">
+                            <label>Template Purpose & Details</label>
+                            <textarea id="temp-desc" rows="4" style="width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; color: #fff; font-size: 13px;">${t.description || ''}</textarea>
+                        </div>
+                        <p style="font-size: 11px; color: var(--text-dim); margin-top: 10px; line-height:1.4;">
+                            * Templates use premium pre-styled responsive cyber containers. Placeholders are dynamically parsed by the gateway engine (e.g. <code>{{TOURNAMENT}}</code>, <code>{{TYPE}}</code>, <code>{{GUEST}}</code>).
+                        </p>
+                        <button type="submit" class="cta-button btn-neon-cyan w-full" style="margin-top: 20px; padding: 12px;">
+                            <span class="btn-text">SAVE TRANSMISSION FORMAT</span>
+                        </button>
+                    </form>
+                `;
+
+                const editForm = document.getElementById('template-edit-form');
+                editForm.onsubmit = async function(e) {
+                    if (e) e.preventDefault();
+                    const updated = {
+                        subject: document.getElementById('temp-subject').value.trim(),
+                        description: document.getElementById('temp-desc').value.trim()
+                    };
+
+                    try {
+                        const saveBtn = editForm.querySelector('button[type="submit"]');
+                        saveBtn.disabled = true;
+                        saveBtn.querySelector('.btn-text').textContent = 'SAVING FORMAT...';
+                        
+                        await adminFetch(`/api/v1/admin/email/templates/${t.id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify(updated)
+                        });
+
+                        alert("Template updated successfully!");
+                        if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                        
+                        // Update template local state
+                        t.subject = updated.subject;
+                        t.description = updated.description;
+                        renderEditForm(t);
+                    } catch (err) {
+                        alert("Template update failed: " + err.message);
+                    }
+                };
+            }
+        }
+
+        // Subtab 3: Broadcasts (Invites, Updates, Results)
+        function renderBroadcasts(target) {
+            const openTournaments = db.tournaments.filter(t => t.status === 'Open');
+
+            target.innerHTML = `
+                <div class="grid-2" style="align-items: start; gap: 20px;">
+                    <!-- Left: Invites & Updates -->
+                    <div>
+                        <!-- Bulk Invites -->
+                        <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.03); margin-bottom: 20px;">
+                            <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-cyan); margin-bottom: 15px;">
+                                <i class="fa-solid fa-bullhorn"></i> BULK TOURNAMENT INVITATION
+                            </h4>
+                            <p style="font-size:11px; color:var(--text-dim); margin-bottom:15px;">
+                                Dispatches invitation emails to all registered portal members.
+                            </p>
+                            <form id="invite-broadcast-form" onsubmit="return false;">
+                                <div class="form-group">
+                                    <label>Select Target Championship</label>
+                                    <select id="invite-tourney-id" style="background:#101015; color:#fff; border:1px solid var(--glass-border); padding:10px; width:100%; border-radius:4px;" required>
+                                        <option value="">-- Select Tournament --</option>
+                                        ${openTournaments.map(t => `<option value="${t.id}">${t.name} (${t.startDate})</option>`).join('')}
+                                    </select>
+                                </div>
+                                <button type="submit" class="cta-button btn-neon-cyan w-full" style="margin-top: 15px; padding: 10px;">
+                                    <span class="btn-text">BROADCAST BULK INVITES</span>
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Live Updates -->
+                        <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.03);">
+                            <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 15px;">
+                                <i class="fa-solid fa-triangle-exclamation"></i> GENERAL / SCHEDULE EMERGENCY BROADCAST
+                            </h4>
+                            <p style="font-size:11px; color:var(--text-dim); margin-bottom:15px;">
+                                Send warnings, rule updates, or match schedules to all team captain email contacts registered for a specific tournament.
+                            </p>
+                            <form id="update-broadcast-form" onsubmit="return false;">
+                                <div class="form-group">
+                                    <label>Select Target Championship</label>
+                                    <select id="update-tourney-id" style="background:#101015; color:#fff; border:1px solid var(--glass-border); padding:10px; width:100%; border-radius:4px;" required>
+                                        <option value="">-- Select Tournament --</option>
+                                        ${openTournaments.map(t => `<option value="${t.id}">${t.name} (${t.startDate})</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Broadcast Title / Header Type</label>
+                                    <input type="text" id="update-type" placeholder="E.g. Schedule Change, Emergency Rule, Server Delay" required style="color:#fff;">
+                                </div>
+                                <div class="form-group">
+                                    <label>Broadcast Message Body</label>
+                                    <textarea id="update-msg" rows="4" placeholder="Enter emergency details..." required style="width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; color: #fff; font-size: 13px;"></textarea>
+                                </div>
+                                <button type="submit" class="cta-button btn-neon-orange w-full" style="margin-top: 15px; padding: 10px;">
+                                    <span class="btn-text">DISPATCH BROADCAST MESSAGE</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Right: Results & Winner Certificates -->
+                    <div>
+                        <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.03);">
+                            <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-yellow); margin-bottom: 15px;">
+                                <i class="fa-solid fa-trophy"></i> BRACKET RESULTS & CERTIFICATES BROADCAST
+                            </h4>
+                            <p style="font-size:11px; color:var(--text-dim); margin-bottom:15px;">
+                                Dispatches Booyah standings emails, congratulations to winners, and attaches secure dynamic PDF participation certificates to all contenders.
+                            </p>
+                            <form id="results-broadcast-form" onsubmit="return false;">
+                                <div class="form-group">
+                                    <label>Select Concluded Championship</label>
+                                    <select id="results-tourney-id" style="background:#101015; color:#fff; border:1px solid var(--glass-border); padding:10px; width:100%; border-radius:4px;" required>
+                                        <option value="">-- Select Tournament --</option>
+                                        ${db.tournaments.map(t => `<option value="${t.id}">${t.name} (${t.status === 'Open' ? 'Active' : 'Completed'})</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Winner / Championship Squad Name</label>
+                                    <input type="text" id="results-winner" placeholder="E.g. VIPER ESPORTS" required style="color:#fff;">
+                                </div>
+                                <div class="form-group">
+                                    <label>Standings & Ranking Summary</label>
+                                    <textarea id="results-summary" rows="5" placeholder="1st Place: VIPER ESPORTS - 80 pts&#10;2nd Place: CLAW SQUAD - 65 pts&#10;3rd Place: TEAM STORM - 55 pts" required style="width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; color: #fff; font-size: 13px;"></textarea>
+                                </div>
+                                <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" id="results-certificate" checked style="width:16px; height:16px;">
+                                    <label for="results-certificate" style="margin-bottom:0; font-size:12px;">Attach secure PDF participation certificates</label>
+                                </div>
+                                <button type="submit" class="cta-button btn-neon-yellow w-full" style="margin-top: 20px; padding: 12px; color:#000 !important;">
+                                    <span class="btn-text">BROADCAST STANDINGS & CERTIFICATES</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Bulk Invite Submit
+            const inviteForm = document.getElementById('invite-broadcast-form');
+            inviteForm.onsubmit = async function(e) {
+                if (e) e.preventDefault();
+                const tournamentId = document.getElementById('invite-tourney-id').value;
+                if (!tournamentId) {
+                    alert("Please select a target tournament");
+                    return;
+                }
+
+                try {
+                    const btn = inviteForm.querySelector('button[type="submit"]');
+                    btn.disabled = true;
+                    btn.querySelector('.btn-text').textContent = 'BROADCASTING INVITES...';
+
+                    const res = await adminFetch('/api/v1/admin/email/broadcast-invite', {
+                        method: 'POST',
+                        body: JSON.stringify({ tournamentId })
+                    });
+
+                    alert(res.message || "Invitation broadcasts queued successfully!");
+                    if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                    inviteForm.reset();
+                } catch (err) {
+                    alert("Broadcast failed: " + err.message);
+                } finally {
+                    const btn = inviteForm.querySelector('button[type="submit"]');
+                    btn.disabled = false;
+                    btn.querySelector('.btn-text').textContent = 'BROADCAST BULK INVITES';
+                }
+            };
+
+            // Emergency Update Submit
+            const updateForm = document.getElementById('update-broadcast-form');
+            updateForm.onsubmit = async function(e) {
+                if (e) e.preventDefault();
+                const tournamentId = document.getElementById('update-tourney-id').value;
+                const updateType = document.getElementById('update-type').value.trim();
+                const updateMessage = document.getElementById('update-msg').value.trim();
+
+                try {
+                    const btn = updateForm.querySelector('button[type="submit"]');
+                    btn.disabled = true;
+                    btn.querySelector('.btn-text').textContent = 'BROADCASTING UPDATE...';
+
+                    const res = await adminFetch('/api/v1/admin/email/broadcast-update', {
+                        method: 'POST',
+                        body: JSON.stringify({ tournamentId, updateType, updateMessage })
+                    });
+
+                    alert(res.message || "Emergency updates broadcast successfully!");
+                    if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                    updateForm.reset();
+                } catch (err) {
+                    alert("Broadcast failed: " + err.message);
+                } finally {
+                    const btn = updateForm.querySelector('button[type="submit"]');
+                    btn.disabled = false;
+                    btn.querySelector('.btn-text').textContent = 'DISPATCH BROADCAST MESSAGE';
+                }
+            };
+
+            // Results Submit
+            const resultsForm = document.getElementById('results-broadcast-form');
+            resultsForm.onsubmit = async function(e) {
+                if (e) e.preventDefault();
+                const tournamentId = document.getElementById('results-tourney-id').value;
+                const winnerName = document.getElementById('results-winner').value.trim();
+                const resultsSummary = document.getElementById('results-summary').value.trim();
+                const generateCertificate = document.getElementById('results-certificate').checked;
+
+                try {
+                    const btn = resultsForm.querySelector('button[type="submit"]');
+                    btn.disabled = true;
+                    btn.querySelector('.btn-text').textContent = 'BROADCASTING RESULTS...';
+
+                    const res = await adminFetch('/api/v1/admin/email/broadcast-results', {
+                        method: 'POST',
+                        body: JSON.stringify({ tournamentId, winnerName, resultsSummary, generateCertificate })
+                    });
+
+                    alert(res.message || "Championship results and certificates sent successfully!");
+                    if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                    resultsForm.reset();
+                } catch (err) {
+                    alert("Broadcast failed: " + err.message);
+                } finally {
+                    const btn = resultsForm.querySelector('button[type="submit"]');
+                    btn.disabled = false;
+                    btn.querySelector('.btn-text').textContent = 'BROADCAST STANDINGS & CERTIFICATES';
+                }
+            };
+        }
+
+        // Subtab 4: Logs & Queue
+        function renderLogsQueue(target, logs, queue) {
+            target.innerHTML = `
+                <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.03); margin-bottom: 25px;">
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-yellow); margin-bottom: 15px;">
+                        <i class="fa-solid fa-hourglass-half"></i> PENDING & FAILED EMAIL QUEUE (${queue.length})
+                    </h4>
+                    <div style="max-height: 250px; overflow-y: auto; border:1px solid var(--glass-border); border-radius:4px;">
+                        <table class="admin-table" style="margin:0;">
+                            <thead>
+                                <tr>
+                                    <th>Recipient</th>
+                                    <th>Subject</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Scheduled Time</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${queue.length === 0 ? '<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">No pending or failed transmissions in queue.</td></tr>' : 
+                                  queue.map(item => `
+                                    <tr>
+                                        <td>${item.to}</td>
+                                        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.subject}</td>
+                                        <td><span class="badge-role client" style="font-size:9px;">${item.type}</span></td>
+                                        <td><span class="badge-status ${item.status === 'Failed' ? 'rejected' : 'pending'}">${item.status}</span></td>
+                                        <td style="font-size:11px;">${new Date(item.scheduled_at).toLocaleString()}</td>
+                                        <td>
+                                            <button class="cta-button btn-neon-orange resend-queue-btn" data-qid="${item.id}" style="padding:4px 8px; font-size:9px;">
+                                                <i class="fa-solid fa-arrow-rotate-right"></i> Send Now
+                                            </button>
+                                        </td>
+                                    </tr>
+                                  `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.03);">
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-cyan); margin-bottom: 15px;">
+                        <i class="fa-solid fa-clock-rotate-left"></i> TRANSMISSION LOG HISTORY (Last 100 Logs)
+                    </h4>
+                    <div style="max-height: 350px; overflow-y: auto; border:1px solid var(--glass-border); border-radius:4px;">
+                        <table class="admin-table" style="margin:0;">
+                            <thead>
+                                <tr>
+                                    <th>Recipient</th>
+                                    <th>Subject</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Date Transmitted</th>
+                                    <th>Diagnostic Code</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${logs.length === 0 ? '<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">No gateway transaction logs recorded.</td></tr>' : 
+                                  logs.map(log => `
+                                    <tr>
+                                        <td>${log.recipient}</td>
+                                        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${log.subject}</td>
+                                        <td><span class="badge-role admin" style="font-size:9px; background:rgba(0,240,255,0.1); border-color:rgba(0,240,255,0.2); color:var(--neon-cyan);">${log.type}</span></td>
+                                        <td><span class="badge-status ${log.status === 'Success' ? 'approved' : 'rejected'}">${log.status}</span></td>
+                                        <td style="font-size:11px;">${new Date(log.sent_at).toLocaleString()}</td>
+                                        <td style="font-size:10px; color:${log.status === 'Success' ? '#10b981' : '#f43f5e'};">
+                                            ${log.status === 'Success' ? `OK [ID: ${log.messageId || 'N/A'}]` : `ERR: ${log.error_message || 'Relay Error'}`}
+                                        </td>
+                                    </tr>
+                                  `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            // Bind Resend Queue Clicks
+            const resendBtns = target.querySelectorAll('.resend-queue-btn');
+            resendBtns.forEach(btn => {
+                btn.onclick = async function() {
+                    const queueId = this.dataset.qid;
+                    try {
+                        this.disabled = true;
+                        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+                        
+                        await adminFetch('/api/v1/admin/email/queue/resend', {
+                            method: 'POST',
+                            body: JSON.stringify({ queueId })
+                        });
+
+                        alert("Email dispatched immediately and removed from queue!");
+                        if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                        
+                        // Reload Subtab
+                        loadSubTab('logs-queue');
+                    } catch (err) {
+                        alert("Dispatch failed: " + err.message);
+                        this.disabled = false;
+                        this.innerHTML = '<i class="fa-solid fa-arrow-rotate-right"></i> Send Now';
+                    }
+                };
+            });
+        }
     }
 
     // Attach to global window

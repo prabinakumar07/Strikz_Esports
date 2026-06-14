@@ -9,7 +9,9 @@ const {
     resetPassword,
     getProfile,
     updateProfile,
-    searchUsers
+    searchUsers,
+    verifyOtp,
+    resendOtp
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -20,6 +22,8 @@ router.post('/login', login);
 router.post('/google', googleLogin);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.post('/verify-otp', verifyOtp);
+router.post('/resend-otp', resendOtp);
 
 // Private User Profile Endpoints
 router.get('/profile', protect, getProfile);

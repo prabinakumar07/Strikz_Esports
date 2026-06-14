@@ -10,8 +10,12 @@ const {
     sendChatMessage,
     getChatMessageHistory,
     sendTeamMessage,
-    getTeamMessageHistory
+    getTeamMessageHistory,
+    confirmAttendance
 } = require('../controllers/socialController');
+
+// Public attendance confirmation endpoint clicked from email
+router.get('/my-team/confirm-attendance', confirmAttendance);
 
 // All social/chat routes require authentication
 router.use(protect);

@@ -1,8 +1,34 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const https = require('https');
 const { models, nextNumberId } = require('../config/db');
 const { sendEmail } = require('../utils/email');
+
+// Zero-dependency HTTPS JSON request helper for compatibility across Node runtimes
+const fetchJson = (url) => {
+    return new Promise((resolve, reject) => {
+        https.get(url, (res) => {
+            let data = '';
+            res.on('data', (chunk) => {
+                data += chunk;
+            });
+            res.on('end', () => {
+                try {
+                    resolve({
+                        ok: res.statusCode >= 200 && res.statusCode < 300,
+                        statusCode: res.statusCode,
+                        json: () => Promise.resolve(JSON.parse(data))
+                    });
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }).on('error', (err) => {
+            reject(err);
+        });
+    });
+};
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET || 'supersecretcyberpunkgamershieldkey2026', {
@@ -55,6 +81,7 @@ const register = async (req, res, next) => {
             exists = await models.User.exists({ uid });
         }
 
+        // Create user with isVerified: false initially
         const user = await models.User.create({
             id: await nextNumberId(models.User),
             uid,
@@ -62,13 +89,31 @@ const register = async (req, res, next) => {
             email,
             password_hash: passwordHash,
             role: 'user',
-            avatar
+            avatar,
+            isVerified: false
         });
+
+        // 1. Email Verification & OTP: Generate 6-digit OTP code
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes expiry
+
+        // Store OTP securely (remove old OTPs first)
+        await models.OtpCode.deleteMany({ email });
+        await models.OtpCode.create({
+            email,
+            code: otpCode,
+            expires_at: expiry
+        });
+
+        // Send OTP email
+        const emailService = require('../utils/emailService');
+        await emailService.sendOtpEmail(email, username, otpCode);
 
         res.status(201).json({
             success: true,
-            token: generateToken(user.id),
-            user: userPayload(user)
+            requiresVerification: true,
+            email,
+            message: 'Registration successful! A 6-digit verification code has been dispatched to your email.'
         });
     } catch (err) {
         next(err);
@@ -104,6 +149,25 @@ const login = async (req, res, next) => {
             return next(new Error('Access Denied: Invalid credentials'));
         }
 
+        // Verify account activation status (skip if not set/undefined for older seeded accounts, but catch false)
+        if (user.isVerified === false) {
+            // Re-send OTP if they attempt to log in but aren't verified yet
+            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+            await models.OtpCode.deleteMany({ email: user.email });
+            await models.OtpCode.create({ email: user.email, code: otpCode, expires_at: expiry });
+            
+            const emailService = require('../utils/emailService');
+            await emailService.sendOtpEmail(user.email, user.username, otpCode);
+
+            return res.status(200).json({
+                success: false,
+                requiresVerification: true,
+                email: user.email,
+                message: 'Your account is not verified yet. A new verification OTP code has been dispatched to your email.'
+            });
+        }
+
         res.json({ success: true, token: generateToken(user.id), user: userPayload(user) });
     } catch (err) {
         next(err);
@@ -120,7 +184,7 @@ const googleLogin = async (req, res, next) => {
         }
 
         const tokeninfoUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`;
-        const verifyRes = await fetch(tokeninfoUrl);
+        const verifyRes = await fetchJson(tokeninfoUrl);
         if (!verifyRes.ok) {
             res.status(400);
             return next(new Error('Authentication failed: Invalid Google token'));
@@ -135,7 +199,7 @@ const googleLogin = async (req, res, next) => {
         }
 
         const client_id = process.env.GOOGLE_CLIENT_ID;
-        if (client_id && payload.aud !== client_id) {
+        if (client_id && client_id !== 'your-google-client-id-here' && payload.aud !== client_id) {
             res.status(400);
             return next(new Error('Google ID token audience mismatch'));
         }
@@ -146,9 +210,15 @@ const googleLogin = async (req, res, next) => {
 
         let isNew = false;
         if (user) {
+            let updatedFields = {};
             if (!user.google_id) {
-                user.google_id = sub;
-                await user.save();
+                updatedFields.google_id = sub;
+            }
+            if (user.isVerified !== true) {
+                updatedFields.isVerified = true;
+            }
+            if (Object.keys(updatedFields).length > 0) {
+                await models.User.updateOne({ id: user.id }, { $set: updatedFields });
             }
         } else {
             isNew = true;
@@ -181,7 +251,8 @@ const googleLogin = async (req, res, next) => {
                 email,
                 role: 'user',
                 avatar: picture || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(uniqueUsername)}&backgroundColor=0a0a0f`,
-                google_id: sub
+                google_id: sub,
+                isVerified: true
             });
         }
 
@@ -351,6 +422,107 @@ const searchUsers = async (req, res, next) => {
     }
 };
 
+const verifyOtp = async (req, res, next) => {
+    try {
+        const { email, code } = req.body;
+        if (!email || !code) {
+            res.status(400);
+            return next(new Error('Please provide email and OTP code'));
+        }
+
+        const otpRecord = await models.OtpCode.findOne({ email, code }).lean();
+        if (!otpRecord) {
+            res.status(400);
+            return next(new Error('Invalid OTP code'));
+        }
+
+        const now = new Date();
+        const expiry = new Date(otpRecord.expires_at);
+        if (now > expiry) {
+            res.status(400);
+            return next(new Error('OTP has expired. Please request a new one.'));
+        }
+
+        // Activate the user account
+        const user = await models.User.findOneAndUpdate(
+            { email },
+            { $set: { isVerified: true } },
+            { new: true }
+        );
+
+        if (!user) {
+            res.status(404);
+            return next(new Error('User not found'));
+        }
+
+        // Clean up OTP codes
+        await models.OtpCode.deleteMany({ email });
+
+        // Return token and logged in user
+        res.json({
+            success: true,
+            token: generateToken(user.id),
+            user: userPayload(user),
+            message: 'Account verified successfully!'
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const resendOtp = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            res.status(400);
+            return next(new Error('Please provide your email address'));
+        }
+
+        const user = await models.User.findOne({ email }).lean();
+        if (!user) {
+            res.status(404);
+            return next(new Error('User not registered'));
+        }
+
+        if (user.isVerified) {
+            res.status(400);
+            return next(new Error('Account is already verified'));
+        }
+
+        // Rate limit OTP resend: check if last OTP was sent less than 1 minute ago
+        const lastOtp = await models.OtpCode.findOne({ email }).sort({ created_at: -1 }).lean();
+        if (lastOtp) {
+            const timeSinceLast = Date.now() - new Date(lastOtp.created_at).getTime();
+            if (timeSinceLast < 60 * 1000) {
+                res.status(429);
+                return next(new Error('Please wait 60 seconds before requesting a new OTP.'));
+            }
+        }
+
+        // Generate and save new OTP
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+        await models.OtpCode.deleteMany({ email });
+        await models.OtpCode.create({
+            email,
+            code: otpCode,
+            expires_at: expiry
+        });
+
+        // Dispatch new OTP email
+        const emailService = require('../utils/emailService');
+        await emailService.sendOtpEmail(email, user.username, otpCode);
+
+        res.json({
+            success: true,
+            message: 'Verification OTP has been resent to your email.'
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     register,
     login,
@@ -360,5 +532,7 @@ module.exports = {
     resetPassword,
     getProfile,
     updateProfile,
-    searchUsers
+    searchUsers,
+    verifyOtp,
+    resendOtp
 };

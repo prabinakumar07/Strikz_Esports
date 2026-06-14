@@ -34,6 +34,21 @@ const {
     resolveTicket
 } = require('../controllers/adminController');
 
+const {
+    getEmailSettings,
+    updateEmailSettings,
+    getEmailTemplates,
+    updateEmailTemplate,
+    getEmailHistory,
+    getEmailQueue,
+    resendQueueEmail,
+    getEmailAnalytics,
+    sendTestEmail,
+    sendBulkInvite,
+    broadcastTournamentUpdate,
+    broadcastResultsAndWinners
+} = require('../controllers/emailAdminController');
+
 // Secure all routes in this router with JWT auth & Admin role verification
 router.use(protect);
 router.use(admin);
@@ -91,5 +106,19 @@ router.put('/settings', updateSettings);
 // Chatbot ticket inbox
 router.get('/tickets', getTickets);
 router.put('/tickets/:id/resolve', resolveTicket);
+
+// Email System Admin routes
+router.get('/email/settings', getEmailSettings);
+router.put('/email/settings', updateEmailSettings);
+router.get('/email/templates', getEmailTemplates);
+router.put('/email/templates/:id', updateEmailTemplate);
+router.get('/email/history', getEmailHistory);
+router.get('/email/queue', getEmailQueue);
+router.post('/email/queue/resend', resendQueueEmail);
+router.get('/email/analytics', getEmailAnalytics);
+router.post('/email/test', sendTestEmail);
+router.post('/email/broadcast-invite', sendBulkInvite);
+router.post('/email/broadcast-update', broadcastTournamentUpdate);
+router.post('/email/broadcast-results', broadcastResultsAndWinners);
 
 module.exports = router;

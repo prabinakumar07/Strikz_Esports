@@ -167,6 +167,33 @@ const createRegistration = async (req, res, next) => {
             }));
         }
 
+        // Dispatch Registration and Attendance Confirmation Emails
+        const email = baseRegistration.captain_email || baseRegistration.player_email;
+        const name = baseRegistration.captain_name || baseRegistration.player_name;
+        if (email) {
+            const emailService = require('../utils/emailService');
+            try {
+                // Send Registration confirmation email
+                await emailService.sendRegistrationConfirmation(
+                    email, 
+                    name, 
+                    regId, 
+                    tourney.name, 
+                    tourney.startDate, 
+                    tourney.rules ? 'Server Lobby' : 'Bermuda Arena Office'
+                );
+                // Also send attendance confirmation email
+                await emailService.sendAttendanceConfirmation(
+                    email, 
+                    name, 
+                    regId, 
+                    tourney.name
+                );
+            } catch (emailErr) {
+                console.error('Failed to send registration/attendance emails:', emailErr);
+            }
+        }
+
         res.status(201).json({
             success: true,
             registration: {

@@ -40,7 +40,8 @@ app.use(helmet({
             frameSrc: ["'self'", "https://accounts.google.com", "https://*.google.com"]
         }
     },
-    crossOriginEmbedderPolicy: false
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }
 }));
 
 // 2. CORS configuration
@@ -142,6 +143,8 @@ app.use(errorHandler);
 
 connectDB()
     .then(() => {
+        const { startEmailScheduler } = require('./utils/scheduler');
+        startEmailScheduler();
         app.listen(PORT, () => {
             console.log(`STRIKZ ESPORTS ARENA SERVER ONLINE: RUNNING ON PORT ${PORT} [Mode: ${process.env.NODE_ENV || 'development'}]`);
         });
