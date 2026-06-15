@@ -82,6 +82,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
     : [
         'http://localhost:5000',
         'http://localhost:3000',
+        'https://strikz-esports.onrender.com',
         'https://strikzesports.onrender.com',
         'https://www.strikzesports.in',
         'https://strikzesports.in'
