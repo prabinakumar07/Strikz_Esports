@@ -26,7 +26,34 @@ const getPublicSnapshot = async (req, res, next) => {
                 sponsors: sponsors.map(publicDoc),
                 gallery: gallery.map(publicDoc),
                 news: news.map(publicDoc),
-                roster: roster.map(publicDoc),
+                roster: roster.map(r => {
+                    const doc = publicDoc(r);
+                    if (!doc.stats) {
+                        doc.stats = {
+                            kd: doc.kd || 'N/A',
+                            hs: doc.hs || 'N/A',
+                            matches: doc.matches || 'N/A',
+                            winRate: doc.winRate || 'N/A'
+                        };
+                    }
+                    if (!doc.socials) {
+                        doc.socials = {
+                            twitter: doc.twitter || '#',
+                            youtube: doc.youtube || '#',
+                            instagram: doc.instagram || '#'
+                        };
+                    }
+                    if (!doc.avatar && doc.image) doc.avatar = doc.image;
+                    if (!doc.image && doc.avatar) doc.image = doc.avatar;
+                    if (!doc.kd && doc.stats) doc.kd = doc.stats.kd || 'N/A';
+                    if (!doc.hs && doc.stats) doc.hs = doc.stats.hs || 'N/A';
+                    if (!doc.matches && doc.stats) doc.matches = doc.stats.matches || 'N/A';
+                    if (!doc.winRate && doc.stats) doc.winRate = doc.stats.winRate || 'N/A';
+                    if (!doc.twitter && doc.socials) doc.twitter = doc.socials.twitter || '#';
+                    if (!doc.youtube && doc.socials) doc.youtube = doc.socials.youtube || '#';
+                    if (!doc.instagram && doc.socials) doc.instagram = doc.socials.instagram || '#';
+                    return doc;
+                }),
                 achievements: achievements.map(publicDoc),
                 management: management.map(publicDoc),
                 socialFeed: socialFeed.map(publicDoc),

@@ -41,10 +41,9 @@
 
             rosterGrid.innerHTML = list.map(player => `
                 <div class="player-card">
-                    <div class="player-img-box">
-                        <img src="${player.avatar}" alt="${player.tag}" class="player-avatar">
-                        <span class="player-role-badge">${player.role}</span>
-                    </div>
+                    <div class="player-card-overlay"></div>
+                    <img src="${player.avatar}" alt="${player.tag}" class="player-avatar">
+                    <span class="player-role-badge">${player.role}</span>
                     <div class="player-details">
                         <h3 class="player-tag">STRIKZ.${player.tag}</h3>
                         <p class="player-real-name">${player.fullName}</p>
@@ -65,9 +64,9 @@
                         </div>
 
                         <div class="player-socials">
-                            <a href="${player.twitter}" class="player-social-icon" title="Twitter"><i class="fa-brands fa-x-twitter"></i></a>
-                            <a href="${player.youtube}" class="player-social-icon" title="YouTube"><i class="fa-brands fa-youtube"></i></a>
-                            <a href="${player.instagram}" class="player-social-icon" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                            <a href="${player.twitter}" class="player-social-icon" title="Twitter" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-x-twitter"></i></a>
+                            <a href="${player.youtube}" class="player-social-icon" title="YouTube" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-youtube"></i></a>
+                            <a href="${player.instagram}" class="player-social-icon" title="Instagram" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-instagram"></i></a>
                         </div>
                     </div>
                 </div>

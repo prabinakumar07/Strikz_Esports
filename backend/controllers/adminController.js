@@ -18,7 +18,7 @@ const pick = (obj, allowedFields) => {
 const TOURNAMENT_FIELDS = ['name', 'game', 'mode', 'category', 'prizePool', 'startDate', 'regCloseDate', 'status', 'rules', 'ruleBook', 'soloRegistrationEnabled', 'description', 'image', 'featured'];
 const NEWS_FIELDS = ['title', 'tag', 'summary', 'content', 'image', 'contentType', 'redirectLink'];
 const GALLERY_FIELDS = ['title', 'url', 'type'];
-const ROSTER_FIELDS = ['tag', 'fullName', 'role', 'team', 'image', 'bio', 'twitter', 'youtube', 'instagram'];
+const ROSTER_FIELDS = ['tag', 'fullName', 'role', 'team', 'avatar', 'image', 'bio', 'stats', 'socials', 'kd', 'hs', 'matches', 'winRate', 'twitter', 'youtube', 'instagram'];
 const SPONSOR_FIELDS = ['name', 'logo', 'tier', 'website', 'description'];
 const WINNER_FIELDS = ['teamName', 'event', 'date', 'prize', 'tier', 'image', 'placement'];
 const SOCIAL_FIELDS = ['platform', 'author', 'authorAvatar', 'content', 'date', 'link', 'mediaUrl'];
@@ -322,7 +322,34 @@ const deleteGallery = async (req, res, next) => {
 const createRoster = async (req, res, next) => {
     try {
         const data = pick(req.body, ROSTER_FIELDS);
-        await models.Roster.create({ ...data, id: data.tag, twitter: data.twitter || '#', youtube: data.youtube || '#', instagram: data.instagram || '#' });
+        const flatStats = data.stats || {};
+        const flatSocials = data.socials || {};
+
+        const mergedData = {
+            ...data,
+            avatar: data.avatar || data.image,
+            image: data.image || data.avatar,
+            kd: data.kd || flatStats.kd || 'N/A',
+            hs: data.hs || flatStats.hs || 'N/A',
+            matches: data.matches || flatStats.matches || 'N/A',
+            winRate: data.winRate || flatStats.winRate || 'N/A',
+            twitter: data.twitter || flatSocials.twitter || '#',
+            youtube: data.youtube || flatSocials.youtube || '#',
+            instagram: data.instagram || flatSocials.instagram || '#',
+            stats: {
+                kd: flatStats.kd || data.kd || 'N/A',
+                hs: flatStats.hs || data.hs || 'N/A',
+                matches: flatStats.matches || data.matches || 'N/A',
+                winRate: flatStats.winRate || data.winRate || 'N/A'
+            },
+            socials: {
+                twitter: flatSocials.twitter || data.twitter || '#',
+                youtube: flatSocials.youtube || data.youtube || '#',
+                instagram: flatSocials.instagram || data.instagram || '#'
+            }
+        };
+
+        await models.Roster.create({ ...mergedData, id: data.tag });
         await logAdminAction(req, 'CREATE_ROSTER', { tag: data.tag, fullName: data.fullName });
         res.status(201).json({ success: true, message: 'Official roster player registered' });
     } catch (err) { next(err); }
@@ -331,15 +358,55 @@ const createRoster = async (req, res, next) => {
 const updateRoster = async (req, res, next) => {
     try {
         const data = pick(req.body, ROSTER_FIELDS);
+        const oldTag = req.params.tag;
+        const newTag = data.tag || oldTag;
+
+        if (newTag !== oldTag) {
+            const duplicate = await models.Roster.exists({ tag: newTag });
+            if (duplicate) {
+                res.status(400);
+                return next(new Error('A player with this new Gamer Tag already exists'));
+            }
+        }
+
+        const flatStats = data.stats || {};
+        const flatSocials = data.socials || {};
+
+        const mergedData = {
+            ...data,
+            id: newTag,
+            tag: newTag,
+            avatar: data.avatar || data.image,
+            image: data.image || data.avatar,
+            kd: data.kd || flatStats.kd || 'N/A',
+            hs: data.hs || flatStats.hs || 'N/A',
+            matches: data.matches || flatStats.matches || 'N/A',
+            winRate: data.winRate || flatStats.winRate || 'N/A',
+            twitter: data.twitter || flatSocials.twitter || '#',
+            youtube: data.youtube || flatSocials.youtube || '#',
+            instagram: data.instagram || flatSocials.instagram || '#',
+            stats: {
+                kd: flatStats.kd || data.kd || 'N/A',
+                hs: flatStats.hs || data.hs || 'N/A',
+                matches: flatStats.matches || data.matches || 'N/A',
+                winRate: flatStats.winRate || data.winRate || 'N/A'
+            },
+            socials: {
+                twitter: flatSocials.twitter || data.twitter || '#',
+                youtube: flatSocials.youtube || data.youtube || '#',
+                instagram: flatSocials.instagram || data.instagram || '#'
+            }
+        };
+
         const result = await models.Roster.updateOne(
-            { tag: req.params.tag },
-            { $set: { ...data, twitter: data.twitter || '#', youtube: data.youtube || '#', instagram: data.instagram || '#' } }
+            { tag: oldTag },
+            { $set: mergedData }
         );
         if (result.matchedCount === 0) {
             res.status(404);
             return next(new Error('Roster player tag not found'));
         }
-        await logAdminAction(req, 'UPDATE_ROSTER', { tag: req.params.tag, fullName: data.fullName });
+        await logAdminAction(req, 'UPDATE_ROSTER', { tag: oldTag, newTag, fullName: data.fullName });
         res.json({ success: true, message: 'Roster player details updated' });
     } catch (err) { next(err); }
 };
@@ -620,6 +687,130 @@ const deleteUser = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+// ==========================================
+// DATABASE EXPLORER
+// ==========================================
+
+const getCollections = async (req, res, next) => {
+    try {
+        const collections = Object.keys(models);
+        const counts = {};
+        for (const col of collections) {
+            counts[col] = await models[col].countDocuments();
+        }
+        res.json({ success: true, collections, counts });
+    } catch (err) { next(err); }
+};
+
+const getCollectionDocs = async (req, res, next) => {
+    try {
+        const { name } = req.params;
+        const Model = models[name];
+        if (!Model) {
+            res.status(404);
+            return next(new Error('Collection model not found'));
+        }
+
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+        const skip = (page - 1) * limit;
+
+        const projection = name === 'UploadedFile' ? { data: 0 } : {};
+
+        const total = await Model.countDocuments();
+        const docs = await Model.find({}, projection).skip(skip).limit(limit).lean();
+
+        res.json({
+            success: true,
+            total,
+            page,
+            pages: Math.ceil(total / limit),
+            docs
+        });
+    } catch (err) { next(err); }
+};
+
+const updateCollectionDoc = async (req, res, next) => {
+    try {
+        const { name, id } = req.params;
+        const Model = models[name];
+        if (!Model) {
+            res.status(404);
+            return next(new Error('Collection model not found'));
+        }
+
+        let query = { id };
+        if (id.match(/^[0-9a-fA-F]{24}$/) && !Model.schema.paths.id) {
+            query = { _id: id };
+        } else {
+            const idType = Model.schema.paths.id ? Model.schema.paths.id.instance : null;
+            if (idType === 'Number') {
+                query = { id: Number(id) };
+            }
+        }
+
+        const updateData = { ...req.body };
+        delete updateData._id;
+        delete updateData.__v;
+        delete updateData.id;
+
+        const result = await Model.updateOne(query, { $set: updateData });
+        if (result.matchedCount === 0) {
+            if (id.match(/^[0-9a-fA-F]{24}$/)) {
+                const altResult = await Model.updateOne({ _id: id }, { $set: updateData });
+                if (altResult.matchedCount === 0) {
+                    res.status(404);
+                    return next(new Error('Document not found'));
+                }
+            } else {
+                res.status(404);
+                return next(new Error('Document not found'));
+            }
+        }
+
+        await logAdminAction(req, 'DB_EXPLORER_UPDATE', { collection: name, docId: id });
+        res.json({ success: true, message: 'Document updated successfully' });
+    } catch (err) { next(err); }
+};
+
+const deleteCollectionDoc = async (req, res, next) => {
+    try {
+        const { name, id } = req.params;
+        const Model = models[name];
+        if (!Model) {
+            res.status(404);
+            return next(new Error('Collection model not found'));
+        }
+
+        let query = { id };
+        if (id.match(/^[0-9a-fA-F]{24}$/) && !Model.schema.paths.id) {
+            query = { _id: id };
+        } else {
+            const idType = Model.schema.paths.id ? Model.schema.paths.id.instance : null;
+            if (idType === 'Number') {
+                query = { id: Number(id) };
+            }
+        }
+
+        let result = await Model.deleteOne(query);
+        if (result.deletedCount === 0) {
+            if (id.match(/^[0-9a-fA-F]{24}$/)) {
+                result = await Model.deleteOne({ _id: id });
+                if (result.deletedCount === 0) {
+                    res.status(404);
+                    return next(new Error('Document not found'));
+                }
+            } else {
+                res.status(404);
+                return next(new Error('Document not found'));
+            }
+        }
+
+        await logAdminAction(req, 'DB_EXPLORER_DELETE', { collection: name, docId: id });
+        res.json({ success: true, message: 'Document deleted successfully' });
+    } catch (err) { next(err); }
+};
+
 module.exports = {
     getStats,
     getRegistrations,
@@ -654,5 +845,9 @@ module.exports = {
     getAllUsers,
     verifyUser,
     suspendUser,
-    deleteUser
+    deleteUser,
+    getCollections,
+    getCollectionDocs,
+    updateCollectionDoc,
+    deleteCollectionDoc
 };

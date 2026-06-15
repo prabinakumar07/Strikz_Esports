@@ -125,10 +125,26 @@ const models = {
         role: { type: String },
         team: { type: String },
         image: { type: String },
+        avatar: { type: String },
         bio: { type: String },
+        kd: { type: String },
+        hs: { type: String },
+        matches: { type: String },
+        winRate: { type: String },
         twitter: { type: String },
         youtube: { type: String },
-        instagram: { type: String }
+        instagram: { type: String },
+        stats: {
+            kd: { type: String },
+            hs: { type: String },
+            matches: { type: String },
+            winRate: { type: String }
+        },
+        socials: {
+            twitter: { type: String },
+            youtube: { type: String },
+            instagram: { type: String }
+        }
     }),
     Sponsor: createModel('Sponsor', 'sponsors', Number, {
         name: { type: String },

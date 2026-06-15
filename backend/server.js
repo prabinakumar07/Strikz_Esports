@@ -103,8 +103,8 @@ app.use(cors({
 }));
 
 // 3. Body parsers (JSON & urlencoded) with size constraints
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 // 4. Rate Limiting
 const generalLimiter = rateLimit({

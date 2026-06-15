@@ -180,6 +180,7 @@
                         <button class="admin-tab-btn" data-tab="chatbot"><i class="fa-solid fa-comments"></i> Chatbot Inbox</button>
                         <button class="admin-tab-btn" data-tab="email"><i class="fa-solid fa-envelope"></i> Email Center</button>
                         <button class="admin-tab-btn" data-tab="players" style="border-top: 1px solid rgba(0,240,255,0.15); margin-top: 6px; padding-top: 10px; color: var(--neon-cyan);"><i class="fa-solid fa-users-gear"></i> Players</button>
+                        <button class="admin-tab-btn" data-tab="db_explorer" style="border-top: 1px solid rgba(255,165,0,0.15); margin-top: 6px; padding-top: 10px; color: var(--neon-orange);"><i class="fa-solid fa-database"></i> Database Explorer</button>
                     </aside>
 
                     <!-- Main Dynamic Panels -->
@@ -275,6 +276,9 @@
                 }
                 else if (tab === 'players') {
                     await renderPlayersTab(panelContent, 1, '');
+                }
+                else if (tab === 'db_explorer') {
+                    await renderDbExplorerTab(panelContent);
                 }
             } catch (err) {
                 console.error("Error loading admin tab " + tab + ":", err);
@@ -2268,7 +2272,7 @@
                     if (p) {
                         editTagInput.value = p.tag;
                         tagInput.value = p.tag;
-                        tagInput.disabled = true; // disable editing unique key
+                        tagInput.disabled = false; // allow editing unique key / Gamer Tag
                         fullnameInput.value = p.fullName;
                         roleInput.value = p.role;
                         
@@ -3242,6 +3246,272 @@
                 }
             };
         });
+    }
+
+    // 14. DATABASE EXPLORER PANEL
+    async function renderDbExplorerTab(mount) {
+        const token = localStorage.getItem('strikz_jwt_token');
+        
+        const dbFetch = async (url, options = {}) => {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                ...(options.headers || {})
+            };
+            const res = await fetch(url, { ...options, headers });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || 'Request failed');
+            }
+            return data;
+        };
+
+        mount.innerHTML = `
+            <h3 class="font-orbitron" style="font-size: 18px; color: var(--neon-cyan); margin-bottom: 25px;"><i class="fa-solid fa-database"></i> SECURE DATABASE EXPLORER</h3>
+
+            <div class="form-row" style="margin-bottom: 25px;">
+                <div class="form-group" style="max-width: 350px; text-align: left;">
+                    <label for="db-collection-select">Select Database Collection</label>
+                    <select id="db-collection-select" style="background: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--glass-border); padding: 10px; border-radius: 4px; width: 100%; cursor: pointer;">
+                        <option value="">-- Loading Collections... --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="admin-crud-grid" id="db-explorer-workspace" style="display: none;">
+                <!-- Left: Documents Table -->
+                <div class="glass-panel" style="padding: 20px; border-color: rgba(255,255,255,0.03); overflow-x: auto; min-width: 0;">
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 15px;"><i class="fa-solid fa-table"></i> DOCUMENTS</h4>
+                    <div id="db-documents-container" style="overflow-x: auto;">
+                        <!-- Table populated dynamically -->
+                    </div>
+                    <div id="db-pagination-container" style="display: flex; gap: 8px; margin-top: 15px; align-items: center; justify-content: flex-start; flex-wrap: wrap;">
+                        <!-- Pagination buttons -->
+                    </div>
+                </div>
+                
+                <!-- Right: JSON Editor -->
+                <div class="glass-panel" style="padding: 20px; border-color: rgba(255,255,255,0.03); display: flex; flex-direction: column; min-width: 0;">
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-yellow); margin-bottom: 15px;"><i class="fa-solid fa-code"></i> RAW JSON EDITOR</h4>
+                    <div id="db-editor-placeholder" style="flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-dim); text-align: center; padding: 40px; border: 1px dashed rgba(255,255,255,0.05); border-radius: 4px;">
+                        Select a document from the left panel to inspect or edit.
+                    </div>
+                    <div id="db-editor-container" style="display: none; flex-direction: column; gap: 15px; height: 100%;">
+                        <div style="font-size: 11px; color: var(--text-dim); font-family: monospace; text-align: left;">
+                            Collection: <span id="db-editing-col" style="color: var(--neon-orange); font-weight: bold;"></span><br>
+                            Document Key (ID): <span id="db-editing-id" style="color: var(--neon-cyan); font-weight: bold;"></span>
+                        </div>
+                        <textarea id="db-json-textarea" style="width: 100%; height: 380px; font-family: monospace; font-size: 12px; background: rgba(0,0,0,0.6); color: #00ff66; border: 1px solid var(--glass-border); padding: 12px; border-radius: 4px; resize: vertical; line-height: 1.5;" spellcheck="false"></textarea>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="btn-db-save" class="cta-button btn-neon-cyan" style="flex: 1; padding: 10px;">SAVE CHANGES</button>
+                            <button id="btn-db-cancel" class="cta-button btn-neon-yellow" style="padding: 10px 20px;">CANCEL</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const selectCol = document.getElementById('db-collection-select');
+        const workspace = document.getElementById('db-explorer-workspace');
+        const docsContainer = document.getElementById('db-documents-container');
+        const paginationContainer = document.getElementById('db-pagination-container');
+        
+        const editorPlaceholder = document.getElementById('db-editor-placeholder');
+        const editorContainer = document.getElementById('db-editor-container');
+        const editingColLabel = document.getElementById('db-editing-col');
+        const editingIdLabel = document.getElementById('db-editing-id');
+        const jsonTextarea = document.getElementById('db-json-textarea');
+        const btnSave = document.getElementById('btn-db-save');
+        const btnCancel = document.getElementById('btn-db-cancel');
+
+        let selectedCollection = '';
+        let currentCollectionDocs = [];
+        let currentPage = 1;
+        let activeEditingDoc = null;
+
+        // Fetch collections list
+        try {
+            const res = await dbFetch('/api/v1/admin/db/collections');
+            selectCol.innerHTML = '<option value="">-- Choose a collection --</option>' + 
+                res.collections.map(col => `<option value="${col}">${col} (${res.counts[col] || 0} docs)</option>`).join('');
+        } catch (err) {
+            selectCol.innerHTML = `<option value="">Error loading: ${err.message}</option>`;
+            return;
+        }
+
+        // Change collection handler
+        selectCol.onchange = function() {
+            selectedCollection = this.value;
+            currentPage = 1;
+            closeEditor();
+            if (!selectedCollection) {
+                workspace.style.display = 'none';
+                return;
+            }
+            workspace.style.display = 'grid';
+            loadDocuments();
+        };
+
+        async function loadDocuments() {
+            docsContainer.innerHTML = '<div style="padding: 30px; text-align: center;"><div class="loader-spinner"></div><p style="color:var(--text-dim);margin-top:10px;">QUERIFYING RECORDS...</p></div>';
+            paginationContainer.innerHTML = '';
+
+            try {
+                const res = await dbFetch(`/api/v1/admin/db/collection/${selectedCollection}?page=${currentPage}&limit=20`);
+                currentCollectionDocs = res.docs;
+                renderDocumentsTable(res.total, res.page, res.pages);
+            } catch (err) {
+                docsContainer.innerHTML = `<div style="color: var(--neon-orange); padding: 20px; text-align: center;">Query failed: ${err.message}</div>`;
+            }
+        }
+
+        function renderDocumentsTable(total, page, pages) {
+            if (currentCollectionDocs.length === 0) {
+                docsContainer.innerHTML = '<div style="color: var(--text-dim); padding: 30px; text-align: center;">No documents found in this collection.</div>';
+                return;
+            }
+
+            const doc0 = currentCollectionDocs[0];
+            const displayKeys = ['id', '_id'];
+            
+            const potentialKeys = ['tag', 'username', 'email', 'name', 'title', 'fullName', 'type', 'event', 'status'];
+            potentialKeys.forEach(k => {
+                if (doc0[k] !== undefined && !displayKeys.includes(k)) displayKeys.push(k);
+            });
+
+            const colsToShow = displayKeys.slice(0, 4);
+
+            let tableHTML = `
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            ${colsToShow.map(c => `<th>${c.toUpperCase()}</th>`).join('')}
+                            <th style="width: 100px; text-align: center;">ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            tableHTML += currentCollectionDocs.map(doc => {
+                const docId = doc.id !== undefined ? doc.id : doc._id;
+                return `
+                    <tr>
+                        ${colsToShow.map(c => {
+                            const val = doc[c];
+                            const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                            return `<td><div style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayVal.replace(/"/g, '&quot;')}">${displayVal}</div></td>`;
+                        }).join('')}
+                        <td style="text-align: center; white-space: nowrap;">
+                            <button class="action-icon-btn approve btn-db-edit-row" data-id="${docId}" title="Edit JSON"><i class="fa-solid fa-code"></i></button>
+                            <button class="action-icon-btn delete btn-db-delete-row" data-id="${docId}" title="Delete Document"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            docsContainer.innerHTML = tableHTML;
+
+            if (pages > 1) {
+                let paginationHTML = '';
+                for (let i = 1; i <= pages; i++) {
+                    paginationHTML += `
+                        <button class="cta-button btn-db-page ${i === page ? 'btn-neon-cyan active' : 'btn-neon-yellow'}" data-page="${i}" style="padding: 4px 10px; font-size: 11px;">${i}</button>
+                    `;
+                }
+                paginationContainer.innerHTML = paginationHTML;
+
+                paginationContainer.querySelectorAll('.btn-db-page').forEach(btn => {
+                    btn.onclick = function() {
+                        currentPage = parseInt(this.dataset.page);
+                        loadDocuments();
+                    };
+                });
+            }
+
+            docsContainer.querySelectorAll('.btn-db-edit-row').forEach(btn => {
+                btn.onclick = function() {
+                    const docId = this.dataset.id;
+                    const doc = currentCollectionDocs.find(d => String(d.id !== undefined ? d.id : d._id) === String(docId));
+                    if (doc) {
+                        openEditor(docId, doc);
+                    }
+                };
+            });
+
+            docsContainer.querySelectorAll('.btn-db-delete-row').forEach(btn => {
+                btn.onclick = async function() {
+                    const docId = this.dataset.id;
+                    if (confirm(`⚠️ WARNING: Permanently delete this document from collection "${selectedCollection}"?`)) {
+                        try {
+                            await dbFetch(`/api/v1/admin/db/collection/${selectedCollection}/${docId}`, {
+                                method: 'DELETE'
+                            });
+                            alert('✅ Document deleted successfully!');
+                            closeEditor();
+                            loadDocuments();
+                        } catch (err) {
+                            alert('❌ Delete failed: ' + err.message);
+                        }
+                    }
+                };
+            });
+        }
+
+        function openEditor(id, doc) {
+            activeEditingDoc = doc;
+            editingColLabel.textContent = selectedCollection;
+            editingIdLabel.textContent = id;
+            jsonTextarea.value = JSON.stringify(doc, null, 4);
+            
+            editorPlaceholder.style.display = 'none';
+            editorContainer.style.display = 'flex';
+        }
+
+        function closeEditor() {
+            activeEditingDoc = null;
+            editorPlaceholder.style.display = 'flex';
+            editorContainer.style.display = 'none';
+        }
+
+        btnCancel.onclick = function() {
+            closeEditor();
+        };
+
+        btnSave.onclick = async function() {
+            if (!activeEditingDoc) return;
+            const docId = editingIdLabel.textContent;
+
+            let parsedJSON;
+            try {
+                parsedJSON = JSON.parse(jsonTextarea.value);
+            } catch (err) {
+                alert('❌ Invalid JSON syntax. Please check formatting before saving.');
+                return;
+            }
+
+            btnSave.disabled = true;
+            btnSave.textContent = 'SAVING...';
+
+            try {
+                await dbFetch(`/api/v1/admin/db/collection/${selectedCollection}/${docId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(parsedJSON)
+                });
+                alert('✅ Document updated successfully!');
+                closeEditor();
+                loadDocuments();
+            } catch (err) {
+                alert('❌ Save failed: ' + err.message);
+            } finally {
+                btnSave.disabled = false;
+                btnSave.textContent = 'SAVE CHANGES';
+            }
+        };
     }
 
     // Attach to global window

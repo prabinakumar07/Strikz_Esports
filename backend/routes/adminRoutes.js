@@ -37,7 +37,11 @@ const {
     getAllUsers,
     verifyUser,
     suspendUser,
-    deleteUser
+    deleteUser,
+    getCollections,
+    getCollectionDocs,
+    updateCollectionDoc,
+    deleteCollectionDoc
 } = require('../controllers/adminController');
 
 const {
@@ -118,6 +122,12 @@ router.get('/users', getAllUsers);
 router.put('/users/:id/verify', verifyUser);
 router.put('/users/:id/suspend', suspendUser);
 router.delete('/users/:id', deleteUser);
+
+// Database Explorer routes
+router.get('/db/collections', getCollections);
+router.get('/db/collection/:name', getCollectionDocs);
+router.put('/db/collection/:name/:id', updateCollectionDoc);
+router.delete('/db/collection/:name/:id', deleteCollectionDoc);
 
 // Email System Admin routes
 router.get('/email/settings', getEmailSettings);

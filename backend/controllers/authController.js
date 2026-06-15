@@ -437,16 +437,26 @@ const updateProfile = async (req, res, next) => {
             return next(new Error('Gamer tag already claimed by another survivor'));
         }
 
-        // Validate avatar URL if provided
+        // Validate avatar URL if provided (allow local uploads, data URIs, and valid absolute URLs)
         let sanitizedAvatar = req.user.avatar;
         if (avatar) {
+            const isRelativeUpload = avatar.startsWith('/uploads/');
+            const isDataUri = avatar.startsWith('data:image/');
+            let isValidAbsolute = false;
             try {
                 const url = new URL(avatar);
-                if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Invalid protocol');
+                if (['http:', 'https:'].includes(url.protocol)) {
+                    isValidAbsolute = true;
+                }
+            } catch (e) {
+                // not a valid absolute URL
+            }
+
+            if (isRelativeUpload || isDataUri || isValidAbsolute) {
                 sanitizedAvatar = avatar;
-            } catch {
+            } else {
                 res.status(400);
-                return next(new Error('Invalid avatar URL'));
+                return next(new Error('Invalid avatar URL format'));
             }
         }
 
