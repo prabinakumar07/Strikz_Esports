@@ -84,10 +84,12 @@ const getFriendRequests = async (req, res, next) => {
             const sender = await models.User.findOne({ uid: senderUid }).select('username uid avatar').lean();
             if (sender) {
                 requests.push({
-                    friendshipId: item.id,
-                    username: sender.username,
-                    uid: sender.uid,
-                    avatar: sender.avatar
+                    id: item.id,
+                    sender: {
+                        username: sender.username,
+                        uid: sender.uid,
+                        avatar: sender.avatar
+                    }
                 });
             }
         }
