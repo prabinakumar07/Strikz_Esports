@@ -27,21 +27,37 @@ const models = {
     User: createModel('User', 'users', Number, {
         username: { type: String, unique: true, sparse: true, index: true },
         email: { type: String, unique: true, sparse: true, index: true },
-        uid: { type: String, unique: true, sparse: true, index: true }
+        uid: { type: String, unique: true, sparse: true, index: true },
+        password_hash: { type: String },
+        role: { type: String },
+        isVerified: { type: Boolean },
+        avatar: { type: String },
+        reset_token: { type: String },
+        reset_token_expiry: { type: Date }
     }),
     Setting: createModel('Setting', 'settings', Number),
     Tournament: createModel('Tournament', 'tournaments'),
     Registration: createModel('Registration', 'registrations'),
     RegistrationPlayer: createModel('RegistrationPlayer', 'registration_players', Number, {
         registration_id: { type: String, index: true },
-        user_uid: { type: String, index: true }
+        user_uid: { type: String, index: true },
+        name: { type: String },
+        role: { type: String },
+        confirmed: { type: Boolean },
+        real_name: { type: String }
     }),
     Team: createModel('Team', 'teams', String, {
-        captain_uid: { type: String, unique: true, sparse: true, index: true }
+        captain_uid: { type: String, unique: true, sparse: true, index: true },
+        name: { type: String },
+        logo: { type: String },
+        captain: { type: String },
+        description: { type: String }
     }),
     TeamMember: createModel('TeamMember', 'team_members', Number, {
         user_uid: { type: String, index: true },
-        team_id: { type: String, index: true }
+        team_id: { type: String, index: true },
+        role: { type: String },
+        confirmed: { type: Boolean }
     }),
     News: createModel('News', 'news'),
     Gallery: createModel('Gallery', 'gallery', Number),
@@ -58,14 +74,23 @@ const models = {
     UploadedFile: createModel('UploadedFile', 'uploaded_files'),
     Friendship: createModel('Friendship', 'friendships', String, {
         user_uid_1: { type: String, index: true },
-        user_uid_2: { type: String, index: true }
+        user_uid_2: { type: String, index: true },
+        status: { type: String },
+        sender_uid: { type: String }
     }),
     ChatMessage: createModel('ChatMessage', 'chat_messages', String, {
         sender_uid: { type: String, index: true },
-        receiver_uid: { type: String, index: true }
+        receiver_uid: { type: String, index: true },
+        message: { type: String },
+        content: { type: String }
     }),
     TeamMessage: createModel('TeamMessage', 'team_messages', String, {
-        team_id: { type: String, index: true }
+        team_id: { type: String, index: true },
+        sender_uid: { type: String },
+        sender_name: { type: String },
+        sender_avatar: { type: String },
+        message: { type: String },
+        content: { type: String }
     }),
     EmailSetting: createModel('EmailSetting', 'email_settings', Number),
     EmailTemplate: createModel('EmailTemplate', 'email_templates'),
