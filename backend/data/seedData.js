@@ -11,7 +11,38 @@ const seed = {
             twitterLink: '#'
         }
     ],
-    users: [],
+    users: [
+        {
+            id: 1001,
+            username: 'slayer_99',
+            email: 'slayer99@strikz.com',
+            password_hash: '$2a$10$e.w2DfeqfRk/Yt/P9D7p3uNqRzW881zB/Z7Vd/c/zLpxuJ1Wlq6Cq',
+            role: 'player',
+            isVerified: true,
+            uid: 'slayer_99',
+            avatar: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=slayer99&backgroundColor=0a0a0f'
+        },
+        {
+            id: 1002,
+            username: 'storm_rusher',
+            email: 'storm@strikz.com',
+            password_hash: '$2a$10$e.w2DfeqfRk/Yt/P9D7p3uNqRzW881zB/Z7Vd/c/zLpxuJ1Wlq6Cq',
+            role: 'player',
+            isVerified: true,
+            uid: 'storm_rusher',
+            avatar: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=stormrusher&backgroundColor=0a0a0f'
+        },
+        {
+            id: 1003,
+            username: 'nexus_sniper',
+            email: 'nexus@strikz.com',
+            password_hash: '$2a$10$e.w2DfeqfRk/Yt/P9D7p3uNqRzW881zB/Z7Vd/c/zLpxuJ1Wlq6Cq',
+            role: 'player',
+            isVerified: true,
+            uid: 'nexus_sniper',
+            avatar: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=nexussniper&backgroundColor=0a0a0f'
+        }
+    ],
     tournaments: [
         {
             id: 'ff-ws-2026',

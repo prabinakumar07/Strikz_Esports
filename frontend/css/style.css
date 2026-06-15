@@ -3912,6 +3912,9 @@ button, input, select, textarea {
     body.logged-in .main-content {
         padding-top: 75px !important; /* Push main content down to avoid overlapping floating bar */
     }
+    body.logged-in .hero-section {
+        margin-top: -75px !important;
+    }
 }
 
 /* Mobile styles */
