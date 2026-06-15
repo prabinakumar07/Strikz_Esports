@@ -169,7 +169,7 @@ const createRegistration = async (req, res, next) => {
 
         // Dispatch Registration and Attendance Confirmation Emails
         const emailService = require('../utils/emailService');
-        if (type === 'Team') {
+        if (type === 'Team' || type === 'Duo') {
             // 1. Send registration and attendance confirmation to captain
             if (baseRegistration.captain_email) {
                 try {
@@ -206,7 +206,8 @@ const createRegistration = async (req, res, next) => {
                                 regId,
                                 tourney.name,
                                 tourney.startDate,
-                                tourney.rules ? 'Server Lobby' : 'Bermuda Arena Office'
+                                tourney.rules ? 'Server Lobby' : 'Bermuda Arena Office',
+                                true
                             );
                         } catch (emailErr) {
                             console.error(`Failed to send registration email to teammate ${playerUser.email}:`, emailErr.message);
@@ -552,7 +553,7 @@ const confirmJoin = async (req, res, next) => {
         // Notify all team members about the confirmed player
         try {
             const registration = await models.Registration.findOne({ id: regId }).lean();
-            if (registration && registration.type === 'Team') {
+            if (registration && (registration.type === 'Team' || registration.type === 'Duo')) {
                 const tourney = await models.Tournament.findOne({ id: registration.tournament_id }).lean();
                 const player = await models.RegistrationPlayer.findOne({ registration_id: regId, user_uid: uid }).lean();
                 const emailService = require('../utils/emailService');

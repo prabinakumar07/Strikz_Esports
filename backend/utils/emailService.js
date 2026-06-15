@@ -315,8 +315,19 @@ const sendOtpEmail = async (email, username, otpCode) => {
 };
 
 // 2. Send Registration Confirmation Email
-const sendRegistrationConfirmation = async (email, playerName, regId, tournamentName, tournamentDate, venue) => {
+const sendRegistrationConfirmation = async (email, playerName, regId, tournamentName, tournamentDate, venue, needsConfirmation = false) => {
     const isAuto = await isAutomaticEnabled('regConfirmation');
+    
+    const actionBox = needsConfirmation ? `
+        <div style="background: rgba(255, 230, 0, 0.05); border: 1.5px solid #ffe600; padding: 15px; border-radius: 4px; margin: 20px 0; text-align: center; box-shadow: 0 0 10px rgba(255, 230, 0, 0.15);">
+            <p style="margin: 0; color: #ffe600; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">ACTION REQUIRED: CONFIRM ROSTER PARTICIPATION</p>
+            <p style="margin: 6px 0 0 0; font-size: 13px; color: #d1d5db; line-height: 1.4;">You have been drafted into team roster for this championship. Please log in to Strikz Esports and confirm your roster participation in the My Team HQ inbox.</p>
+            <a href="https://strikz-esports.onrender.com/#/my-team" style="background: #ffe600; color: #000000; text-decoration: none; padding: 10px 20px; border-radius: 4px; font-weight: 800; display: inline-block; margin-top: 12px; font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase;">
+                GO TO MY TEAM HQ
+            </a>
+        </div>
+    ` : '';
+
     const content = `
         <h3 style="color: #00f0ff; font-size: 18px; margin-top: 0; display:flex; align-items:center; gap:8px;">
             <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#00f0ff; margin-right:6px;"></span>
@@ -343,6 +354,8 @@ const sendRegistrationConfirmation = async (email, playerName, regId, tournament
                 <td style="padding: 10px; color: #ffffff;">${venue}</td>
             </tr>
         </table>
+        
+        ${actionBox}
         
         <p>Please ensure all team members coordinate in the Team HQ and join our official Discord server for lobby codes and referee broadcasts.</p>
         
@@ -611,6 +624,138 @@ const sendResultsNotification = async (email, playerName, tournamentName, winner
     }
 };
 
+// 9. Send Registration Approved/Confirmed Notification to All Members
+const sendRegistrationApprovedNotification = async (email, playerName, regId, tournamentName, teamName) => {
+    const isAuto = await isAutomaticEnabled('regConfirmation');
+    const content = `
+        <h3 style="color: #ffe600; font-size: 18px; margin-top: 0; display:flex; align-items:center; gap:8px;">
+            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ffe600; margin-right:6px;"></span>
+            REGISTRATION OFFICIALLY CONFIRMED
+        </h3>
+        <p>Hello Gamer <strong>${playerName}</strong>,</p>
+        <p>We are excited to inform you that the tournament registration for your squad <strong>${teamName}</strong> (Registration ID: <strong>${regId}</strong>) has been officially <strong>APPROVED and CONFIRMED</strong> for the upcoming championship <strong>${tournamentName}</strong>!</p>
+        
+        <div style="background: rgba(255, 230, 0, 0.03); border: 1.5px solid rgba(255, 230, 0, 0.2); padding: 20px; border-radius: 6px; margin: 20px 0; text-align: center;">
+            <p style="margin: 0; font-size: 15px; color: #ffffff;">Your slot is locked in the tournament bracket.</p>
+            <p style="margin: 5px 0 0 0; font-size: 13px; color: var(--text-dim);">Please make sure all squad members are ready. Check the tournament details and rules lobby on Strikz Esports.</p>
+        </div>
+        
+        <p>Prepare your gear, align your strategy, and get ready to drop. Good luck on the battlefield, survivor!</p>
+        
+        <p style="font-size: 12px; color:#9ca3af; border-top: 1px solid rgba(255,255,255,0.05); padding-top:12px; margin-top:20px;">
+            Need terminal support? Reach out to <a href="mailto:support@strikzesports.com" style="color:#00f0ff;">support@strikzesports.com</a>
+        </p>
+    `;
+    
+    const html = getHtmlWrapper(content);
+    const emailData = {
+        to: email,
+        subject: `Tournament Slot Confirmed: ${teamName} - ${tournamentName}`,
+        html,
+        type: 'Registration Approved'
+    };
+    
+    if (isAuto) {
+        return await sendEmailDirect(emailData);
+    } else {
+        return await queueEmail(emailData);
+    }
+};
+
+// 10. Send Registration Rejected/Released Notification to All Members
+const sendRegistrationRejectedNotification = async (email, playerName, regId, tournamentName, teamName) => {
+    const isAuto = await isAutomaticEnabled('regConfirmation');
+    const content = `
+        <h3 style="color: #ef4444; font-size: 18px; margin-top: 0; display:flex; align-items:center; gap:8px;">
+            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ef4444; margin-right:6px;"></span>
+            REGISTRATION REJECTED / RELEASED
+        </h3>
+        <p>Hello Gamer <strong>${playerName}</strong>,</p>
+        <p>This is an automated update regarding registration entry <strong>${regId}</strong> for squad <strong>${teamName}</strong> in tournament <strong>${tournamentName}</strong>.</p>
+        
+        <div style="background: rgba(239, 68, 68, 0.05); border: 1.5px solid #ef4444; padding: 20px; border-radius: 6px; margin: 20px 0; text-align: center;">
+            <p style="margin: 0; font-size: 15px; color: #ffffff;">Your tournament registration slot has been released or rejected.</p>
+            <p style="margin: 5px 0 0 0; font-size: 13px; color: var(--text-dim);">This could be due to incomplete roster verification, failure to confirm attendance before the deadline, or manual reject action by the administration.</p>
+        </div>
+        
+        <p>You may register again if slots are still available, or contact terminal operations support if you believe this was an error.</p>
+    `;
+    
+    const html = getHtmlWrapper(content);
+    const emailData = {
+        to: email,
+        subject: `Registration Update: Roster Released - ${tournamentName}`,
+        html,
+        type: 'Registration Rejected'
+    };
+    
+    if (isAuto) {
+        return await sendEmailDirect(emailData);
+    } else {
+        return await queueEmail(emailData);
+    }
+};
+
+// 11. Send Team/Solo Registration Status Change Notification to All Members
+const notifyRegistrationStatusChange = async (regId, status) => {
+    try {
+        const registration = await models.Registration.findOne({ id: regId }).lean();
+        if (!registration) return;
+
+        const tourney = await models.Tournament.findOne({ id: registration.tournament_id }).lean();
+        const tournamentName = tourney ? tourney.name : 'Championship';
+
+        const recipients = [];
+        
+        // Add captain/solo player
+        if (registration.type === 'Solo') {
+            if (registration.player_email) {
+                recipients.push({
+                    email: registration.player_email,
+                    name: registration.player_name
+                });
+            }
+        } else {
+            // Team/Duo
+            if (registration.captain_email) {
+                recipients.push({
+                    email: registration.captain_email,
+                    name: registration.captain_name
+                });
+            }
+            
+            // Add registered players
+            const regPlayers = await models.RegistrationPlayer.find({ registration_id: regId }).lean();
+            for (const rp of regPlayers) {
+                if (!rp.user_uid) continue;
+                const pUser = await models.User.findOne({ uid: rp.user_uid }).select('email username').lean();
+                if (pUser && pUser.email && !recipients.some(r => r.email === pUser.email)) {
+                    recipients.push({
+                        email: pUser.email,
+                        name: rp.name || pUser.username
+                    });
+                }
+            }
+        }
+
+        const teamName = registration.type === 'Solo' ? registration.player_name : registration.team_name;
+
+        for (const r of recipients) {
+            try {
+                if (status === 'Approved') {
+                    await sendRegistrationApprovedNotification(r.email, r.name, regId, tournamentName, teamName);
+                } else if (status === 'Rejected') {
+                    await sendRegistrationRejectedNotification(r.email, r.name, regId, tournamentName, teamName);
+                }
+            } catch (emailErr) {
+                console.error(`Failed to send status update email to ${r.email}:`, emailErr.message);
+            }
+        }
+    } catch (err) {
+        console.error('Error in notifyRegistrationStatusChange:', err.message);
+    }
+};
+
 module.exports = {
     sendEmailDirect,
     queueEmail,
@@ -622,5 +767,8 @@ module.exports = {
     sendAttendanceReminder,
     sendTournamentUpdate,
     sendResultsNotification,
-    getHtmlWrapper
+    getHtmlWrapper,
+    sendRegistrationApprovedNotification,
+    sendRegistrationRejectedNotification,
+    notifyRegistrationStatusChange
 };

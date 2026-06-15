@@ -96,6 +96,13 @@ const updateRegistrationStatus = async (req, res, next) => {
             return next(new Error('Registration ticket not found'));
         }
 
+        try {
+            const emailService = require('../utils/emailService');
+            await emailService.notifyRegistrationStatusChange(id, status);
+        } catch (emailErr) {
+            console.error('Failed to notify team of status update:', emailErr.message);
+        }
+
         await logAdminAction(req, 'UPDATE_REGISTRATION_STATUS', { id, status, stage });
         res.json({ success: true, message: `Registration ticket status updated to: ${status} (Stage ${stage})` });
     } catch (err) {

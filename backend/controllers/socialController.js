@@ -397,6 +397,13 @@ const confirmAttendance = async (req, res, next) => {
             { $set: { status: dbStatus, stage } }
         );
 
+        try {
+            const emailService = require('../utils/emailService');
+            await emailService.notifyRegistrationStatusChange(regId, dbStatus);
+        } catch (emailErr) {
+            console.error('Failed to send status update email to team:', emailErr.message);
+        }
+
         // Render a modern, professional, responsive HTML page matching the theme of Strikz Esports
         res.send(`
             <!DOCTYPE html>
