@@ -122,8 +122,7 @@ const acceptFriendRequest = async (req, res, next) => {
             return next(new Error('Access denied: You are not a party to this request'));
         }
 
-        friendship.status = 'Accepted';
-        await friendship.save();
+        await models.Friendship.updateOne({ id: friendshipId }, { $set: { status: 'Accepted' } });
 
         res.json({ success: true, message: 'Friend request accepted! You can now chat.' });
     } catch (err) {
@@ -192,10 +191,11 @@ const getFriends = async (req, res, next) => {
 // 6. Send Direct Message
 const sendChatMessage = async (req, res, next) => {
     try {
-        const { receiverUid, message } = req.body;
+        const { receiverUid, message, content } = req.body;
         const myUid = req.user.uid;
+        const msgText = (message || content || '').trim();
 
-        if (!receiverUid || !message || !message.trim()) {
+        if (!receiverUid || !msgText) {
             res.status(400);
             return next(new Error('Receiver and non-empty message body are required'));
         }
@@ -219,7 +219,8 @@ const sendChatMessage = async (req, res, next) => {
             id,
             sender_uid: myUid,
             receiver_uid: receiverUid,
-            message: message.trim(),
+            message: msgText,
+            content: msgText,
             created_at: new Date().toISOString()
         });
 
@@ -250,7 +251,12 @@ const getChatMessageHistory = async (req, res, next) => {
         .limit(100)
         .lean();
 
-        res.json({ success: true, history });
+        const messages = history.map(msg => ({
+            ...msg,
+            content: msg.message || msg.content,
+            message: msg.message || msg.content
+        }));
+        res.json({ success: true, messages, history: messages });
     } catch (err) {
         next(err);
     }
@@ -259,10 +265,11 @@ const getChatMessageHistory = async (req, res, next) => {
 // 8. Send Team Chat Message
 const sendTeamMessage = async (req, res, next) => {
     try {
-        const { message } = req.body;
+        const { message, content } = req.body;
         const user = req.user;
+        const msgText = (message || content || '').trim();
 
-        if (!message || !message.trim()) {
+        if (!msgText) {
             res.status(400);
             return next(new Error('Non-empty message body is required'));
         }
@@ -288,7 +295,8 @@ const sendTeamMessage = async (req, res, next) => {
             sender_uid: user.uid,
             sender_name: user.username,
             sender_avatar: user.avatar,
-            message: message.trim(),
+            message: msgText,
+            content: msgText,
             created_at: new Date().toISOString()
         });
 
@@ -322,7 +330,12 @@ const getTeamMessageHistory = async (req, res, next) => {
             .limit(100)
             .lean();
 
-        res.json({ success: true, history });
+        const messages = history.map(msg => ({
+            ...msg,
+            content: msg.message || msg.content,
+            message: msg.message || msg.content
+        }));
+        res.json({ success: true, messages, history: messages });
     } catch (err) {
         next(err);
     }
