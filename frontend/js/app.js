@@ -3,6 +3,53 @@
    ========================================================================== */
 
 (function() {
+    // ==========================================
+    // SECURITY: HTML escaping to prevent XSS
+    // All user-supplied data must pass through this before innerHTML injection
+    // ==========================================
+    function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+    // Expose globally so page scripts can use it
+    window.strikzEscape = escapeHtml;
+
+    // ==========================================
+    // ACCESSIBILITY: Focus Trap for Modals
+    // ==========================================
+    function trapFocus(modalEl) {
+        const focusable = modalEl.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        function handler(e) {
+            if (e.key !== 'Tab') return;
+            if (e.shiftKey) {
+                if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+            } else {
+                if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+        }
+        modalEl._trapHandler = handler;
+        modalEl.addEventListener('keydown', handler);
+        // Move focus inside modal
+        if (first) setTimeout(() => first.focus(), 50);
+    }
+    function releaseFocus(modalEl) {
+        if (modalEl._trapHandler) {
+            modalEl.removeEventListener('keydown', modalEl._trapHandler);
+            delete modalEl._trapHandler;
+        }
+    }
+    window.strikzTrapFocus = trapFocus;
+    window.strikzReleaseFocus = releaseFocus;
+
     // Google Sign-In Redirect Parameter Normalizer
     if (window.location.search.includes('#/')) {
         const search = window.location.search;
@@ -14,6 +61,20 @@
     } else if (window.location.search.startsWith('?#')) {
         const hash = window.location.search.slice(1);
         window.history.replaceState(null, '', window.location.pathname + hash);
+    }
+
+    // Handle Google credential passed via sessionStorage (server redirect method)
+    const pendingCred = sessionStorage.getItem('_gcred');
+    if (pendingCred) {
+        sessionStorage.removeItem('_gcred');
+        // Trigger Google login flow with this credential
+        setTimeout(() => {
+            if (window.strikzAuth) {
+                window.strikzAuth.googleLogin(pendingCred).catch(err => {
+                    console.error('Google redirect login failed:', err.message);
+                });
+            }
+        }, 500);
     }
 
     // Global Date Formatter
@@ -81,7 +142,37 @@
         '/registration': window.renderRegistration,
         '/admin': window.renderAdmin,
         '/partners': window.renderPartners,
-        '/earning': window.renderEarning
+        '/earning': window.renderEarning,
+        '/privacy': window.renderPrivacy || function(el) {
+            el.innerHTML = `<div class="container" style="padding: 60px 20px; max-width: 800px; margin: 0 auto;">
+                <h1 class="font-orbitron" style="color: var(--neon-cyan); margin-bottom: 30px;">Privacy Policy</h1>
+                <p style="color: var(--text-silver); line-height: 1.8;">Last updated: June 2026</p>
+                <h2 style="color: var(--neon-orange); margin: 30px 0 15px;">Information We Collect</h2>
+                <p style="color: var(--text-silver); line-height: 1.8;">We collect your username, email address, and tournament registration details when you sign up for Strikz Esports. Passwords are stored as secure one-way hashes (bcrypt). We do not sell your personal information to third parties.</p>
+                <h2 style="color: var(--neon-orange); margin: 30px 0 15px;">How We Use Your Information</h2>
+                <p style="color: var(--text-silver); line-height: 1.8;">We use your information to: manage tournament registrations, send verification and notification emails, provide customer support, and improve our platform.</p>
+                <h2 style="color: var(--neon-orange); margin: 30px 0 15px;">Cookies &amp; Local Storage</h2>
+                <p style="color: var(--text-silver); line-height: 1.8;">We use browser localStorage to store your authentication token and preferences (sound settings). We do not use third-party tracking cookies.</p>
+                <h2 style="color: var(--neon-orange); margin: 30px 0 15px;">Contact</h2>
+                <p style="color: var(--text-silver); line-height: 1.8;">For privacy concerns, email us at <a href="mailto:support@strikzesports.com" style="color: var(--neon-cyan);">support@strikzesports.com</a>.</p>
+            </div>`;
+        },
+        '/terms': window.renderTerms || function(el) {
+            el.innerHTML = `<div class="container" style="padding: 60px 20px; max-width: 800px; margin: 0 auto;">
+                <h1 class="font-orbitron" style="color: var(--neon-cyan); margin-bottom: 30px;">Terms of Service</h1>
+                <p style="color: var(--text-silver); line-height: 1.8;">Last updated: June 2026</p>
+                <h2 style="color: var(--neon-orange); margin: 30px 0 15px;">Acceptance of Terms</h2>
+                <p style="color: var(--text-silver); line-height: 1.8;">By using Strikz Esports, you agree to these Terms of Service. If you do not agree, please do not use this platform.</p>
+                <h2 style="color: var(--neon-orange); margin: 30px 0 15px;">Account Rules</h2>
+                <p style="color: var(--text-silver); line-height: 1.8;">You are responsible for maintaining the confidentiality of your account. Cheating, hacking, or fraudulent registrations will result in permanent ban. You must be 13 or older to use this service.</p>
+                <h2 style="color: var(--neon-orange); margin: 30px 0 15px;">Tournament Rules</h2>
+                <p style="color: var(--text-silver); line-height: 1.8;">Tournament results are final as determined by Strikz Esports administrators. Prize distributions are subject to verification of eligibility.</p>
+                <h2 style="color: var(--neon-orange); margin: 30px 0 15px;">Disclaimer</h2>
+                <p style="color: var(--text-silver); line-height: 1.8;">Strikz Esports is a fan-operated platform not officially affiliated with Garena or Free Fire Max. All trademarks belong to their respective owners.</p>
+                <h2 style="color: var(--neon-orange); margin: 30px 0 15px;">Contact</h2>
+                <p style="color: var(--text-silver); line-height: 1.8;">Questions? Email <a href="mailto:support@strikzesports.com" style="color: var(--neon-cyan);">support@strikzesports.com</a>.</p>
+            </div>`;
+        }
     };
 
     // SPA Router
@@ -459,50 +550,61 @@
         const mobileSlot = document.getElementById('mobile-auth-slot') || document.getElementById('mobile-drawer-footer');
         const user = authManager.getUser();
 
-        const desktopLoggedInHTML = (avatar, name, uid) => `
+        // SECURITY: All user data escaped before HTML injection to prevent XSS
+        const desktopLoggedInHTML = (avatar, name, uid) => {
+            const safeAvatar = escapeHtml(avatar);
+            const safeName = escapeHtml(name);
+            const safeUid = escapeHtml(uid || '');
+            return `
             <div class="user-profile-card">
-                <img src="${avatar}" alt="${name}" class="user-avatar-small btn-desktop-settings-trigger" style="cursor: pointer;" title="Account Settings">
+                <img src="${safeAvatar}" alt="Avatar for ${safeName}" class="user-avatar-small btn-desktop-settings-trigger" style="cursor: pointer;" title="Account Settings">
                 <div class="user-info-text" style="cursor: pointer;">
-                    <div class="user-gamertag btn-desktop-settings-trigger" title="Account Settings">${name}</div>
-                    <div class="user-status-text click-to-copy-uid" style="color: var(--neon-yellow); font-size: 10px; font-weight: bold; font-family: var(--font-header); letter-spacing:0.05em; display:flex; align-items:center; gap:4px; margin-top:2px;" title="Click to copy Gamer UID" data-uid="${uid || ''}">
-                        <i class="fa-regular fa-copy" style="font-size:9px;"></i> ${uid || 'STRIKZ-XXXXXX'}
+                    <div class="user-gamertag btn-desktop-settings-trigger" title="Account Settings">${safeName}</div>
+                    <div class="user-status-text click-to-copy-uid" style="color: var(--neon-yellow); font-size: 10px; font-weight: bold; font-family: var(--font-header); letter-spacing:0.05em; display:flex; align-items:center; gap:4px; margin-top:2px;" title="Click to copy Gamer UID" data-uid="${safeUid}">
+                        <i class="fa-regular fa-copy" aria-hidden="true" style="font-size:9px;"></i> ${safeUid || 'STRIKZ-XXXXXX'}
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px; justify-content: center; margin-top: 10px; border-top: 1px solid var(--glass-border); padding-top: 8px; width: 100%;">
-                    <button class="btn-auth-settings btn-desktop-settings-trigger" title="Account Settings" style="color: var(--text-dim); background: none; border: none; cursor: pointer; font-size: 11px;">
-                        <i class="fa-solid fa-user-gear"></i> Settings
+                    <button class="btn-auth-settings btn-desktop-settings-trigger" aria-label="Account Settings" style="color: var(--text-dim); background: none; border: none; cursor: pointer; font-size: 11px;">
+                        <i class="fa-solid fa-user-gear" aria-hidden="true"></i> Settings
                     </button>
-                    <button class="btn-auth-logout btn-desktop-logout-trigger" title="Log Out / Exit Arena" style="color: var(--text-dim); background: none; border: none; cursor: pointer; font-size: 11px; margin-left: 10px;">
-                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    <button class="btn-auth-logout btn-desktop-logout-trigger" aria-label="Log out" style="color: var(--text-dim); background: none; border: none; cursor: pointer; font-size: 11px; margin-left: 10px;">
+                        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Logout
                     </button>
                 </div>
             </div>
         `;
+        };
  
-        const mobileLoggedInHTML = (avatar, name, uid) => `
+        const mobileLoggedInHTML = (avatar, name, uid) => {
+            const safeAvatar = escapeHtml(avatar);
+            const safeName = escapeHtml(name);
+            const safeUid = escapeHtml(uid || '');
+            return `
             <div class="user-profile-card-mobile">
-                <img src="${avatar}" alt="${name}" class="user-avatar-small-mobile btn-mobile-settings-trigger" style="cursor: pointer;" title="Account Settings">
+                <img src="${safeAvatar}" alt="Avatar for ${safeName}" class="user-avatar-small-mobile btn-mobile-settings-trigger" style="cursor: pointer;" title="Account Settings">
                 <div class="user-info-text-mobile" style="cursor: pointer;">
-                    <div class="user-gamertag-mobile font-orbitron btn-mobile-settings-trigger" title="Account Settings">${name}</div>
-                    <div class="user-status-text-mobile click-to-copy-uid" style="color: var(--neon-yellow); font-size: 9px; font-weight: bold; font-family: var(--font-header); letter-spacing:0.05em; display:flex; align-items:center; gap:4px; margin-top:2px;" title="Click to copy Gamer UID" data-uid="${uid || ''}">
-                        <i class="fa-regular fa-copy" style="font-size:8px;"></i> ${uid || 'STRIKZ-XXXXXX'}
+                    <div class="user-gamertag-mobile font-orbitron btn-mobile-settings-trigger" title="Account Settings">${safeName}</div>
+                    <div class="user-status-text-mobile click-to-copy-uid" style="color: var(--neon-yellow); font-size: 9px; font-weight: bold; font-family: var(--font-header); letter-spacing:0.05em; display:flex; align-items:center; gap:4px; margin-top:2px;" title="Click to copy Gamer UID" data-uid="${safeUid}">
+                        <i class="fa-regular fa-copy" aria-hidden="true" style="font-size:8px;"></i> ${safeUid || 'STRIKZ-XXXXXX'}
                     </div>
                 </div>
                 <div class="profile-menu-container-mobile">
-                    <button class="btn-auth-logout-mobile" id="btn-mobile-menu-trigger" title="Account Options">
-                        <i class="fa-solid fa-right-from-bracket"></i>
+                    <button class="btn-auth-logout-mobile" id="btn-mobile-menu-trigger" aria-label="Account options" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
                     </button>
-                    <div class="profile-dropdown-menu-mobile glass-panel hidden">
-                        <button class="dropdown-item-mobile btn-mobile-settings-trigger">
-                            <i class="fa-solid fa-user-gear"></i> Settings
+                    <div class="profile-dropdown-menu-mobile glass-panel hidden" role="menu">
+                        <button class="dropdown-item-mobile btn-mobile-settings-trigger" role="menuitem">
+                            <i class="fa-solid fa-user-gear" aria-hidden="true"></i> Settings
                         </button>
-                        <button class="dropdown-item-mobile btn-mobile-logout-trigger">
-                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        <button class="dropdown-item-mobile btn-mobile-logout-trigger" role="menuitem">
+                            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Logout
                         </button>
                     </div>
                 </div>
             </div>
         `;
+        };
  
         const loggedOutHTML = (btnId) => `
             <button class="login-trigger-btn btn-neon-orange w-full" id="${btnId}">
@@ -940,16 +1042,30 @@
         if (progressFill) progressFill.style.width = '0%';
         
         // Reset fields
-        document.getElementById('login-input-user').value = '';
-        document.getElementById('login-input-pass').value = '';
+        const userInput = document.getElementById('login-input-user');
+        const passInput = document.getElementById('login-input-pass');
+        if (userInput) userInput.value = '';
+        if (passInput) passInput.value = '';
 
         // Render Google Sign-in button
         renderGoogleButton();
+
+        // Accessibility: trap focus inside modal
+        trapFocus(loginModal);
+
+        // Accessibility: close on Escape key
+        loginModal._escHandler = (e) => { if (e.key === 'Escape') closeLoginModal(); };
+        document.addEventListener('keydown', loginModal._escHandler);
     }
 
     function closeLoginModal() {
         if (!loginModal) return;
         loginModal.classList.remove('active');
+        releaseFocus(loginModal);
+        if (loginModal._escHandler) {
+            document.removeEventListener('keydown', loginModal._escHandler);
+            delete loginModal._escHandler;
+        }
     }
 
     function openSettingsModal() {
@@ -963,11 +1079,21 @@
             if (settingsAvatarPreview) settingsAvatarPreview.src = user.avatar;
         }
         settingsModal.classList.add('active');
+
+        // Accessibility: trap focus inside modal
+        trapFocus(settingsModal);
+        settingsModal._escHandler = (e) => { if (e.key === 'Escape') closeSettingsModal(); };
+        document.addEventListener('keydown', settingsModal._escHandler);
     }
 
     function closeSettingsModal() {
         if (!settingsModal) return;
         settingsModal.classList.remove('active');
+        releaseFocus(settingsModal);
+        if (settingsModal._escHandler) {
+            document.removeEventListener('keydown', settingsModal._escHandler);
+            delete settingsModal._escHandler;
+        }
     }
 
     let currentOtpEmail = '';

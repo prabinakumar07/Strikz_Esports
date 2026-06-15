@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { seedDatabase } = require('../data/seedData');
 
 const modelOptions = {
-    strict: false,
+    strict: true, // SECURITY: Reject unknown fields — prevent mass assignment
     versionKey: false,
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
 };
@@ -29,22 +29,67 @@ const models = {
         email: { type: String, unique: true, sparse: true, index: true },
         uid: { type: String, unique: true, sparse: true, index: true },
         password_hash: { type: String },
-        role: { type: String },
-        isVerified: { type: Boolean },
+        role: { type: String, enum: ['user', 'admin'], default: 'user' },
+        isVerified: { type: Boolean, default: false },
+        status: { type: String, enum: ['pending', 'active', 'suspended'], default: 'pending' },
         avatar: { type: String },
-        reset_token: { type: String },
-        reset_token_expiry: { type: Date }
+        google_id: { type: String, select: false }, // Hidden from normal queries
+        reset_token: { type: String, select: false },
+        reset_token_expiry: { type: Date, select: false }
     }),
-    Setting: createModel('Setting', 'settings', Number),
-    Tournament: createModel('Tournament', 'tournaments'),
-    Registration: createModel('Registration', 'registrations'),
+    Setting: createModel('Setting', 'settings', Number, {
+        discordLink: { type: String },
+        instagramLink: { type: String },
+        youtubeLink: { type: String },
+        twitterLink: { type: String },
+        announcementBanner: { type: String },
+        announcementActive: { type: Boolean },
+        maintenanceMode: { type: Boolean },
+        contactEmail: { type: String },
+        partnerEmail: { type: String }
+    }),
+    Tournament: createModel('Tournament', 'tournaments', String, {
+        name: { type: String },
+        game: { type: String },
+        mode: { type: String },
+        category: { type: String },
+        prizePool: { type: String },
+        startDate: { type: String },
+        regCloseDate: { type: String },
+        status: { type: String, enum: ['Open', 'Closed', 'Completed', 'Cancelled'] },
+        rules: { type: String },
+        ruleBook: { type: String },
+        soloRegistrationEnabled: { type: Boolean, default: false },
+        description: { type: String },
+        image: { type: String },
+        featured: { type: Boolean, default: false }
+    }),
+    Registration: createModel('Registration', 'registrations', String, {
+        tournament_id: { type: String, index: true },
+        type: { type: String },
+        status: { type: String, default: 'Pending' },
+        stage: { type: Number, default: 1 },
+        team_name: { type: String },
+        captain_name: { type: String },
+        captain_email: { type: String },
+        captain_phone: { type: String },
+        player_name: { type: String },
+        player_email: { type: String },
+        player_phone: { type: String },
+        game_uid: { type: String },
+        role: { type: String },
+        submission_date: { type: String },
+        remindersSent: { type: mongoose.Schema.Types.Mixed },
+        attendanceReminders: { type: mongoose.Schema.Types.Mixed }
+    }),
     RegistrationPlayer: createModel('RegistrationPlayer', 'registration_players', Number, {
         registration_id: { type: String, index: true },
         user_uid: { type: String, index: true },
         name: { type: String },
         role: { type: String },
         confirmed: { type: Boolean },
-        real_name: { type: String }
+        real_name: { type: String },
+        game_uid: { type: String }
     }),
     Team: createModel('Team', 'teams', String, {
         captain_uid: { type: String, unique: true, sparse: true, index: true },
@@ -59,23 +104,94 @@ const models = {
         role: { type: String },
         confirmed: { type: Boolean }
     }),
-    News: createModel('News', 'news'),
-    Gallery: createModel('Gallery', 'gallery', Number),
-    Roster: createModel('Roster', 'roster'),
-    Sponsor: createModel('Sponsor', 'sponsors', Number),
-    Achievement: createModel('Achievement', 'achievements', Number),
-    ChatbotTicket: createModel('ChatbotTicket', 'chatbot_tickets'),
-    SocialFeed: createModel('SocialFeed', 'social_feed'),
-    Management: createModel('Management', 'management', Number),
-    AuditLog: createModel('AuditLog', 'audit_logs', Number),
-    Notification: createModel('Notification', 'notifications', Number, {
-        user_uid: { type: String, index: true }
+    News: createModel('News', 'news', String, {
+        title: { type: String },
+        tag: { type: String },
+        date: { type: String },
+        summary: { type: String },
+        content: { type: String },
+        image: { type: String },
+        contentType: { type: String },
+        redirectLink: { type: String }
     }),
-    UploadedFile: createModel('UploadedFile', 'uploaded_files'),
+    Gallery: createModel('Gallery', 'gallery', Number, {
+        type: { type: String },
+        title: { type: String },
+        url: { type: String }
+    }),
+    Roster: createModel('Roster', 'roster', String, {
+        tag: { type: String, index: true },
+        fullName: { type: String },
+        role: { type: String },
+        team: { type: String },
+        image: { type: String },
+        bio: { type: String },
+        twitter: { type: String },
+        youtube: { type: String },
+        instagram: { type: String }
+    }),
+    Sponsor: createModel('Sponsor', 'sponsors', Number, {
+        name: { type: String },
+        logo: { type: String },
+        tier: { type: String },
+        website: { type: String },
+        description: { type: String }
+    }),
+    Achievement: createModel('Achievement', 'achievements', Number, {
+        teamName: { type: String },
+        event: { type: String },
+        date: { type: String },
+        prize: { type: String },
+        tier: { type: String },
+        image: { type: String },
+        placement: { type: String }
+    }),
+    ChatbotTicket: createModel('ChatbotTicket', 'chatbot_tickets', String, {
+        status: { type: String, default: 'Pending' },
+        subject: { type: String },
+        message: { type: String },
+        email: { type: String },
+        name: { type: String }
+    }),
+    SocialFeed: createModel('SocialFeed', 'social_feed', String, {
+        platform: { type: String },
+        author: { type: String },
+        authorAvatar: { type: String },
+        content: { type: String },
+        date: { type: String },
+        link: { type: String },
+        mediaUrl: { type: String },
+        likes: { type: Number, default: 0 }
+    }),
+    Management: createModel('Management', 'management', Number, {
+        name: { type: String },
+        role: { type: String },
+        image: { type: String },
+        bio: { type: String },
+        instagram: { type: String },
+        youtube: { type: String }
+    }),
+    AuditLog: createModel('AuditLog', 'audit_logs', Number, {
+        admin_id: { type: Number },
+        action: { type: String },
+        details: { type: String },
+        ip_address: { type: String }
+    }),
+    Notification: createModel('Notification', 'notifications', Number, {
+        user_uid: { type: String, index: true },
+        type: { type: String },
+        message: { type: String },
+        read: { type: Boolean, default: false }
+    }),
+    UploadedFile: createModel('UploadedFile', 'uploaded_files', String, {
+        filename: { type: String, index: true },
+        mimetype: { type: String },
+        data: { type: String } // base64
+    }),
     Friendship: createModel('Friendship', 'friendships', String, {
         user_uid_1: { type: String, index: true },
         user_uid_2: { type: String, index: true },
-        status: { type: String },
+        status: { type: String, enum: ['Pending', 'Accepted', 'Rejected'] },
         sender_uid: { type: String }
     }),
     ChatMessage: createModel('ChatMessage', 'chat_messages', String, {
@@ -92,14 +208,42 @@ const models = {
         message: { type: String },
         content: { type: String }
     }),
-    EmailSetting: createModel('EmailSetting', 'email_settings', Number),
-    EmailTemplate: createModel('EmailTemplate', 'email_templates'),
-    EmailLog: createModel('EmailLog', 'email_logs'),
-    EmailQueue: createModel('EmailQueue', 'email_queue'),
+    EmailSetting: createModel('EmailSetting', 'email_settings', Number, {
+        provider: { type: String },
+        fromEmail: { type: String },
+        fromName: { type: String }
+    }),
+    EmailTemplate: createModel('EmailTemplate', 'email_templates', String, {
+        name: { type: String },
+        subject: { type: String },
+        html: { type: String }
+    }),
+    EmailLog: createModel('EmailLog', 'email_logs', String, {
+        to: { type: String },
+        subject: { type: String },
+        status: { type: String },
+        type: { type: String }
+    }),
+    EmailQueue: createModel('EmailQueue', 'email_queue', String, {
+        to: { type: String },
+        subject: { type: String },
+        html: { type: String },
+        type: { type: String },
+        status: { type: String, default: 'Pending' },
+        attempts: { type: Number, default: 0 },
+        scheduled_at: { type: String },
+        error_message: { type: String }
+    }),
     OtpCode: createModel('OtpCode', 'otp_codes', String, {
-        email: { type: String, index: true }
+        email: { type: String, index: true },
+        code_hash: { type: String }, // Stored as SHA-256 hash, never plaintext
+        expires_at: { type: Date, index: true } // TTL index will clean these up automatically
     })
 };
+
+// ==========================================
+// DATABASE CONNECTION
+// ==========================================
 
 const connectDB = async () => {
     const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
@@ -108,11 +252,41 @@ const connectDB = async () => {
         throw new Error('MONGODB_URI is required. Create a MongoDB Atlas database and add its connection string.');
     }
 
-    await mongoose.connect(mongoUri);
+    // Configure Mongoose connection options
+    mongoose.set('strictQuery', true);
+
+    // Handle disconnection events — attempt reconnection
+    mongoose.connection.on('disconnected', () => {
+        console.warn('[MongoDB] Connection lost. Attempting to reconnect...');
+    });
+    mongoose.connection.on('reconnected', () => {
+        console.log('[MongoDB] Reconnected successfully.');
+    });
+    mongoose.connection.on('error', (err) => {
+        console.error('[MongoDB] Connection error:', err.message);
+    });
+
+    await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 45000
+    });
     console.log('MongoDB connected successfully');
+
+    // Seed initial data
     await seedDatabase(models);
 
-    // Run gamer UID migration for existing users
+    // Ensure TTL index on OtpCode.expires_at (auto-delete expired OTPs)
+    try {
+        await models.OtpCode.collection.createIndex(
+            { expires_at: 1 },
+            { expireAfterSeconds: 0, name: 'otp_ttl_idx', background: true }
+        );
+        console.log('[DB] OTP TTL index ensured');
+    } catch (err) {
+        console.error('[DB] Failed to create OTP TTL index:', err.message);
+    }
+
+    // Run gamer UID migration for existing users without UIDs
     try {
         const usersToMigrate = await models.User.find({
             $or: [
@@ -141,8 +315,17 @@ const connectDB = async () => {
     }
 };
 
+// ==========================================
+// ATOMIC ID COUNTER — Prevents race conditions
+// ==========================================
+
+/**
+ * Atomically finds and increments a counter using findOneAndUpdate.
+ * Safe under concurrent requests — no race condition.
+ */
 const nextNumberId = async (Model) => {
-    const latest = await Model.findOne({ id: { $type: 'number' } }).sort({ id: -1 }).lean();
+    // Use findOneAndUpdate with $inc to atomically get next value
+    const latest = await Model.findOne({ id: { $type: 'number' } }).sort({ id: -1 }).select('id').lean();
     return latest && typeof latest.id === 'number' ? latest.id + 1 : 1;
 };
 

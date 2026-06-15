@@ -1,5 +1,34 @@
 const { models, nextNumberId, clean } = require('../config/db');
 
+// ==========================================
+// SECURITY: Field whitelisting helpers
+// ==========================================
+
+/**
+ * Pick only allowed fields from an object (prevents mass assignment / prototype pollution).
+ */
+const pick = (obj, allowedFields) => {
+    const result = {};
+    allowedFields.forEach((key) => {
+        if (obj[key] !== undefined) result[key] = obj[key];
+    });
+    return result;
+};
+
+const TOURNAMENT_FIELDS = ['name', 'game', 'mode', 'category', 'prizePool', 'startDate', 'regCloseDate', 'status', 'rules', 'ruleBook', 'soloRegistrationEnabled', 'description', 'image', 'featured'];
+const NEWS_FIELDS = ['title', 'tag', 'summary', 'content', 'image', 'contentType', 'redirectLink'];
+const GALLERY_FIELDS = ['title', 'url', 'type'];
+const ROSTER_FIELDS = ['tag', 'fullName', 'role', 'team', 'image', 'bio', 'twitter', 'youtube', 'instagram'];
+const SPONSOR_FIELDS = ['name', 'logo', 'tier', 'website', 'description'];
+const WINNER_FIELDS = ['teamName', 'event', 'date', 'prize', 'tier', 'image', 'placement'];
+const SOCIAL_FIELDS = ['platform', 'author', 'authorAvatar', 'content', 'date', 'link', 'mediaUrl'];
+const MANAGEMENT_FIELDS = ['name', 'role', 'image', 'bio', 'instagram', 'youtube'];
+const SETTINGS_FIELDS = ['discordLink', 'instagramLink', 'youtubeLink', 'twitterLink', 'announcementBanner', 'announcementActive', 'maintenanceMode', 'contactEmail', 'partnerEmail'];
+
+// ==========================================
+// AUDIT LOGGING
+// ==========================================
+
 const logAdminAction = async (req, action, details) => {
     try {
         await models.AuditLog.create({
@@ -7,7 +36,7 @@ const logAdminAction = async (req, action, details) => {
             admin_id: req.user ? req.user.id : null,
             action,
             details: JSON.stringify(details),
-            ip_address: req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
+            ip_address: req.ip || req.headers['x-forwarded-for'] || 'unknown'
         });
     } catch (err) {
         console.error('Audit Log Error:', err.message);
@@ -17,6 +46,10 @@ const logAdminAction = async (req, action, details) => {
 const updateById = async (Model, id, data) => Model.updateOne({ id: Number.isNaN(Number(id)) ? id : Number(id) }, { $set: data });
 const deleteById = async (Model, id) => Model.deleteOne({ id: Number.isNaN(Number(id)) ? id : Number(id) });
 
+// ==========================================
+// STATS
+// ==========================================
+
 const getStats = async (req, res, next) => {
     try {
         const [totalReg, pendingReg, approvedReg, activeTourneys, openTickets, registrations, tournaments] = await Promise.all([
@@ -25,7 +58,7 @@ const getStats = async (req, res, next) => {
             models.Registration.countDocuments({ status: 'Approved' }),
             models.Tournament.countDocuments({ status: 'Open' }),
             models.ChatbotTicket.countDocuments({ status: 'Pending' }),
-            models.Registration.find().lean(),
+            models.Registration.find().select('tournament_id').lean(),
             models.Tournament.find().select('id name').lean()
         ]);
 
@@ -42,20 +75,39 @@ const getStats = async (req, res, next) => {
     }
 };
 
+// ==========================================
+// REGISTRATIONS — Fixed N+1 query
+// ==========================================
+
 const getRegistrations = async (req, res, next) => {
     try {
         const registrations = await models.Registration.find().sort({ created_at: -1 }).lean();
-        const enriched = [];
 
-        for (const reg of registrations) {
-            const tourney = await models.Tournament.findOne({ id: reg.tournament_id }).select('name').lean();
-            const players = reg.type !== 'Solo'
-                ? await models.RegistrationPlayer.find({ registration_id: reg.id }).lean()
-                : [];
+        if (registrations.length === 0) {
+            return res.json({ success: true, registrations: [] });
+        }
 
-            enriched.push({
+        // Batch fetch tournaments and players in 2 queries instead of N+1
+        const tournamentIds = [...new Set(registrations.map((r) => r.tournament_id))];
+        const registrationIds = registrations.map((r) => r.id);
+
+        const [tournaments, allPlayers] = await Promise.all([
+            models.Tournament.find({ id: { $in: tournamentIds } }).select('id name').lean(),
+            models.RegistrationPlayer.find({ registration_id: { $in: registrationIds } }).lean()
+        ]);
+
+        const tournamentMap = new Map(tournaments.map((t) => [t.id, t.name]));
+        const playersMap = new Map();
+        allPlayers.forEach((p) => {
+            if (!playersMap.has(p.registration_id)) playersMap.set(p.registration_id, []);
+            playersMap.get(p.registration_id).push(p);
+        });
+
+        const enriched = registrations.map((reg) => {
+            const players = reg.type !== 'Solo' ? (playersMap.get(reg.id) || []) : [];
+            return {
                 ...clean(reg),
-                tournamentName: tourney ? tourney.name : '',
+                tournamentName: tournamentMap.get(reg.tournament_id) || '',
                 tournamentId: reg.tournament_id,
                 submissionDate: reg.submission_date,
                 players: players.map((p) => ({
@@ -64,8 +116,8 @@ const getRegistrations = async (req, res, next) => {
                     realName: p.real_name,
                     confirmed: p.confirmed === true
                 }))
-            });
-        }
+            };
+        });
 
         res.json({ success: true, registrations: enriched });
     } catch (err) {
@@ -126,16 +178,18 @@ const deleteRegistration = async (req, res, next) => {
     }
 };
 
+// ==========================================
+// TOURNAMENTS — Field whitelisted
+// ==========================================
+
 const createTournament = async (req, res, next) => {
     try {
-        const { id, name, game, mode, category, prizePool, startDate, regCloseDate, rules, ruleBook, soloRegistrationEnabled, description, image, featured } = req.body;
-        
-        let tourneyId = id;
+        const data = pick(req.body, TOURNAMENT_FIELDS);
+        const { id: bodyId, name, game, mode, category, prizePool, startDate, regCloseDate } = { ...req.body };
+
+        let tourneyId = bodyId;
         if (!tourneyId && name) {
-            tourneyId = name.toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/(^-|-$)+/g, '');
-            
+            tourneyId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
             let exists = await models.Tournament.exists({ id: tourneyId });
             while (exists) {
                 tourneyId = `${tourneyId}-${Math.floor(100 + Math.random() * 900)}`;
@@ -147,7 +201,14 @@ const createTournament = async (req, res, next) => {
             res.status(400);
             return next(new Error('Please fill in all core tournament properties'));
         }
-        await models.Tournament.create({ id: tourneyId, name, game, mode, category, prizePool, startDate, regCloseDate, status: 'Open', rules, ruleBook, soloRegistrationEnabled: !!soloRegistrationEnabled, description, image, featured: !!featured });
+
+        await models.Tournament.create({
+            id: tourneyId,
+            ...data,
+            soloRegistrationEnabled: !!data.soloRegistrationEnabled,
+            featured: !!data.featured,
+            status: 'Open'
+        });
         await logAdminAction(req, 'CREATE_TOURNAMENT', { id: tourneyId, name });
         res.status(201).json({ success: true, message: 'Tournament arena initialized successfully' });
     } catch (err) {
@@ -158,14 +219,15 @@ const createTournament = async (req, res, next) => {
 const updateTournament = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const data = { ...req.body, soloRegistrationEnabled: !!req.body.soloRegistrationEnabled, featured: !!req.body.featured };
-        delete data.id;
+        const data = pick(req.body, TOURNAMENT_FIELDS);
+        data.soloRegistrationEnabled = !!data.soloRegistrationEnabled;
+        data.featured = !!data.featured;
         const result = await models.Tournament.updateOne({ id }, { $set: data });
         if (result.matchedCount === 0) {
             res.status(404);
             return next(new Error('Tournament arena not found'));
         }
-        await logAdminAction(req, 'UPDATE_TOURNAMENT', { id, name: req.body.name });
+        await logAdminAction(req, 'UPDATE_TOURNAMENT', { id, name: data.name });
         res.json({ success: true, message: 'Tournament configurations updated' });
     } catch (err) {
         next(err);
@@ -187,13 +249,17 @@ const deleteTournament = async (req, res, next) => {
     }
 };
 
+// ==========================================
+// NEWS — Field whitelisted
+// ==========================================
+
 const createNews = async (req, res, next) => {
     try {
-        const { title, tag, summary, content, image, contentType, redirectLink } = req.body;
+        const data = pick(req.body, NEWS_FIELDS);
         const id = 'news-' + Date.now();
         const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        await models.News.create({ id, title, tag, date, summary, content, image, contentType, redirectLink: redirectLink || '' });
-        await logAdminAction(req, 'CREATE_NEWS', { id, title });
+        await models.News.create({ id, date, ...data, redirectLink: data.redirectLink || '' });
+        await logAdminAction(req, 'CREATE_NEWS', { id, title: data.title });
         res.status(201).json({ success: true, message: 'News dispatch posted' });
     } catch (err) { next(err); }
 };
@@ -201,12 +267,13 @@ const createNews = async (req, res, next) => {
 const updateNews = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const result = await models.News.updateOne({ id }, { $set: { ...req.body, redirectLink: req.body.redirectLink || '' } });
+        const data = pick(req.body, NEWS_FIELDS);
+        const result = await models.News.updateOne({ id }, { $set: { ...data, redirectLink: data.redirectLink || '' } });
         if (result.matchedCount === 0) {
             res.status(404);
             return next(new Error('News item not found'));
         }
-        await logAdminAction(req, 'UPDATE_NEWS', { id, title: req.body.title });
+        await logAdminAction(req, 'UPDATE_NEWS', { id, title: data.title });
         res.json({ success: true, message: 'News dispatch updated' });
     } catch (err) { next(err); }
 };
@@ -223,11 +290,15 @@ const deleteNews = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+// ==========================================
+// GALLERY — Field whitelisted
+// ==========================================
+
 const createGallery = async (req, res, next) => {
     try {
-        const { title, url, type } = req.body;
-        await models.Gallery.create({ id: await nextNumberId(models.Gallery), type: type || 'image', title, url });
-        await logAdminAction(req, 'CREATE_GALLERY', { title, url });
+        const data = pick(req.body, GALLERY_FIELDS);
+        await models.Gallery.create({ id: await nextNumberId(models.Gallery), type: data.type || 'image', title: data.title, url: data.url });
+        await logAdminAction(req, 'CREATE_GALLERY', { title: data.title, url: data.url });
         res.status(201).json({ success: true, message: 'Gallery media added' });
     } catch (err) { next(err); }
 };
@@ -244,23 +315,31 @@ const deleteGallery = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+// ==========================================
+// ROSTER — Field whitelisted
+// ==========================================
+
 const createRoster = async (req, res, next) => {
     try {
-        const data = { ...req.body, id: req.body.tag, twitter: req.body.twitter || '#', youtube: req.body.youtube || '#', instagram: req.body.instagram || '#' };
-        await models.Roster.create(data);
-        await logAdminAction(req, 'CREATE_ROSTER', { tag: req.body.tag, fullName: req.body.fullName });
+        const data = pick(req.body, ROSTER_FIELDS);
+        await models.Roster.create({ ...data, id: data.tag, twitter: data.twitter || '#', youtube: data.youtube || '#', instagram: data.instagram || '#' });
+        await logAdminAction(req, 'CREATE_ROSTER', { tag: data.tag, fullName: data.fullName });
         res.status(201).json({ success: true, message: 'Official roster player registered' });
     } catch (err) { next(err); }
 };
 
 const updateRoster = async (req, res, next) => {
     try {
-        const result = await models.Roster.updateOne({ tag: req.params.tag }, { $set: { ...req.body, twitter: req.body.twitter || '#', youtube: req.body.youtube || '#', instagram: req.body.instagram || '#' } });
+        const data = pick(req.body, ROSTER_FIELDS);
+        const result = await models.Roster.updateOne(
+            { tag: req.params.tag },
+            { $set: { ...data, twitter: data.twitter || '#', youtube: data.youtube || '#', instagram: data.instagram || '#' } }
+        );
         if (result.matchedCount === 0) {
             res.status(404);
             return next(new Error('Roster player tag not found'));
         }
-        await logAdminAction(req, 'UPDATE_ROSTER', { tag: req.params.tag, fullName: req.body.fullName });
+        await logAdminAction(req, 'UPDATE_ROSTER', { tag: req.params.tag, fullName: data.fullName });
         res.json({ success: true, message: 'Roster player details updated' });
     } catch (err) { next(err); }
 };
@@ -277,22 +356,28 @@ const deleteRoster = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+// ==========================================
+// SPONSORS — Field whitelisted
+// ==========================================
+
 const createSponsor = async (req, res, next) => {
     try {
-        await models.Sponsor.create({ id: await nextNumberId(models.Sponsor), ...req.body });
-        await logAdminAction(req, 'CREATE_SPONSOR', { name: req.body.name, tier: req.body.tier });
+        const data = pick(req.body, SPONSOR_FIELDS);
+        await models.Sponsor.create({ id: await nextNumberId(models.Sponsor), ...data });
+        await logAdminAction(req, 'CREATE_SPONSOR', { name: data.name, tier: data.tier });
         res.status(201).json({ success: true, message: 'Sponsor catalog updated' });
     } catch (err) { next(err); }
 };
 
 const updateSponsor = async (req, res, next) => {
     try {
-        const result = await updateById(models.Sponsor, req.params.id, req.body);
+        const data = pick(req.body, SPONSOR_FIELDS);
+        const result = await updateById(models.Sponsor, req.params.id, data);
         if (result.matchedCount === 0) {
             res.status(404);
             return next(new Error('Sponsor not found'));
         }
-        await logAdminAction(req, 'UPDATE_SPONSOR', { id: req.params.id, name: req.body.name });
+        await logAdminAction(req, 'UPDATE_SPONSOR', { id: req.params.id, name: data.name });
         res.json({ success: true, message: 'Sponsor catalog updated' });
     } catch (err) { next(err); }
 };
@@ -309,23 +394,29 @@ const deleteSponsor = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+// ==========================================
+// WINNERS — Field whitelisted
+// ==========================================
+
 const createWinner = async (req, res, next) => {
     try {
+        const data = pick(req.body, WINNER_FIELDS);
         const id = Date.now();
-        await models.Achievement.create({ id, ...req.body, tier: req.body.tier || 'gold' });
-        await logAdminAction(req, 'CREATE_WINNER', { id, teamName: req.body.teamName, event: req.body.event });
+        await models.Achievement.create({ id, ...data, tier: data.tier || 'gold' });
+        await logAdminAction(req, 'CREATE_WINNER', { id, teamName: data.teamName, event: data.event });
         res.status(201).json({ success: true, message: 'Winners achievement added' });
     } catch (err) { next(err); }
 };
 
 const updateWinner = async (req, res, next) => {
     try {
-        const result = await updateById(models.Achievement, req.params.id, { ...req.body, tier: req.body.tier || 'gold' });
+        const data = pick(req.body, WINNER_FIELDS);
+        const result = await updateById(models.Achievement, req.params.id, { ...data, tier: data.tier || 'gold' });
         if (result.matchedCount === 0) {
             res.status(404);
             return next(new Error('Achievement not found'));
         }
-        await logAdminAction(req, 'UPDATE_WINNER', { id: req.params.id, teamName: req.body.teamName, event: req.body.event });
+        await logAdminAction(req, 'UPDATE_WINNER', { id: req.params.id, teamName: data.teamName });
         res.json({ success: true, message: 'Winners achievement updated' });
     } catch (err) { next(err); }
 };
@@ -342,23 +433,29 @@ const deleteWinner = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+// ==========================================
+// SOCIAL — Field whitelisted
+// ==========================================
+
 const createSocial = async (req, res, next) => {
     try {
+        const data = pick(req.body, SOCIAL_FIELDS);
         const id = 'social-' + Date.now();
-        await models.SocialFeed.create({ id, ...req.body, date: req.body.date || 'Just now', likes: Math.floor(Math.random() * 200) + 10 });
-        await logAdminAction(req, 'CREATE_SOCIAL', { id, platform: req.body.platform, author: req.body.author });
+        await models.SocialFeed.create({ id, ...data, date: data.date || 'Just now', likes: Math.floor(Math.random() * 200) + 10 });
+        await logAdminAction(req, 'CREATE_SOCIAL', { id, platform: data.platform, author: data.author });
         res.status(201).json({ success: true, message: 'Social post added' });
     } catch (err) { next(err); }
 };
 
 const updateSocial = async (req, res, next) => {
     try {
-        const result = await models.SocialFeed.updateOne({ id: req.params.id }, { $set: req.body });
+        const data = pick(req.body, SOCIAL_FIELDS);
+        const result = await models.SocialFeed.updateOne({ id: req.params.id }, { $set: data });
         if (result.matchedCount === 0) {
             res.status(404);
             return next(new Error('Social post not found'));
         }
-        await logAdminAction(req, 'UPDATE_SOCIAL', { id: req.params.id, platform: req.body.platform, author: req.body.author });
+        await logAdminAction(req, 'UPDATE_SOCIAL', { id: req.params.id, platform: data.platform });
         res.json({ success: true, message: 'Social post updated' });
     } catch (err) { next(err); }
 };
@@ -375,23 +472,29 @@ const deleteSocial = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+// ==========================================
+// MANAGEMENT — Field whitelisted
+// ==========================================
+
 const createManagement = async (req, res, next) => {
     try {
+        const data = pick(req.body, MANAGEMENT_FIELDS);
         const id = Date.now();
-        await models.Management.create({ id, ...req.body, instagram: req.body.instagram || '#', youtube: req.body.youtube || '#' });
-        await logAdminAction(req, 'CREATE_MANAGEMENT', { id, name: req.body.name, role: req.body.role });
+        await models.Management.create({ id, ...data, instagram: data.instagram || '#', youtube: data.youtube || '#' });
+        await logAdminAction(req, 'CREATE_MANAGEMENT', { id, name: data.name, role: data.role });
         res.status(201).json({ success: true, message: 'Management member registered' });
     } catch (err) { next(err); }
 };
 
 const updateManagement = async (req, res, next) => {
     try {
-        const result = await updateById(models.Management, req.params.id, { ...req.body, instagram: req.body.instagram || '#', youtube: req.body.youtube || '#' });
+        const data = pick(req.body, MANAGEMENT_FIELDS);
+        const result = await updateById(models.Management, req.params.id, { ...data, instagram: data.instagram || '#', youtube: data.youtube || '#' });
         if (result.matchedCount === 0) {
             res.status(404);
             return next(new Error('Management member not found'));
         }
-        await logAdminAction(req, 'UPDATE_MANAGEMENT', { id: req.params.id, name: req.body.name, role: req.body.role });
+        await logAdminAction(req, 'UPDATE_MANAGEMENT', { id: req.params.id, name: data.name });
         res.json({ success: true, message: 'Management details updated' });
     } catch (err) { next(err); }
 };
@@ -408,13 +511,22 @@ const deleteManagement = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+// ==========================================
+// SETTINGS — Field whitelisted
+// ==========================================
+
 const updateSettings = async (req, res, next) => {
     try {
-        await models.Setting.updateOne({ id: 1 }, { $set: req.body }, { upsert: true });
-        await logAdminAction(req, 'UPDATE_SETTINGS', req.body);
+        const data = pick(req.body, SETTINGS_FIELDS);
+        await models.Setting.updateOne({ id: 1 }, { $set: data }, { upsert: true });
+        await logAdminAction(req, 'UPDATE_SETTINGS', { fields: Object.keys(data) });
         res.json({ success: true, message: 'Global website configurations updated' });
     } catch (err) { next(err); }
 };
+
+// ==========================================
+// TICKETS
+// ==========================================
 
 const getTickets = async (req, res, next) => {
     try {
@@ -435,28 +547,27 @@ const resolveTicket = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
-// ──────────────────────────────────────────────────────
-// USER ACCOUNT MANAGEMENT (Admin)
-// ──────────────────────────────────────────────────────
+// ==========================================
+// USER ACCOUNT MANAGEMENT
+// ==========================================
 
-// List all user accounts (exclude password hash)
 const getAllUsers = async (req, res, next) => {
     try {
-        const page   = Math.max(1, parseInt(req.query.page)  || 1);
+        const page   = Math.max(1, parseInt(req.query.page) || 1);
         const limit  = Math.min(100, parseInt(req.query.limit) || 50);
-        const search = req.query.search ? req.query.search.trim() : '';
+        const search = req.query.search ? req.query.search.trim().slice(0, 50) : '';
 
         const filter = search
             ? { $or: [
-                { username: { $regex: search, $options: 'i' } },
-                { email:    { $regex: search, $options: 'i' } },
-                { uid:      { $regex: search, $options: 'i' } }
+                { username: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } },
+                { email:    { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } },
+                { uid:      { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } }
               ] }
             : {};
 
         const [users, total] = await Promise.all([
             models.User.find(filter)
-                .select('-password_hash -reset_token -reset_token_expiry')
+                .select('-password_hash -reset_token -reset_token_expiry -google_id')
                 .sort({ created_at: -1 })
                 .skip((page - 1) * limit)
                 .limit(limit)
@@ -468,7 +579,6 @@ const getAllUsers = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
-// Verify a user account
 const verifyUser = async (req, res, next) => {
     try {
         const userId = Number(req.params.id);
@@ -481,7 +591,6 @@ const verifyUser = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
-// Toggle suspend / reactivate a user account
 const suspendUser = async (req, res, next) => {
     try {
         const userId = Number(req.params.id);
@@ -499,7 +608,6 @@ const suspendUser = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
-// Permanently delete a user account
 const deleteUser = async (req, res, next) => {
     try {
         const userId = Number(req.params.id);
