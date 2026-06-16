@@ -29,7 +29,6 @@
                     <div class="filter-tabs" style="margin-bottom: 0;">
                         <button class="filter-tab active" id="gallery-tab-all">ALL MEDIA</button>
                         <button class="filter-tab" id="gallery-tab-photos">PHOTOS</button>
-                        <button class="filter-tab" id="gallery-tab-videos">VIDEOS</button>
                     </div>
                     
                     <div id="gallery-album-filter-container" style="display: flex; align-items: center; gap: 8px;">
@@ -59,12 +58,6 @@
         const lightboxClose = document.getElementById('lightbox-close-btn');
         const albumSelect = document.getElementById('gallery-album-select');
 
-        // Initial videos list
-        const videos = [
-            { id: 101, title: 'FFWS Grand Finals Winning Moments', preview: 'assets/tournament_banner.png', videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', album: 'Championships' },
-            { id: 102, title: 'STRIKZ.Storm Rusher Highlights: 20 Kills', preview: 'assets/hero_bg.png', videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', album: 'Highlights' }
-        ];
-
         let currentTypeFilter = 'all';
 
         function loadMedia() {
@@ -89,27 +82,6 @@
                 });
             }
 
-            // Load Videos
-            if (currentTypeFilter === 'all' || currentTypeFilter === 'videos') {
-                videos.forEach(vid => {
-                    const itemAlbum = vid.album || 'General';
-                    if (selectedAlbum === 'All Albums' || itemAlbum === selectedAlbum) {
-                        mediaHtml += `
-                            <div class="gallery-item video-item" style="height: 180px;" data-video="${vid.videoUrl}">
-                                <img src="${vid.preview}" alt="${vid.title}" style="filter: brightness(0.6);">
-                                <div class="gallery-overlay" style="opacity: 1; background: rgba(0,0,0,0.3);">
-                                    <i class="fa-solid fa-circle-play" style="font-size: 40px; color: var(--neon-orange); filter: drop-shadow(0 0 10px var(--neon-orange-glow));"></i>
-                                    <span style="position: absolute; bottom: 8px; left: 8px; font-size: 8px; font-weight: 800; background: rgba(0,0,0,0.6); padding: 3px 6px; border-radius: 2px; font-family: var(--font-header); letter-spacing: 0.1em; color: var(--neon-yellow);">${itemAlbum.toUpperCase()}</span>
-                                </div>
-                                <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; font-size: 11px; text-shadow: 1px 1px 2px #000; font-weight: 600;">
-                                    ${vid.title}
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-            }
-
             mediaGrid.innerHTML = mediaHtml || `
                 <div style="grid-column: 1 / -1; text-align: center; padding: 60px 0; color: var(--text-dim);">
                     <i class="fa-solid fa-folder-open" style="font-size: 40px; margin-bottom: 15px; color: var(--neon-yellow); opacity: 0.5;"></i>
@@ -122,30 +94,6 @@
                 item.onclick = function() {
                     const url = this.dataset.url;
                     lightboxImg.src = url;
-                    lightbox.classList.add('active');
-                };
-            });
-
-            // Bind Video modal to videos
-            mediaGrid.querySelectorAll('.video-item').forEach(item => {
-                item.onclick = function() {
-                    const videoUrl = this.dataset.video;
-                    lightboxImg.style.display = 'none';
-                    
-                    let iframe = document.getElementById('lightbox-video-frame');
-                    if (!iframe) {
-                        iframe = document.createElement('iframe');
-                        iframe.id = 'lightbox-video-frame';
-                        iframe.style.width = '80vw';
-                        iframe.style.height = '45vw';
-                        iframe.style.maxWidth = '800px';
-                        iframe.style.maxHeight = '450px';
-                        iframe.style.border = '2px solid var(--neon-cyan-border)';
-                        iframe.style.boxShadow = '0 0 25px var(--neon-cyan-glow)';
-                        lightbox.appendChild(iframe);
-                    }
-                    iframe.src = videoUrl;
-                    iframe.style.display = 'block';
                     lightbox.classList.add('active');
                 };
             });
@@ -168,11 +116,6 @@
 
         function closeLightbox() {
             lightbox.classList.remove('active');
-            const iframe = document.getElementById('lightbox-video-frame');
-            if (iframe) {
-                iframe.src = '';
-                iframe.style.display = 'none';
-            }
             lightboxImg.style.display = 'block';
         }
 
@@ -182,15 +125,13 @@
         // Filter tabs binding
         const tabAll = document.getElementById('gallery-tab-all');
         const tabPhotos = document.getElementById('gallery-tab-photos');
-        const tabVideos = document.getElementById('gallery-tab-videos');
 
         function clearActive() {
-            [tabAll, tabPhotos, tabVideos].forEach(t => t.classList.remove('active'));
+            [tabAll, tabPhotos].forEach(t => t.classList.remove('active'));
         }
 
         tabAll.onclick = function() { clearActive(); this.classList.add('active'); currentTypeFilter = 'all'; loadMedia(); };
         tabPhotos.onclick = function() { clearActive(); this.classList.add('active'); currentTypeFilter = 'photos'; loadMedia(); };
-        tabVideos.onclick = function() { clearActive(); this.classList.add('active'); currentTypeFilter = 'videos'; loadMedia(); };
 
         if (albumSelect) {
             albumSelect.onchange = loadMedia;

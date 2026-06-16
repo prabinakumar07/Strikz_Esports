@@ -18,12 +18,12 @@ const pick = (obj, allowedFields) => {
 const TOURNAMENT_FIELDS = ['name', 'game', 'mode', 'category', 'prizePool', 'startDate', 'regCloseDate', 'status', 'rules', 'ruleBook', 'soloRegistrationEnabled', 'description', 'image', 'featured'];
 const NEWS_FIELDS = ['title', 'tag', 'summary', 'content', 'image', 'contentType', 'redirectLink'];
 const GALLERY_FIELDS = ['title', 'url', 'type'];
-const ROSTER_FIELDS = ['tag', 'fullName', 'role', 'team', 'avatar', 'image', 'bio', 'stats', 'socials', 'kd', 'hs', 'matches', 'winRate', 'twitter', 'youtube', 'instagram'];
+const ROSTER_FIELDS = ['tag', 'fullName', 'role', 'team', 'avatar', 'image', 'bio', 'stats', 'socials', 'kd', 'hs', 'matches', 'winRate', 'twitter', 'youtube', 'instagram', 'rank'];
 const SPONSOR_FIELDS = ['name', 'logo', 'tier', 'website', 'description'];
-const WINNER_FIELDS = ['teamName', 'event', 'date', 'prize', 'tier', 'image', 'placement'];
+const WINNER_FIELDS = ['teamName', 'event', 'date', 'prize', 'tier', 'image', 'placement', 'title', 'reward', 'details'];
 const SOCIAL_FIELDS = ['platform', 'author', 'authorAvatar', 'content', 'date', 'link', 'mediaUrl'];
 const MANAGEMENT_FIELDS = ['name', 'role', 'image', 'bio', 'instagram', 'youtube'];
-const SETTINGS_FIELDS = ['discordLink', 'instagramLink', 'youtubeLink', 'twitterLink', 'announcementBanner', 'announcementActive', 'maintenanceMode', 'contactEmail', 'partnerEmail'];
+const SETTINGS_FIELDS = ['discordLink', 'instagramLink', 'youtubeLink', 'twitterLink', 'announcementBanner', 'announcementActive', 'maintenanceMode', 'contactEmail', 'partnerEmail', 'showKd', 'showHs', 'showMatches', 'showWinRate', 'showRank'];
 
 // ==========================================
 // AUDIT LOGGING
@@ -333,6 +333,7 @@ const createRoster = async (req, res, next) => {
             hs: data.hs || flatStats.hs || 'N/A',
             matches: data.matches || flatStats.matches || 'N/A',
             winRate: data.winRate || flatStats.winRate || 'N/A',
+            rank: data.rank || flatStats.rank || 'N/A',
             twitter: data.twitter || flatSocials.twitter || '#',
             youtube: data.youtube || flatSocials.youtube || '#',
             instagram: data.instagram || flatSocials.instagram || '#',
@@ -340,7 +341,8 @@ const createRoster = async (req, res, next) => {
                 kd: flatStats.kd || data.kd || 'N/A',
                 hs: flatStats.hs || data.hs || 'N/A',
                 matches: flatStats.matches || data.matches || 'N/A',
-                winRate: flatStats.winRate || data.winRate || 'N/A'
+                winRate: flatStats.winRate || data.winRate || 'N/A',
+                rank: flatStats.rank || data.rank || 'N/A'
             },
             socials: {
                 twitter: flatSocials.twitter || data.twitter || '#',
@@ -382,6 +384,7 @@ const updateRoster = async (req, res, next) => {
             hs: data.hs || flatStats.hs || 'N/A',
             matches: data.matches || flatStats.matches || 'N/A',
             winRate: data.winRate || flatStats.winRate || 'N/A',
+            rank: data.rank || flatStats.rank || 'N/A',
             twitter: data.twitter || flatSocials.twitter || '#',
             youtube: data.youtube || flatSocials.youtube || '#',
             instagram: data.instagram || flatSocials.instagram || '#',
@@ -389,7 +392,8 @@ const updateRoster = async (req, res, next) => {
                 kd: flatStats.kd || data.kd || 'N/A',
                 hs: flatStats.hs || data.hs || 'N/A',
                 matches: flatStats.matches || data.matches || 'N/A',
-                winRate: flatStats.winRate || data.winRate || 'N/A'
+                winRate: flatStats.winRate || data.winRate || 'N/A',
+                rank: flatStats.rank || data.rank || 'N/A'
             },
             socials: {
                 twitter: flatSocials.twitter || data.twitter || '#',
@@ -468,6 +472,10 @@ const deleteSponsor = async (req, res, next) => {
 const createWinner = async (req, res, next) => {
     try {
         const data = pick(req.body, WINNER_FIELDS);
+        data.reward = data.reward || data.prize || '';
+        data.prize = data.reward;
+        data.title = data.title || data.placement || '';
+        data.placement = data.title;
         const id = Date.now();
         await models.Achievement.create({ id, ...data, tier: data.tier || 'gold' });
         await logAdminAction(req, 'CREATE_WINNER', { id, teamName: data.teamName, event: data.event });
@@ -478,6 +486,10 @@ const createWinner = async (req, res, next) => {
 const updateWinner = async (req, res, next) => {
     try {
         const data = pick(req.body, WINNER_FIELDS);
+        data.reward = data.reward || data.prize || '';
+        data.prize = data.reward;
+        data.title = data.title || data.placement || '';
+        data.placement = data.title;
         const result = await updateById(models.Achievement, req.params.id, { ...data, tier: data.tier || 'gold' });
         if (result.matchedCount === 0) {
             res.status(404);

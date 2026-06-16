@@ -272,7 +272,7 @@ const getHtmlWrapper = (content) => {
                         <td align="center" style="padding: 20px 25px; border-top: 1px solid rgba(255, 255, 255, 0.05); background-color: #07070a; color: #6b7280; font-size: 11px;">
                             <p style="margin: 0 0 8px 0;">Follow the battlefield updates on our official social frequencies:</p>
                             <p style="margin: 0 0 15px 0;">
-                                <a href="https://discord.gg/strikz-esports" style="color: #00f0ff; text-decoration: none; margin: 0 5px;">Discord</a> |
+                                <a href="https://discord.gg/pQTxt2EWjA" style="color: #00f0ff; text-decoration: none; margin: 0 5px;">Discord</a> |
                                 <a href="https://instagram.com/strikzesports.in" style="color: #ffffe0; text-decoration: none; margin: 0 5px;">Instagram</a> |
                                 <a href="https://youtube.com/strikz-esports" style="color: #ff5e00; text-decoration: none; margin: 0 5px;">YouTube</a>
                             </p>

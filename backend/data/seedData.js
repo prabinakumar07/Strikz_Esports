@@ -2,7 +2,7 @@ const seed = {
     settings: [
         {
             id: 1,
-            discordLink: 'https://discord.gg/strikz-esports',
+            discordLink: 'https://discord.gg/pQTxt2EWjA',
             supportEmail: 'support@strikzesports.com',
             partnerEmail: 'partners@strikzesports.com',
             address: 'Bermuda Arena Office, Digital Esports Valley, IN',
@@ -175,7 +175,7 @@ const seed = {
         { id: 'CHAT-002', senderName: 'Global Brands Inc.', senderEmail: 'sponsorship@globalbrands.com', message: 'We are interested in sponsoring the upcoming Free Fire Max World Series. Please share the media kit and tier packages.', date: '2026-06-12 02:15 PM', status: 'Pending', type: 'Partner' }
     ],
     socialFeed: [
-        { id: 'post-1', platform: 'Discord', author: 'Viper.IGL', content: 'BOOYAH! Strikz takes the scrim lobby tonight! GG to all teams. Roster is looking sharp for FFWS!', date: '1 hour ago', likes: 342, url: 'https://discord.gg/strikz-esports' },
+        { id: 'post-1', platform: 'Discord', author: 'Viper.IGL', content: 'BOOYAH! Strikz takes the scrim lobby tonight! GG to all teams. Roster is looking sharp for FFWS!', date: '1 hour ago', likes: 342, url: 'https://discord.gg/pQTxt2EWjA' },
         { id: 'post-2', platform: 'Instagram', author: '@strikz_esports', content: 'Prepare for impact. The new official Strikz tournament jersey has arrived! Pre-orders live tomorrow. #StrikzOdisha #StrikzEsports', date: '4 hours ago', likes: 1205, url: 'https://instagram.com/strikz-esports' },
         { id: 'post-3', platform: 'YouTube', author: 'Strikz Esports TV', content: "NEW VIDEO OUT! Storm's insane 1v4 clutch against Team X Spark in FFIC qualifiers. Watch the full breakdown now!", date: '1 day ago', likes: 4500, url: 'https://youtube.com/strikz-esports' }
     ],

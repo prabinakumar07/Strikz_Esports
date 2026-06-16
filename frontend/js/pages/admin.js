@@ -588,43 +588,44 @@
 
         // CSV Export Logic
         csvBtn.onclick = function() {
-            const list = db.registrations;
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Ticket ID,Competitor,Type,Tournament,Contact Email,Contact Phone,Filed Date,Status,Roster Details\n";
+            const list = db.registrations || [];
+            let csvContent = "Ticket ID,Competitor,Type,Tournament,Contact Email,Contact Phone,Filed Date,Status,Roster Details\n";
 
             list.forEach(r => {
-                const competitorName = r.type === 'Team' ? r.teamName : r.playerName;
-                const contactEmail = r.type === 'Team' ? r.captainEmail : r.playerEmail;
-                const contactPhone = r.type === 'Team' ? r.captainPhone : r.playerPhone;
+                const competitorName = r.type === 'Team' ? (r.teamName || '') : (r.playerName || '');
+                const contactEmail = r.type === 'Team' ? (r.captainEmail || '') : (r.playerEmail || '');
+                const contactPhone = r.type === 'Team' ? (r.captainPhone || '') : (r.playerPhone || '');
                 
                 let rosterStr = '';
                 if (r.players && r.players.length > 0) {
-                    rosterStr = r.players.map(p => `${p.name} (${p.realName || 'N/A'}) [${p.gameUid || 'N/A'}] - ${p.confirmed ? 'Confirmed' : 'Pending'}`).join('; ');
+                    rosterStr = r.players.map(p => `${p.name || ''} (${p.realName || 'N/A'}) [${p.gameUid || 'N/A'}] - ${p.confirmed ? 'Confirmed' : 'Pending'}`).join('; ');
                 } else {
                     rosterStr = 'Solo Competitor';
                 }
 
                 const row = [
-                    r.id,
+                    r.id || '',
                     `"${competitorName.replace(/"/g, '""')}"`,
-                    r.type,
-                    `"${r.tournamentName.replace(/"/g, '""')}"`,
+                    r.type || '',
+                    `"${(r.tournamentName || '').replace(/"/g, '""')}"`,
                     contactEmail,
                     contactPhone,
                     window.strikzFormatDate(r.submissionDate),
-                    r.status,
+                    r.status || '',
                     `"${rosterStr.replace(/"/g, '""')}"`
                 ].join(",");
                 csvContent += row + "\n";
             });
 
-            const encodedUri = encodeURI(csvContent);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
+            link.setAttribute("href", url);
             link.setAttribute("download", `strikz_registrations_${Date.now()}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         };
 
         // Inputs binding
@@ -1422,14 +1423,14 @@
                     if (w) {
                         editIdInput.value = w.id;
                         teamInput.value = w.teamName;
-                        titleInput.value = w.title;
+                        titleInput.value = w.title || w.placement || '';
                         eventInput.value = w.event;
                         dateInput.value = w.date;
-                        rewardInput.value = w.reward;
+                        rewardInput.value = w.reward || w.prize || '';
                         tierSelect.value = w.tier;
                         imageInput.value = w.image;
                         updateWinnerPreview(w.image);
-                        detailsInput.value = w.details;
+                        detailsInput.value = w.details || '';
                         
                         saveBtn.querySelector('.btn-text').textContent = 'UPDATE WINNER RECORD';
                     }
@@ -2141,7 +2142,7 @@
                         </div>
 
                         <h5 class="font-orbitron" style="font-size: 11px; color: var(--neon-yellow); margin-top: 15px; margin-bottom: 10px; border-bottom: 1px solid var(--glass-border); padding-bottom: 4px;">STATISTICS</h5>
-                        <div class="profile-form-row-4">
+                        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
                             <div class="form-group">
                                 <label style="font-size:9px;">K/D RATIO</label>
                                 <input type="text" id="player-kd" placeholder="4.85" value="N/A" required style="color: #fff; padding: 6px;">
@@ -2157,6 +2158,10 @@
                             <div class="form-group">
                                 <label style="font-size:9px;">WIN RATE</label>
                                 <input type="text" id="player-winrate" placeholder="45%" value="N/A" required style="color: #fff; padding: 6px;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-size:9px;">RANK</label>
+                                <input type="text" id="player-rank" placeholder="Master" value="N/A" required style="color: #fff; padding: 6px;">
                             </div>
                         </div>
 
@@ -2206,6 +2211,7 @@
         const hsInput = document.getElementById('player-hs');
         const matchesInput = document.getElementById('player-matches');
         const winrateInput = document.getElementById('player-winrate');
+        const rankInput = document.getElementById('player-rank');
         
         const twitterInput = document.getElementById('player-twitter');
         const youtubeInput = document.getElementById('player-youtube');
@@ -2283,6 +2289,7 @@
                         hsInput.value = p.stats ? p.stats.hs : 'N/A';
                         matchesInput.value = p.stats ? p.stats.matches : 'N/A';
                         winrateInput.value = p.stats ? p.stats.winRate || 'N/A' : 'N/A';
+                        rankInput.value = p.stats ? p.stats.rank || 'N/A' : 'N/A';
                         
                         twitterInput.value = p.socials ? p.socials.twitter : '#';
                         youtubeInput.value = p.socials ? p.socials.youtube : '#';
@@ -2308,7 +2315,8 @@
                     kd: kdInput.value.trim(),
                     hs: hsInput.value.trim(),
                     matches: matchesInput.value.trim(),
-                    winRate: winrateInput.value.trim()
+                    winRate: winrateInput.value.trim(),
+                    rank: rankInput.value.trim()
                 },
                 socials: {
                     twitter: twitterInput.value.trim(),
@@ -2406,6 +2414,25 @@
                         <input type="text" id="set-address" value="${settings.address || ''}" required style="color: #fff;">
                     </div>
 
+                    <h5 class="font-orbitron" style="font-size: 11px; color: var(--neon-yellow); margin-top: 25px; margin-bottom: 12px; border-bottom: 1px solid var(--glass-border); padding-bottom: 4px;">ROSTER STATISTICS VISIBILITY</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; color: var(--text-silver);">
+                            <input type="checkbox" id="set-show-kd" ${settings.showKd !== false ? 'checked' : ''} style="width: 16px; height: 16px;"> K/D Ratio
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; color: var(--text-silver);">
+                            <input type="checkbox" id="set-show-hs" ${settings.showHs !== false ? 'checked' : ''} style="width: 16px; height: 16px;"> Headshot %
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; color: var(--text-silver);">
+                            <input type="checkbox" id="set-show-matches" ${settings.showMatches !== false ? 'checked' : ''} style="width: 16px; height: 16px;"> Matches
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; color: var(--text-silver);">
+                            <input type="checkbox" id="set-show-winrate" ${settings.showWinRate === true ? 'checked' : ''} style="width: 16px; height: 16px;"> Win Rate
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; color: var(--text-silver);">
+                            <input type="checkbox" id="set-show-rank" ${settings.showRank !== false ? 'checked' : ''} style="width: 16px; height: 16px;"> Rank
+                        </label>
+                    </div>
+
                     <button type="submit" class="cta-button btn-neon-cyan w-full" style="margin-top: 20px; padding: 15px;">
                         <span class="btn-text">APPLY GLOBAL CHANGES</span>
                     </button>
@@ -2424,7 +2451,12 @@
                 twitterLink: document.getElementById('set-twitter').value.trim(),
                 supportEmail: document.getElementById('set-support-email').value.trim(),
                 partnerEmail: document.getElementById('set-partner-email').value.trim(),
-                address: document.getElementById('set-address').value.trim()
+                address: document.getElementById('set-address').value.trim(),
+                showKd: document.getElementById('set-show-kd').checked,
+                showHs: document.getElementById('set-show-hs').checked,
+                showMatches: document.getElementById('set-show-matches').checked,
+                showWinRate: document.getElementById('set-show-winrate').checked,
+                showRank: document.getElementById('set-show-rank').checked
             };
 
             try {

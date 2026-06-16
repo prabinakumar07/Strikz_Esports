@@ -54,7 +54,15 @@ const getPublicSnapshot = async (req, res, next) => {
                     if (!doc.instagram && doc.socials) doc.instagram = doc.socials.instagram || '#';
                     return doc;
                 }),
-                achievements: achievements.map(publicDoc),
+                achievements: achievements.map(ach => {
+                    const doc = publicDoc(ach);
+                    doc.reward = doc.reward || doc.prize || '';
+                    doc.prize = doc.reward;
+                    doc.title = doc.title || doc.placement || '';
+                    doc.placement = doc.title;
+                    doc.details = doc.details || '';
+                    return doc;
+                }),
                 management: management.map(publicDoc),
                 socialFeed: socialFeed.map(publicDoc),
                 settings: publicDoc(settings) || {}

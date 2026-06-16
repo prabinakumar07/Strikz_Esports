@@ -46,7 +46,12 @@ const models = {
         announcementActive: { type: Boolean },
         maintenanceMode: { type: Boolean },
         contactEmail: { type: String },
-        partnerEmail: { type: String }
+        partnerEmail: { type: String },
+        showKd: { type: Boolean, default: true },
+        showHs: { type: Boolean, default: true },
+        showMatches: { type: Boolean, default: true },
+        showWinRate: { type: Boolean, default: true },
+        showRank: { type: Boolean, default: true }
     }),
     Tournament: createModel('Tournament', 'tournaments', String, {
         name: { type: String },
@@ -138,7 +143,8 @@ const models = {
             kd: { type: String },
             hs: { type: String },
             matches: { type: String },
-            winRate: { type: String }
+            winRate: { type: String },
+            rank: { type: String }
         },
         socials: {
             twitter: { type: String },
@@ -160,7 +166,10 @@ const models = {
         prize: { type: String },
         tier: { type: String },
         image: { type: String },
-        placement: { type: String }
+        placement: { type: String },
+        title: { type: String },
+        reward: { type: String },
+        details: { type: String }
     }),
     ChatbotTicket: createModel('ChatbotTicket', 'chatbot_tickets', String, {
         status: { type: String, default: 'Pending' },
