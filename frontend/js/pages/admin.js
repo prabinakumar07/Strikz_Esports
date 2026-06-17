@@ -1446,6 +1446,14 @@
                     }
                 };
             });
+
+            // Bind button clicks to trigger file inputs programmatically
+            container.querySelectorAll('.btn-rank-upload').forEach(btn => {
+                btn.onclick = function() {
+                    const input = this.nextElementSibling;
+                    if (input) input.click();
+                };
+            });
         }
 
         loadRankInputs([]);
@@ -1512,7 +1520,7 @@
             
             // Build the standings list
             const winnersList = [];
-            document.querySelectorAll('.rank-row-group').forEach(row => {
+            form.querySelectorAll('.rank-row-group').forEach(row => {
                 const r = Number(row.dataset.rank);
                 const teamName = row.querySelector('.rank-team-name').value.trim();
                 const tier = row.querySelector('.rank-tier').value;

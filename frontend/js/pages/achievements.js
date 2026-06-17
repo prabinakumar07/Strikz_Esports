@@ -26,23 +26,18 @@
 
         // Helper to render a tournament's standings and winner spotlight
         function renderTrophyAnnouncement(tr) {
-            const winners = tr.winnersList || [];
-            if (!winners.length) {
-                // Fallback to simple old-style card
-                return `
-                    <div class="glass-panel trophy-card ${tr.tier === 'gold' ? '' : (tr.tier === 'silver' ? 'silver-trophy' : 'bronze-trophy')}" style="border-radius: var(--border-radius-lg); margin-bottom: 30px;">
-                        <div class="trophy-icon">
-                            <i class="fa-solid fa-trophy"></i>
-                        </div>
-                        <h3 class="trophy-title font-orbitron">${tr.title}</h3>
-                        <div class="trophy-event font-orbitron">${tr.event}</div>
-                        <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px;">Date Secured: ${window.strikzFormatDate(tr.date)}</p>
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; display: inline-block;">
-                            <span style="font-size: 10px; color: var(--text-dim); text-transform: uppercase; font-family: var(--font-header);">Reward: </span>
-                            <span style="font-size: 12px; font-weight: 700; color: var(--neon-green);">${tr.reward}</span>
-                        </div>
-                    </div>
-                `;
+            let winners = tr.winnersList || [];
+            if (!winners || !winners.length) {
+                // Construct fallback Rank 1 entry from parent fields
+                winners = [
+                    {
+                        rank: 1,
+                        teamName: tr.teamName || 'STRIKZ ESPORTS',
+                        teamLogo: '',
+                        tier: tr.tier || 'gold',
+                        prize: tr.reward || tr.prize || ''
+                    }
+                ];
             }
 
             // Sort by rank ascending

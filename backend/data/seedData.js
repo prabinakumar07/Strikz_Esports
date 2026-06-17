@@ -168,10 +168,71 @@ const seed = {
         { id: 4, name: 'ASUS ROG', tier: 'Platinum', logo: null, logoText: 'ASUS ROG', link: 'https://rog.asus.com', promoType: 'Website' }
     ],
     achievements: [
-        { id: 1, teamName: 'STRIKZ ESPORTS', title: 'Champions', event: 'FFIC India Grand Finals 2025', date: 'Oct 2025', reward: '$80,000 USD', details: 'Secured the championship with 186 total points and 3 spectacular Booyahs in the final stage, claiming the national throne.', image: 'assets/tournament_banner.png', tier: 'gold' },
-        { id: 2, teamName: 'STRIKZ ESPORTS', title: 'Runner Up (2nd)', event: 'Free Fire World Series (FFWS) Bangkok', date: 'Nov 2025', reward: '$250,000 USD', details: 'Represented India at the international level and finished as runners-up, showcasing world-class strategic execution.', image: 'assets/hero_bg.png', tier: 'silver' },
-        { id: 3, teamName: 'STRIKZ ESPORTS', title: 'Champions', event: 'Clash Squad Master Invitational 2024', date: 'Aug 2024', reward: '$20,000 USD', details: 'Dominated the 4v4 brackets, sweeping the finals 3-0 with unmatched aggressive close-combat coordination.', image: 'assets/hero_bg.png', tier: 'gold' },
-        { id: 4, teamName: 'STRIKZ ESPORTS', title: '3rd Place', event: 'Asia Arena Showdown 2024', date: 'Mar 2024', reward: '$10,000 USD', details: 'Bravely fought through the play-ins and secured a podium finish, solidifying Strikz as an Asian contender.', image: 'assets/tournament_banner.png', tier: 'bronze' }
+        {
+            id: 1,
+            teamName: 'STRIKZ ESPORTS',
+            title: 'Champions',
+            event: 'FFIC India Grand Finals 2025',
+            date: 'Oct 2025',
+            reward: '$80,000 USD',
+            details: 'Secured the championship with 186 total points and 3 spectacular Booyahs in the final stage, claiming the national throne.',
+            image: 'assets/tournament_banner.png',
+            tier: 'gold',
+            winnersList: [
+                { rank: 1, teamName: 'STRIKZ ESPORTS', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=strikz&backgroundColor=0a0a0f', tier: 'diamond', prize: '$80,000 USD' },
+                { rank: 2, teamName: 'GodLike Esports', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=godlike&backgroundColor=0a0a0f', tier: 'platinum', prize: '$40,000 USD' },
+                { rank: 3, teamName: 'Orangutan', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=orangutan&backgroundColor=0a0a0f', tier: 'gold', prize: '$20,000 USD' },
+                { rank: 4, teamName: 'Soul Esports', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=soul&backgroundColor=0a0a0f', tier: 'silver', prize: '$10,000 USD' },
+                { rank: 5, teamName: 'Team XSpark', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=xspark&backgroundColor=0a0a0f', tier: 'bronze', prize: '$5,000 USD' }
+            ]
+        },
+        {
+            id: 2,
+            teamName: 'STRIKZ ESPORTS',
+            title: 'Runner Up (2nd)',
+            event: 'Free Fire World Series (FFWS) Bangkok',
+            date: 'Nov 2025',
+            reward: '$250,000 USD',
+            details: 'Represented India at the international level and finished as runners-up, showcasing world-class strategic execution.',
+            image: 'assets/hero_bg.png',
+            tier: 'silver',
+            winnersList: [
+                { rank: 1, teamName: 'WAG Esports', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=wag&backgroundColor=0a0a0f', tier: 'diamond', prize: '$500,000 USD' },
+                { rank: 2, teamName: 'STRIKZ ESPORTS', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=strikz&backgroundColor=0a0a0f', tier: 'platinum', prize: '$250,000 USD' },
+                { rank: 3, teamName: 'Buriram United', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=buriram&backgroundColor=0a0a0f', tier: 'gold', prize: '$120,000 USD' }
+            ]
+        },
+        {
+            id: 3,
+            teamName: 'STRIKZ ESPORTS',
+            title: 'Champions',
+            event: 'Clash Squad Master Invitational 2024',
+            date: 'Aug 2024',
+            reward: '$20,000 USD',
+            details: 'Dominated the 4v4 brackets, sweeping the finals 3-0 with unmatched aggressive close-combat coordination.',
+            image: 'assets/hero_bg.png',
+            tier: 'gold',
+            winnersList: [
+                { rank: 1, teamName: 'STRIKZ ESPORTS', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=strikz&backgroundColor=0a0a0f', tier: 'gold', prize: '$20,000 USD' },
+                { rank: 2, teamName: 'Total Gaming', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=totalgaming&backgroundColor=0a0a0f', tier: 'silver', prize: '$10,000 USD' }
+            ]
+        },
+        {
+            id: 4,
+            teamName: 'STRIKZ ESPORTS',
+            title: '3rd Place',
+            event: 'Asia Arena Showdown 2024',
+            date: 'Mar 2024',
+            reward: '$10,000 USD',
+            details: 'Bravely fought through the play-ins and secured a podium finish, solidifying Strikz as an Asian contender.',
+            image: 'assets/tournament_banner.png',
+            tier: 'bronze',
+            winnersList: [
+                { rank: 1, teamName: 'EVOS Phoenix', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=evos&backgroundColor=0a0a0f', tier: 'diamond', prize: '$50,000 USD' },
+                { rank: 2, teamName: 'Nigma Galaxy', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=nigma&backgroundColor=0a0a0f', tier: 'platinum', prize: '$25,000 USD' },
+                { rank: 3, teamName: 'STRIKZ ESPORTS', teamLogo: 'https://api.dicebear.com/7.x/identicon/svg?seed=strikz&backgroundColor=0a0a0f', tier: 'gold', prize: '$10,000 USD' }
+            ]
+        }
     ],
     chatbotTickets: [
         { id: 'CHAT-001', senderName: 'Sunny', senderEmail: 'sunny@games.com', message: 'I entered my UID wrong during registration. Can I change it to UID-8839019?', date: '2026-06-11 10:30 AM', status: 'Pending', type: 'Player' },
