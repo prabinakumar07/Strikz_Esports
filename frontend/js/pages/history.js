@@ -4,18 +4,28 @@
 
 (function() {
     function renderHistory(container) {
-        const db = window.strikzDb.get();
-        // Load closed or seeded past tournaments
-        const pastTournaments = db.tournaments.filter(t => t.status === 'Closed');
+        const db = window.strikzDb.get() || {};
+        const pastTournaments = (db.tournaments || []).filter(t => t.status === 'Closed');
 
-        // Initial past history list if empty
-        const records = [
-            { id: 1, tournament: 'Free Fire India Championship (FFIC) 2025', placement: '1st (Champions)', prize: '$80,000 USD', kills: '142 Kills', mvp: 'STRIKZ.Storm' },
-            { id: 2, tournament: 'Free Fire World Series (FFWS) Bangkok 2025', placement: '2nd (Runners-Up)', prize: '$250,000 USD', kills: '210 Kills', mvp: 'STRIKZ.Viper' },
-            { id: 3, tournament: 'Clash Squad Master Invitational 2024', placement: '1st (Champions)', prize: '$20,000 USD', kills: '84 Squad Wipes', mvp: 'STRIKZ.Deadeye' },
-            { id: 4, tournament: 'Asia Arena Showdown 2024', placement: '3rd Place', prize: '$10,000 USD', kills: '115 Kills', mvp: 'STRIKZ.Storm' },
-            { id: 5, tournament: 'Guild Wars Season 4', placement: '1st (Champions)', prize: '$5,000 USD', kills: '78 Kills', mvp: 'STRIKZ.Guardian' }
-        ];
+        // Load winners list from admin panel history section
+        const historyList = [...(db.history || [])].sort((a, b) => {
+            if (a.type !== b.type) {
+                return a.type === 'recent' ? -1 : 1;
+            }
+            return (a.rank || 99) - (b.rank || 99);
+        });
+
+        // Fallback default winners if empty
+        let records = historyList;
+        if (records.length === 0) {
+            records = [
+                { rank: 1, tournamentName: 'Free Fire India Championship (FFIC) 2025', title: 'STRIKZ ESPORTS', description: '$80,000 USD Prize Pool', date: 'October 2025', logo: 'assets/logo.png', type: 'recent' },
+                { rank: 2, tournamentName: 'Free Fire World Series (FFWS) Bangkok 2025', title: 'STRIKZ ESPORTS', description: '$250,000 USD Prize Pool', date: 'Bangkok 2025', logo: '', type: 'recent' },
+                { rank: 1, tournamentName: 'Clash Squad Master Invitational 2024', title: 'STRIKZ ESPORTS', description: '$20,000 USD Prize Pool', date: '2024', logo: '', type: 'past' },
+                { rank: 3, tournamentName: 'Asia Arena Showdown 2024', title: 'STRIKZ ESPORTS', description: '$10,000 USD Prize Pool', date: '2024', logo: '', type: 'past' },
+                { rank: 1, tournamentName: 'Guild Wars Season 4', title: 'STRIKZ ESPORTS', description: '$5,000 USD Prize Pool', date: '2024', logo: '', type: 'past' }
+            ];
+        }
 
         container.innerHTML = `
             <section class="container reveal" style="padding-top: 40px; margin-bottom: 80px;">
@@ -33,22 +43,36 @@
                             <thead>
                                 <tr>
                                     <th>Tournament / Campaign</th>
+                                    <th>Team / Roster</th>
                                     <th>Placement</th>
-                                    <th>Prize Won</th>
-                                    <th>Total Squad Kills</th>
-                                    <th>Team MVP</th>
+                                    <th>Prize / Details</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${records.map(rec => `
+                                ${records.map(rec => {
+                                    const logoHtml = rec.logo 
+                                        ? `<img src="${rec.logo}" style="width:22px; height:22px; object-fit:contain; vertical-align:middle; margin-right:8px; background:rgba(255,255,255,0.05); padding:2px; border-radius:3px;">`
+                                        : `<i class="fa-solid fa-shield" style="color:var(--text-dim); margin-right:8px; font-size:14px; vertical-align:middle;"></i>`;
+                                    
+                                    let rankText = `#${rec.rank}`;
+                                    if (rec.rank === 1) rankText = '1st (Champions)';
+                                    else if (rec.rank === 2) rankText = '2nd (Runners-Up)';
+                                    else if (rec.rank === 3) rankText = '3rd Place';
+
+                                    return `
                                     <tr>
-                                        <td style="font-weight: 600; color: #fff;">${rec.tournament}</td>
-                                        <td class="${rec.placement.includes('1st') ? 'history-winner' : ''}">${rec.placement}</td>
-                                        <td class="history-prize">${rec.prize}</td>
-                                        <td>${rec.kills}</td>
-                                        <td style="color: var(--neon-cyan); font-family: var(--font-header); font-size: 12px;">${rec.mvp}</td>
+                                        <td style="font-weight: 600; color: #fff;">
+                                            ${rec.tournamentName || rec.year || '—'}
+                                            ${rec.type === 'recent' ? `<span style="background:rgba(0,240,255,0.1); color:var(--neon-cyan); padding:1px 5px; border-radius:2px; font-size:7px; font-weight:bold; margin-left:5px; border:1px solid rgba(0,240,255,0.2);">RECENT</span>` : ''}
+                                        </td>
+                                        <td style="color: #fff; font-weight: 500;">
+                                            ${logoHtml} ${rec.title}
+                                        </td>
+                                        <td class="${rec.rank === 1 ? 'history-winner' : ''}">${rankText}</td>
+                                        <td class="history-prize">${rec.description}</td>
                                     </tr>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </tbody>
                         </table>
                     </div>
