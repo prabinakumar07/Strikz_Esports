@@ -249,9 +249,11 @@ const seed = {
         { id: 3, name: 'Priyabrata Patra', tag: 'Deadeye', role: 'Head of Operations', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=deadeyeops&backgroundColor=0a0a0f', bio: 'Technical controller handling bracket logic and server security portals.', instagram: '#', youtube: '#', socials: { instagram: '#', youtube: '#' } }
     ],
     history: [
-        { id: 1, rank: 1, year: '2025', title: 'STRIKZ ESPORTS', description: 'FFIC 2025 Champions - $80,000 USD Prize Pool', logo: '/assets/logo.png' },
-        { id: 2, rank: 2, year: '2025', title: 'TEAM STORM', description: 'FFIC 2025 Runner Up - $30,000 USD', logo: '' },
-        { id: 3, rank: 3, year: '2025', title: 'VIPER CLAN', description: 'FFIC 2025 3rd Place - $15,000 USD', logo: '' }
+        { id: 1, rank: 1, tournamentName: 'FFIC Indian Championship', date: 'October 2025', title: 'STRIKZ ESPORTS', description: 'Booyah! Champions - $80,000 USD Prize Pool', logo: 'assets/logo.png', type: 'recent' },
+        { id: 2, rank: 2, tournamentName: 'FFIC Indian Championship', date: 'October 2025', title: 'TEAM STORM', description: 'Runner Up - $30,000 USD', logo: '', type: 'recent' },
+        { id: 3, rank: 3, tournamentName: 'FFIC Indian Championship', date: 'October 2025', title: 'VIPER CLAN', description: '3rd Place - $15,000 USD', logo: '', type: 'recent' },
+        { id: 4, rank: 1, tournamentName: 'Odisha Scrims Cup V2', date: 'June 2024', title: 'STRIKZ ESPORTS', description: 'Champions - $5,000 USD', logo: 'assets/logo.png', type: 'past' },
+        { id: 5, rank: 2, tournamentName: 'Odisha Scrims Cup V2', date: 'June 2024', title: 'TEAM REBEL', description: 'Runner Up - $2,000 USD', logo: '', type: 'past' }
     ]
 };
 
@@ -309,6 +311,15 @@ const seedDatabase = async (models) => {
         console.log(`[SEED] Admin "${ADMIN_USERNAME}" credentials ensured OK.`);
     } catch (err) {
         console.error('[SEED] Failed to seed admin:', err.message);
+    }
+
+    // Re-seed history winners board to match the new schema structure
+    try {
+        await models.History.deleteMany({});
+        await models.History.insertMany(seed.history);
+        console.log('[SEED] History winners collection re-seeded.');
+    } catch (err) {
+        console.error('[SEED] Failed to seed history:', err.message);
     }
 
     const hasSettings = await models.Setting.exists({ id: 1 });

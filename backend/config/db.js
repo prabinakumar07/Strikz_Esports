@@ -292,7 +292,10 @@ const models = {
         title: { type: String },
         description: { type: String },
         logo: { type: String },
-        rank: { type: Number }
+        rank: { type: Number },
+        tournamentName: { type: String },
+        date: { type: String },
+        type: { type: String }
     })
 };
 

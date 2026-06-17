@@ -2500,6 +2500,13 @@
                         
                         <div class="form-row">
                             <div class="form-group">
+                                <label for="history-type">Tournament Type</label>
+                                <select id="history-type" required style="background:#101010; border:1px solid var(--glass-border); padding:10px; color:#fff; border-radius:4px; width: 100%;">
+                                    <option value="recent">Recent Tournament</option>
+                                    <option value="past">Past Tournament</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
                                 <label for="history-rank">Winner Rank / Position</label>
                                 <select id="history-rank" required style="background:#101010; border:1px solid var(--glass-border); padding:10px; color:#fff; border-radius:4px; width: 100%;">
                                     <option value="1">1st Place (Champion)</option>
@@ -2514,9 +2521,16 @@
                                     <option value="10">10th Place</option>
                                 </select>
                             </div>
+                        </div>
+
+                        <div class="form-row">
                             <div class="form-group">
-                                <label for="history-year">Year / Date / Event Name</label>
-                                <input type="text" id="history-year" placeholder="E.g. FFMAX Championship 2025" required style="color: #fff;">
+                                <label for="history-tournament-name">Tournament Name</label>
+                                <input type="text" id="history-tournament-name" placeholder="E.g. FFMAX Championship 2025" required style="color: #fff;">
+                            </div>
+                            <div class="form-group">
+                                <label for="history-date">Event Date</label>
+                                <input type="text" id="history-date" placeholder="E.g. October 2025" required style="color: #fff;">
                             </div>
                         </div>
                         
@@ -2550,7 +2564,7 @@
                     </form>
                 </div>
 
-                <!-- Existing Milestones List -->
+                <!-- Existing Winners List -->
                 <div style="display: flex; flex-direction: column; gap: 15px;">
                     <h4 class="font-orbitron" style="font-size: 13px; color: var(--text-silver); margin-bottom: 5px;">CURRENT WINNERS BOARD</h4>
                     <div id="admin-history-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 520px; overflow-y: auto;">
@@ -2563,8 +2577,10 @@
         const form = document.getElementById('admin-history-form');
         const listMount = document.getElementById('admin-history-list');
         const editIdInput = document.getElementById('edit-history-id');
+        const typeSelect = document.getElementById('history-type');
         const rankSelect = document.getElementById('history-rank');
-        const yearInput = document.getElementById('history-year');
+        const tournamentNameInput = document.getElementById('history-tournament-name');
+        const dateInput = document.getElementById('history-date');
         const titleInput = document.getElementById('history-title');
         const logoInput = document.getElementById('history-logo');
         const logoFileInput = document.getElementById('history-logo-file');
@@ -2600,19 +2616,29 @@
         }
 
         function loadHistoryList() {
-            const list = [...(db.history || [])].sort((a, b) => (a.rank || 99) - (b.rank || 99));
+            const list = [...(db.history || [])].sort((a, b) => {
+                if (a.type !== b.type) {
+                    return a.type === 'recent' ? -1 : 1;
+                }
+                return (a.rank || 99) - (b.rank || 99);
+            });
             listMount.innerHTML = list.map(h => {
                 const logoHtml = h.logo 
                     ? `<img src="${h.logo}" style="width: 36px; height: 36px; object-fit: contain; border-radius: 4px; background: rgba(255,255,255,0.05); padding: 2px; border: 1px solid var(--glass-border);">` 
                     : `<div style="width:36px; height:36px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.02); border: 1px dashed var(--glass-border); border-radius:4px; font-size:16px; color:var(--neon-yellow);"><i class="fa-solid fa-shield"></i></div>`;
+                const typeLabel = h.type === 'recent' 
+                    ? `<span style="background:rgba(0,240,255,0.1); color:var(--neon-cyan); padding:2px 6px; border-radius:3px; font-size:8px; font-weight:bold; margin-left:6px; border:1px solid rgba(0,240,255,0.2);">RECENT</span>`
+                    : `<span style="background:rgba(255,255,255,0.05); color:var(--text-dim); padding:2px 6px; border-radius:3px; font-size:8px; font-weight:bold; margin-left:6px; border:1px solid rgba(255,255,255,0.1);">PAST</span>`;
                 return `
                 <div class="glass-panel" style="padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                     <div style="display: flex; gap: 12px; align-items: center; text-align: left;">
                         ${logoHtml}
                         <div>
-                            <span class="font-orbitron" style="font-size: 9px; color: var(--neon-yellow); font-weight:800;">RANK #${h.rank || 'N/A'} | ${h.year}</span>
+                            <span class="font-orbitron" style="font-size: 9px; color: var(--neon-yellow); font-weight:800;">RANK #${h.rank || 'N/A'} ${typeLabel}</span>
                             <h5 class="font-orbitron" style="font-size: 13px; color: #fff; margin: 2px 0;">${h.title}</h5>
-                            <p style="font-size: 11px; color: var(--text-dim); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0;">${h.description}</p>
+                            <p style="font-size: 11px; color: var(--text-dim); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0;">
+                                <strong>${h.tournamentName || h.year || '—'}</strong> (${h.date || '—'})
+                            </p>
                         </div>
                     </div>
                     <div style="display: flex; gap: 6px;">
@@ -2644,8 +2670,10 @@
                     const h = db.history.find(x => x.id === Number(id));
                     if (h) {
                         editIdInput.value = h.id;
+                        typeSelect.value = h.type || 'recent';
                         rankSelect.value = h.rank || '1';
-                        yearInput.value = h.year;
+                        tournamentNameInput.value = h.tournamentName || h.year || '';
+                        dateInput.value = h.date || '';
                         titleInput.value = h.title;
                         logoInput.value = h.logo || '';
                         updateLogoPreview(h.logo || '');
@@ -2660,8 +2688,11 @@
             if (e) e.preventDefault();
             const id = editIdInput.value;
             const historyObj = {
+                type: typeSelect.value,
                 rank: Number(rankSelect.value),
-                year: yearInput.value.trim(),
+                tournamentName: tournamentNameInput.value.trim(),
+                date: dateInput.value.trim(),
+                year: dateInput.value.trim(),
                 title: titleInput.value.trim(),
                 logo: logoInput.value.trim(),
                 description: descInput.value.trim()
