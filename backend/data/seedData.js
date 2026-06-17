@@ -239,9 +239,9 @@ const seed = {
         { id: 'CHAT-002', senderName: 'Global Brands Inc.', senderEmail: 'sponsorship@globalbrands.com', message: 'We are interested in sponsoring the upcoming Free Fire Max World Series. Please share the media kit and tier packages.', date: '2026-06-12 02:15 PM', status: 'Pending', type: 'Partner' }
     ],
     socialFeed: [
-        { id: 'post-1', platform: 'Discord', author: 'Viper.IGL', content: 'BOOYAH! Strikz takes the scrim lobby tonight! GG to all teams. Roster is looking sharp for FFWS!', date: '1 hour ago', likes: 342, url: 'https://discord.gg/pQTxt2EWjA' },
-        { id: 'post-2', platform: 'Instagram', author: '@strikz_esports', content: 'Prepare for impact. The new official Strikz tournament jersey has arrived! Pre-orders live tomorrow. #StrikzOdisha #StrikzEsports', date: '4 hours ago', likes: 1205, url: 'https://instagram.com/strikz-esports' },
-        { id: 'post-3', platform: 'YouTube', author: 'Strikz Esports TV', content: "NEW VIDEO OUT! Storm's insane 1v4 clutch against Team X Spark in FFIC qualifiers. Watch the full breakdown now!", date: '1 day ago', likes: 4500, url: 'https://youtube.com/strikz-esports' }
+        { id: 'post-1', platform: 'Discord', author: 'Viper.IGL', content: 'BOOYAH! Strikz takes the scrim lobby tonight! GG to all teams. Roster is looking sharp for FFWS!', date: '1 hour ago', likes: 342, link: 'https://discord.gg/pQTxt2EWjA' },
+        { id: 'post-2', platform: 'Instagram', author: '@strikz_esports', content: 'Prepare for impact. The new official Strikz tournament jersey has arrived! Pre-orders live tomorrow. #StrikzOdisha #StrikzEsports', date: '4 hours ago', likes: 1205, link: 'https://instagram.com/strikz-esports' },
+        { id: 'post-3', platform: 'YouTube', author: 'Strikz Esports TV', content: "NEW VIDEO OUT! Storm's insane 1v4 clutch against Team X Spark in FFIC qualifiers. Watch the full breakdown now!", date: '1 day ago', likes: 4500, link: 'https://youtube.com/strikz-esports' }
     ],
     management: [
         { id: 1, name: 'Satyajit Mohanty', tag: 'Viper', role: 'Founder & CEO', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=viperceo&backgroundColor=0a0a0f', bio: 'Esports visionary spearheading competitive tournaments in the region.', instagram: 'https://instagram.com/strikzesports.in', youtube: '#', socials: { instagram: 'https://instagram.com/strikzesports.in', youtube: '#' } },
@@ -249,10 +249,9 @@ const seed = {
         { id: 3, name: 'Priyabrata Patra', tag: 'Deadeye', role: 'Head of Operations', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=deadeyeops&backgroundColor=0a0a0f', bio: 'Technical controller handling bracket logic and server security portals.', instagram: '#', youtube: '#', socials: { instagram: '#', youtube: '#' } }
     ],
     history: [
-        { id: 1, year: 'JUNE 2022', title: 'The Birth of STRIKZ ESPORTS', description: 'STRIKZ ESPORTS was founded with a vision to discover hidden talent and create opportunities for underdog players to compete, grow, and succeed in esports.' },
-        { id: 2, year: '2023', title: 'Building a Strong Community', description: 'Expanded our network by organizing competitive tournaments and creating a platform where passionate gamers could connect, showcase their skills, and pursue their esports ambitions.' },
-        { id: 3, year: '2024', title: 'Recognition Across Odisha', description: 'Through consistent event management and community engagement, STRIKZ ESPORTS became a trusted name among players, teams, and content creators across Odisha.' },
-        { id: 4, year: '2025', title: 'Empowering the Next Generation', description: 'With free tournaments, competitive events, and a growing esports ecosystem, STRIKZ ESPORTS continues its mission to help aspiring players turn their passion into achievement.' }
+        { id: 1, rank: 1, year: '2025', title: 'STRIKZ ESPORTS', description: 'FFIC 2025 Champions - $80,000 USD Prize Pool', logo: '/assets/logo.png' },
+        { id: 2, rank: 2, year: '2025', title: 'TEAM STORM', description: 'FFIC 2025 Runner Up - $30,000 USD', logo: '' },
+        { id: 3, rank: 3, year: '2025', title: 'VIPER CLAN', description: 'FFIC 2025 3rd Place - $15,000 USD', logo: '' }
     ]
 };
 

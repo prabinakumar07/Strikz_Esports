@@ -172,7 +172,7 @@
                         <button class="admin-tab-btn" data-tab="news"><i class="fa-solid fa-newspaper"></i> News & Notices</button>
                         <button class="admin-tab-btn" data-tab="gallery"><i class="fa-solid fa-images"></i> Gallery Manager</button>
                         <button class="admin-tab-btn" data-tab="team_members"><i class="fa-solid fa-users-viewfinder"></i> Team Members</button>
-                        <button class="admin-tab-btn" data-tab="sponsors"><i class="fa-solid fa-handshake"></i> Sponsors</button>
+                        <button class="admin-tab-btn" data-tab="sponsors"><i class="fa-solid fa-handshake"></i> Partners & Sponsors</button>
                         <button class="admin-tab-btn" data-tab="winners"><i class="fa-solid fa-trophy"></i> Winners</button>
                         <button class="admin-tab-btn" data-tab="social"><i class="fa-solid fa-share-nodes"></i> Recent Post</button>
                         <button class="admin-tab-btn" data-tab="management"><i class="fa-solid fa-users-gear"></i> Management</button>
@@ -1210,7 +1210,7 @@
                         platformSelect.value = s.platform;
                         authorInput.value = s.author;
                         dateInput.value = s.date;
-                        urlInput.value = s.url;
+                        urlInput.value = s.link || s.url || '#';
                         contentInput.value = s.content;
                         imageInput.value = s.image || '';
                         updateSocialPreview(s.image || '');
@@ -1228,7 +1228,7 @@
                 platform: platformSelect.value,
                 author: authorInput.value.trim(),
                 date: dateInput.value.trim(),
-                url: urlInput.value.trim(),
+                link: urlInput.value.trim(),
                 content: contentInput.value.trim(),
                 image: imageInput.value.trim()
             };
@@ -1697,12 +1697,12 @@
 
     function renderSponsorsTab(mount, db) {
         mount.innerHTML = `
-            <h3 class="font-orbitron" style="font-size: 18px; color: var(--neon-cyan); margin-bottom: 25px;"><i class="fa-solid fa-handshake"></i> SPONSORS & PROMOTIONS MANAGEMENT</h3>
+            <h3 class="font-orbitron" style="font-size: 18px; color: var(--neon-cyan); margin-bottom: 25px;"><i class="fa-solid fa-handshake"></i> PARTNERS & SPONSORS MANAGEMENT</h3>
             
             <div class="grid-2" style="align-items: start;">
                 <!-- Sponsor Form -->
                 <div class="glass-panel" style="padding: 20px; border-color: rgba(255,255,255,0.03);">
-                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 15px;"><i class="fa-solid fa-circle-plus"></i> ADD / EDIT SPONSOR</h4>
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 15px;"><i class="fa-solid fa-circle-plus"></i> ADD / EDIT PARTNER / SPONSOR</h4>
                     
                     <form id="admin-sponsor-form" onsubmit="return false;">
                         <input type="hidden" id="edit-sponsor-id">
@@ -1749,14 +1749,14 @@
                             </div>
                         </div>
                         <button type="submit" class="cta-button btn-neon-cyan w-full" id="btn-save-sponsor" style="margin-top: 15px;">
-                            <span class="btn-text">SAVE SPONSOR</span>
+                            <span class="btn-text">SAVE PARTNER</span>
                         </button>
                     </form>
                 </div>
 
                 <!-- Existing Sponsors List -->
                 <div style="display: flex; flex-direction: column; gap: 15px;">
-                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--text-silver); margin-bottom: 5px;">CURRENT SPONSORS</h4>
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--text-silver); margin-bottom: 5px;">CURRENT PARTNERS & SPONSORS</h4>
                     <div id="admin-sponsors-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 450px; overflow-y: auto;">
                         <!-- Injected dynamically -->
                     </div>
@@ -1853,7 +1853,7 @@
                         linkInput.value = s.link;
                         logoBase64Input.value = s.logo || '';
                         updateSponsorLogoPreview(s.logo || '');
-                        saveBtn.querySelector('.btn-text').textContent = 'UPDATE SPONSOR';
+                        saveBtn.querySelector('.btn-text').textContent = 'UPDATE PARTNER';
                     }
                 };
             });
@@ -1885,7 +1885,7 @@
                 editIdInput.value = '';
                 logoBase64Input.value = '';
                 updateSponsorLogoPreview('');
-                saveBtn.querySelector('.btn-text').textContent = 'SAVE SPONSOR';
+                saveBtn.querySelector('.btn-text').textContent = 'SAVE PARTNER';
                 db = await window.strikzDb.fetchSnapshot();
                 loadSponsorsList();
             } catch (err) {
@@ -1984,7 +1984,7 @@
 
         function updateAvatarPreview(src) {
             if (src) {
-                if (src.startsWith('data:') || src.startsWith('http')) {
+                if (src.startsWith('data:') || src.startsWith('http') || src.startsWith('/uploads')) {
                     avatarPreviewImg.src = src;
                 } else {
                     avatarPreviewImg.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${src}&backgroundColor=0a0a0f`;
@@ -2488,37 +2488,72 @@
     // 11b. HISTORY / TIMELINE MILESTONES TAB
     function renderHistoryTab(mount, db) {
         mount.innerHTML = `
-            <h3 class="font-orbitron" style="font-size: 18px; color: var(--neon-cyan); margin-bottom: 25px;"><i class="fa-solid fa-clock-rotate-left"></i> HISTORY TIMELINE EDIT</h3>
+            <h3 class="font-orbitron" style="font-size: 18px; color: var(--neon-cyan); margin-bottom: 25px;"><i class="fa-solid fa-trophy"></i> TOURNAMENT WINNERS / HISTORY EDIT</h3>
             
             <div class="grid-2" style="align-items: start;">
-                <!-- History Milestone Form -->
+                <!-- History Winners Form -->
                 <div class="glass-panel" style="padding: 20px; border-color: rgba(255,255,255,0.03);">
-                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 15px;"><i class="fa-solid fa-circle-plus"></i> ADD / EDIT MILESTONE</h4>
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 15px;"><i class="fa-solid fa-circle-plus"></i> ADD / EDIT WINNER</h4>
                     
                     <form id="admin-history-form" onsubmit="return false;">
                         <input type="hidden" id="edit-history-id">
-                        <div class="form-group">
-                            <label for="history-year">Milestone Year / Date</label>
-                            <input type="text" id="history-year" placeholder="E.g. JUNE 2022 or 2025" required style="color: #fff;">
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="history-rank">Winner Rank / Position</label>
+                                <select id="history-rank" required style="background:#101010; border:1px solid var(--glass-border); padding:10px; color:#fff; border-radius:4px; width: 100%;">
+                                    <option value="1">1st Place (Champion)</option>
+                                    <option value="2">2nd Place (Runner Up)</option>
+                                    <option value="3">3rd Place</option>
+                                    <option value="4">4th Place</option>
+                                    <option value="5">5th Place</option>
+                                    <option value="6">6th Place</option>
+                                    <option value="7">7th Place</option>
+                                    <option value="8">8th Place</option>
+                                    <option value="9">9th Place</option>
+                                    <option value="10">10th Place</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="history-year">Year / Date / Event Name</label>
+                                <input type="text" id="history-year" placeholder="E.g. FFMAX Championship 2025" required style="color: #fff;">
+                            </div>
                         </div>
+                        
                         <div class="form-group">
-                            <label for="history-title">Milestone Title</label>
-                            <input type="text" id="history-title" placeholder="E.g. The Birth of STRIKZ ESPORTS" required style="color: #fff;">
+                            <label for="history-title">Winning Team Name</label>
+                            <input type="text" id="history-title" placeholder="E.g. STRIKZ ESPORTS" required style="color: #fff;">
                         </div>
+                        
                         <div class="form-group">
-                            <label for="history-desc">Milestone Description</label>
-                            <textarea id="history-desc" rows="3" placeholder="Describe the milestone..." required style="width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; color: #fff; font-size: 13px;"></textarea>
+                            <label for="history-logo">Team Logo Image / Upload</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="text" id="history-logo" placeholder="E.g. /uploads/logo.png" style="color: #fff; flex: 1;">
+                                <div style="position: relative; overflow: hidden; display: inline-block;">
+                                    <button type="button" class="admin-action-btn green" style="margin: 0; padding: 10px 14px; height: 100%; white-space: nowrap;"><i class="fa-solid fa-upload"></i> UPLOAD</button>
+                                    <input type="file" id="history-logo-file" accept="image/*" style="position: absolute; font-size: 100px; opacity: 0; right: 0; top: 0; cursor: pointer;">
+                                </div>
+                            </div>
+                            <div id="history-logo-preview" style="margin-top: 8px; display: none;">
+                                <img src="" style="max-height: 50px; border: 1px solid var(--glass-border); border-radius: 4px; object-fit: contain; background: rgba(255,255,255,0.05); padding: 4px;">
+                            </div>
                         </div>
+                        
+                        <div class="form-group">
+                            <label for="history-desc">Prize / Achievement Details</label>
+                            <textarea id="history-desc" rows="3" placeholder="E.g. Champions - $80,000 USD Prize Pool" required style="width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; color: #fff; font-size: 13px;"></textarea>
+                        </div>
+                        
                         <button type="submit" class="cta-button btn-neon-cyan w-full" id="btn-save-history" style="margin-top: 15px;">
-                            <span class="btn-text">SAVE MILESTONE</span>
+                            <span class="btn-text">SAVE WINNER</span>
                         </button>
                     </form>
                 </div>
 
                 <!-- Existing Milestones List -->
                 <div style="display: flex; flex-direction: column; gap: 15px;">
-                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--text-silver); margin-bottom: 5px;">CURRENT MILESTONES</h4>
-                    <div id="admin-history-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 450px; overflow-y: auto;">
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--text-silver); margin-bottom: 5px;">CURRENT WINNERS BOARD</h4>
+                    <div id="admin-history-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 520px; overflow-y: auto;">
                         <!-- Injected dynamically -->
                     </div>
                 </div>
@@ -2528,30 +2563,69 @@
         const form = document.getElementById('admin-history-form');
         const listMount = document.getElementById('admin-history-list');
         const editIdInput = document.getElementById('edit-history-id');
+        const rankSelect = document.getElementById('history-rank');
         const yearInput = document.getElementById('history-year');
         const titleInput = document.getElementById('history-title');
+        const logoInput = document.getElementById('history-logo');
+        const logoFileInput = document.getElementById('history-logo-file');
+        const logoPreviewContainer = document.getElementById('history-logo-preview');
+        const logoPreviewImg = logoPreviewContainer.querySelector('img');
         const descInput = document.getElementById('history-desc');
         const saveBtn = document.getElementById('btn-save-history');
 
+        function updateLogoPreview(src) {
+            if (src) {
+                logoPreviewImg.src = src;
+                logoPreviewContainer.style.display = 'block';
+            } else {
+                logoPreviewContainer.style.display = 'none';
+            }
+        }
+
+        logoInput.addEventListener('input', () => updateLogoPreview(logoInput.value.trim()));
+
+        if (logoFileInput) {
+            logoFileInput.onchange = async function() {
+                const file = logoFileInput.files[0];
+                if (!file) return;
+                try {
+                    const res = await window.strikzDb.uploadFile(file);
+                    logoInput.value = res.imageUrl;
+                    updateLogoPreview(res.imageUrl);
+                    alert("Team logo uploaded successfully!");
+                } catch (err) {
+                    alert("Upload failed: " + err.message);
+                }
+            };
+        }
+
         function loadHistoryList() {
-            const list = db.history || [];
-            listMount.innerHTML = list.map(h => `
-                <div class="glass-panel" style="padding: 15px; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="text-align: left;">
-                        <span class="font-orbitron" style="font-size: 10px; color: var(--neon-cyan); font-weight: 800;">${h.year}</span>
-                        <h5 class="font-orbitron" style="font-size: 12px; color: #fff; margin: 2px 0;">${h.title}</h5>
-                        <p style="font-size: 11px; color: var(--text-dim); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0;">${h.description}</p>
+            const list = [...(db.history || [])].sort((a, b) => (a.rank || 99) - (b.rank || 99));
+            listMount.innerHTML = list.map(h => {
+                const logoHtml = h.logo 
+                    ? `<img src="${h.logo}" style="width: 36px; height: 36px; object-fit: contain; border-radius: 4px; background: rgba(255,255,255,0.05); padding: 2px; border: 1px solid var(--glass-border);">` 
+                    : `<div style="width:36px; height:36px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.02); border: 1px dashed var(--glass-border); border-radius:4px; font-size:16px; color:var(--neon-yellow);"><i class="fa-solid fa-shield"></i></div>`;
+                return `
+                <div class="glass-panel" style="padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                    <div style="display: flex; gap: 12px; align-items: center; text-align: left;">
+                        ${logoHtml}
+                        <div>
+                            <span class="font-orbitron" style="font-size: 9px; color: var(--neon-yellow); font-weight:800;">RANK #${h.rank || 'N/A'} | ${h.year}</span>
+                            <h5 class="font-orbitron" style="font-size: 13px; color: #fff; margin: 2px 0;">${h.title}</h5>
+                            <p style="font-size: 11px; color: var(--text-dim); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0;">${h.description}</p>
+                        </div>
                     </div>
                     <div style="display: flex; gap: 6px;">
                         <button class="action-icon-btn approve edit-history-btn" data-id="${h.id}" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
                         <button class="action-icon-btn delete delete-history-btn" data-id="${h.id}" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
 
             listMount.querySelectorAll('.delete-history-btn').forEach(btn => {
                 btn.onclick = async function() {
-                    if (confirm("Delete this history milestone permanently?")) {
+                    if (confirm("Delete this tournament winner permanently?")) {
                         const id = this.dataset.id;
                         try {
                             await window.strikzDb.deleteHistory(id);
@@ -2570,10 +2644,13 @@
                     const h = db.history.find(x => x.id === Number(id));
                     if (h) {
                         editIdInput.value = h.id;
+                        rankSelect.value = h.rank || '1';
                         yearInput.value = h.year;
                         titleInput.value = h.title;
+                        logoInput.value = h.logo || '';
+                        updateLogoPreview(h.logo || '');
                         descInput.value = h.description;
-                        saveBtn.querySelector('.btn-text').textContent = 'UPDATE MILESTONE';
+                        saveBtn.querySelector('.btn-text').textContent = 'UPDATE WINNER';
                     }
                 };
             });
@@ -2583,8 +2660,10 @@
             if (e) e.preventDefault();
             const id = editIdInput.value;
             const historyObj = {
+                rank: Number(rankSelect.value),
                 year: yearInput.value.trim(),
                 title: titleInput.value.trim(),
+                logo: logoInput.value.trim(),
                 description: descInput.value.trim()
             };
 
@@ -2592,19 +2671,21 @@
                 if (id) {
                     historyObj.id = Number(id);
                     await window.strikzDb.updateHistory(historyObj);
-                    alert("Milestone updated successfully!");
+                    alert("Winner updated successfully!");
                 } else {
                     await window.strikzDb.addHistory(historyObj);
-                    alert("Milestone added successfully!");
+                    alert("Winner added successfully!");
                 }
 
                 form.reset();
                 editIdInput.value = '';
-                saveBtn.querySelector('.btn-text').textContent = 'SAVE MILESTONE';
+                logoInput.value = '';
+                updateLogoPreview('');
+                saveBtn.querySelector('.btn-text').textContent = 'SAVE WINNER';
                 db = await window.strikzDb.fetchSnapshot();
                 loadHistoryList();
             } catch (err) {
-                alert("Error saving milestone: " + err.message);
+                alert("Error saving winner: " + err.message);
             }
         };
 
@@ -3454,6 +3535,18 @@
 
         mount.innerHTML = `
             <div style="padding:25px;">
+                <!-- Quick Promote Section -->
+                <div class="glass-panel" style="padding: 15px 20px; border-color: rgba(168, 85, 247, 0.2); margin-bottom: 25px; background: rgba(168, 85, 247, 0.02); display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap;">
+                    <div style="text-align: left;">
+                        <h4 class="font-orbitron" style="margin: 0; font-size: 13px; color: #c084fc; letter-spacing: 0.05em;"><i class="fa-solid fa-user-shield"></i> QUICK PROMOTE PLAYER TO ADMIN</h4>
+                        <p style="margin: 3px 0 0 0; font-size: 11px; color: var(--text-dim);">Enter exact username or Gamer UID to promote instantly.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input id="promote-username-input" type="text" placeholder="Gamer UID or Username..." style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 7px 12px; border-radius: 4px; font-size: 12px; width: 200px;">
+                        <button id="btn-quick-promote" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid #a855f7; padding: 7px 14px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 700; white-space: nowrap;"><i class="fa-solid fa-plus"></i> PROMOTE</button>
+                    </div>
+                </div>
+
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
                     <div>
                         <h3 class="font-orbitron" style="margin:0;font-size:16px;color:var(--neon-cyan);">PLAYER ACCOUNTS</h3>
@@ -3482,6 +3575,64 @@
 
                 ${pages > 1 ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:18px;justify-content:center;">${paginationBtns}</div>` : ''}
             </div>`;
+
+        // Quick Promote Player
+        document.getElementById('btn-quick-promote').onclick = async () => {
+            const queryVal = document.getElementById('promote-username-input').value.trim();
+            if (!queryVal) {
+                alert("Please enter a username or Gamer UID.");
+                return;
+            }
+
+            const btn = document.getElementById('btn-quick-promote');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Promoting...';
+
+            try {
+                const params = new URLSearchParams({ search: queryVal, limit: 10 });
+                const res = await fetch(`/api/v1/admin/users?${params}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const searchData = await res.json();
+                if (!res.ok) throw new Error(searchData.message || 'Failed to search user');
+
+                const foundUsers = searchData.users || [];
+                const exactMatch = foundUsers.find(u => 
+                    (u.username && u.username.toLowerCase() === queryVal.toLowerCase()) || 
+                    (u.uid && u.uid.toLowerCase() === queryVal.toLowerCase())
+                );
+
+                if (!exactMatch) {
+                    throw new Error(`User matching "${queryVal}" not found. Please ensure spelling/UID is exact.`);
+                }
+
+                if (exactMatch.role === 'admin') {
+                    throw new Error(`"${exactMatch.username}" is already an Admin.`);
+                }
+
+                if (!confirm(`👑 Promote account "${exactMatch.username}" (UID: ${exactMatch.uid}) to Admin?\n\nThis will grant full admin privileges to this user.`)) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-plus"></i> PROMOTE';
+                    return;
+                }
+
+                const promoteRes = await fetch(`/api/v1/admin/users/${exactMatch.id}/promote`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const promoteData = await promoteRes.json();
+                if (!promoteRes.ok) throw new Error(promoteData.message || 'Promotion request failed');
+
+                alert('✅ ' + promoteData.message);
+                document.getElementById('promote-username-input').value = '';
+                await renderPlayersTab(mount, page, search);
+            } catch (err) {
+                alert('❌ ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-plus"></i> PROMOTE';
+            }
+        };
 
         // Search button
         document.getElementById('player-search-btn').onclick = async () => {

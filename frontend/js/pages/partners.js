@@ -33,14 +33,24 @@
                 <div style="margin-bottom: 60px;">
                     <h3 class="font-orbitron text-center" style="font-size: 18px; color: var(--neon-cyan); letter-spacing: 0.2em; margin-bottom: 25px; text-shadow: 0 0 8px var(--neon-cyan-border);">TITLE PARTNERS</h3>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 30px;">
-                        ${titleSponsors.map(sp => `
-                            <div class="glass-panel" style="min-width: 260px; text-align: center; padding: 40px 20px; border: 1.5px solid var(--neon-cyan); box-shadow: 0 0 20px rgba(212, 175, 55, 0.15); background: rgba(212, 175, 55, 0.02);">
+                        ${titleSponsors.map(sp => {
+                            let dest = sp.link || sp.website || '#';
+                            if (dest && dest !== '#' && !dest.startsWith('http://') && !dest.startsWith('https://')) {
+                                dest = 'https://' + dest;
+                            }
+                            const isClickable = dest !== '#';
+                            const tagType = isClickable ? 'a' : 'div';
+                            const hrefAttr = isClickable ? `href="${dest}" target="_blank"` : '';
+                            const styleAttr = isClickable ? 'cursor: pointer; text-decoration: none;' : '';
+                            return `
+                            <${tagType} ${hrefAttr} class="glass-panel" style="min-width: 260px; text-align: center; padding: 40px 20px; border: 1.5px solid var(--neon-cyan); box-shadow: 0 0 20px rgba(212, 175, 55, 0.15); background: rgba(212, 175, 55, 0.02); display: block; ${styleAttr}">
                                 <div class="font-orbitron" style="font-size: 24px; font-weight: 900; letter-spacing: 0.1em; color: #fff; text-shadow: 0 0 8px rgba(255, 255, 255, 0.2); min-height: 50px; display: flex; align-items: center; justify-content: center;">
                                     ${sp.logo ? `<img src="${sp.logo}" style="max-height: 50px; max-width: 190px; object-fit: contain;">` : sp.logoText}
                                 </div>
                                 <div style="font-size: 10px; color: var(--neon-cyan); letter-spacing: 0.15em; font-weight: 800; margin-top: 15px; font-family: var(--font-header);">OFFICIAL TITLE SPONSOR</div>
-                            </div>
-                        `).join('')}
+                            </${tagType}>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
                 ` : ''}
@@ -50,14 +60,24 @@
                 <div style="margin-bottom: 60px;">
                     <h3 class="font-orbitron text-center" style="font-size: 16px; color: var(--neon-orange); letter-spacing: 0.2em; margin-bottom: 25px; text-shadow: 0 0 8px var(--neon-orange-glow);">PLATINUM SPONSORS</h3>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 25px;">
-                        ${platinumSponsors.map(sp => `
-                            <div class="glass-panel" style="min-width: 220px; text-align: center; padding: 30px 20px; border-color: var(--neon-orange-border); background: rgba(255, 230, 0, 0.01);">
+                        ${platinumSponsors.map(sp => {
+                            let dest = sp.link || sp.website || '#';
+                            if (dest && dest !== '#' && !dest.startsWith('http://') && !dest.startsWith('https://')) {
+                                dest = 'https://' + dest;
+                            }
+                            const isClickable = dest !== '#';
+                            const tagType = isClickable ? 'a' : 'div';
+                            const hrefAttr = isClickable ? `href="${dest}" target="_blank"` : '';
+                            const styleAttr = isClickable ? 'cursor: pointer; text-decoration: none;' : '';
+                            return `
+                            <${tagType} ${hrefAttr} class="glass-panel" style="min-width: 220px; text-align: center; padding: 30px 20px; border-color: var(--neon-orange-border); background: rgba(255, 230, 0, 0.01); display: block; ${styleAttr}">
                                 <div class="font-orbitron" style="font-size: 20px; font-weight: 800; letter-spacing: 0.08em; color: #fff; min-height: 40px; display: flex; align-items: center; justify-content: center;">
                                     ${sp.logo ? `<img src="${sp.logo}" style="max-height: 40px; max-width: 150px; object-fit: contain;">` : sp.logoText}
                                 </div>
                                 <div style="font-size: 9px; color: var(--neon-orange); letter-spacing: 0.12em; font-weight: 800; margin-top: 10px; font-family: var(--font-header);">PLATINUM PARTNER</div>
-                            </div>
-                        `).join('')}
+                            </${tagType}>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
                 ` : ''}
@@ -67,14 +87,24 @@
                 <div>
                     <h3 class="font-orbitron text-center" style="font-size: 14px; color: var(--text-dim); letter-spacing: 0.2em; margin-bottom: 25px;">GOLD SPONSORS</h3>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">
-                        ${goldSponsors.map(sp => `
-                            <div class="glass-panel" style="min-width: 190px; text-align: center; padding: 25px 15px; border-color: rgba(255,255,255,0.05);">
+                        ${goldSponsors.map(sp => {
+                            let dest = sp.link || sp.website || '#';
+                            if (dest && dest !== '#' && !dest.startsWith('http://') && !dest.startsWith('https://')) {
+                                dest = 'https://' + dest;
+                            }
+                            const isClickable = dest !== '#';
+                            const tagType = isClickable ? 'a' : 'div';
+                            const hrefAttr = isClickable ? `href="${dest}" target="_blank"` : '';
+                            const styleAttr = isClickable ? 'cursor: pointer; text-decoration: none;' : '';
+                            return `
+                            <${tagType} ${hrefAttr} class="glass-panel" style="min-width: 190px; text-align: center; padding: 25px 15px; border-color: rgba(255,255,255,0.05); display: block; ${styleAttr}">
                                 <div class="font-orbitron" style="font-size: 16px; font-weight: 700; color: var(--text-silver); min-height: 35px; display: flex; align-items: center; justify-content: center;">
                                     ${sp.logo ? `<img src="${sp.logo}" style="max-height: 35px; max-width: 120px; object-fit: contain;">` : sp.logoText}
                                 </div>
                                 <div style="font-size: 8px; color: var(--text-dim); letter-spacing: 0.1em; font-weight: 700; margin-top: 8px; font-family: var(--font-header);">GOLD SPONSOR</div>
-                            </div>
-                        `).join('')}
+                            </${tagType}>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
                 ` : ''}

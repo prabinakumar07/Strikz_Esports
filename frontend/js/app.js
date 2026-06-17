@@ -1434,24 +1434,8 @@
         // Settings Modal listeners
         const btnSettingsClose = document.getElementById('btn-settings-close');
         const btnSettingsSave = document.getElementById('btn-settings-save');
-        const settingsAvatarFile = document.getElementById('settings-input-avatar-file');
         const settingsInputAvatar = document.getElementById('settings-input-avatar');
         const settingsAvatarPreview = document.getElementById('settings-avatar-preview');
-
-        if (settingsAvatarFile) {
-            settingsAvatarFile.onchange = async function() {
-                const file = settingsAvatarFile.files[0];
-                if (!file) return;
-                try {
-                    const res = await window.strikzDb.uploadFile(file);
-                    if (settingsInputAvatar) settingsInputAvatar.value = res.imageUrl;
-                    if (settingsAvatarPreview) settingsAvatarPreview.src = res.imageUrl;
-                    alert("Gamer photo uploaded successfully!");
-                } catch (err) {
-                    alert("Photo upload failed: " + err.message);
-                }
-            };
-        }
 
         if (btnSettingsClose) {
             btnSettingsClose.addEventListener('click', () => {

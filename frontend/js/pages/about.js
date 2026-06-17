@@ -6,36 +6,76 @@
     function renderAbout(container) {
         const db = window.strikzDb.get() || {};
         const settings = db.settings || {};
-        const history = db.history || [];
+        // Sort history by rank (ascending), only allow ranks 1-10
+        let winners = [...(db.history || [])]
+            .filter(item => item.rank >= 1 && item.rank <= 10)
+            .sort((a, b) => (a.rank || 99) - (b.rank || 99));
 
-        const timelineItemsHTML = history.length ? history.map(item => `
-            <div class="timeline-item">
-                <span class="timeline-year">${item.year}</span>
-                <h4 class="timeline-title">${item.title}</h4>
-                <p class="timeline-desc">${item.description}</p>
-            </div>
-        `).join('') : `
-            <div class="timeline-item">
-                <span class="timeline-year">JUNE 2022</span>
-                <h4 class="timeline-title">The Birth of STRIKZ ESPORTS</h4>
-                <p class="timeline-desc">STRIKZ ESPORTS was founded with a vision to discover hidden talent and create opportunities for underdog players to compete, grow, and succeed in esports.</p>
-            </div>
-            <div class="timeline-item">
-                <span class="timeline-year">2023</span>
-                <h4 class="timeline-title">Building a Strong Community</h4>
-                <p class="timeline-desc">Expanded our network by organizing competitive tournaments and creating a platform where passionate gamers could connect, showcase their skills, and pursue their esports ambitions.</p>
-            </div>
-            <div class="timeline-item">
-                <span class="timeline-year">2024</span>
-                <h4 class="timeline-title">Recognition Across Odisha</h4>
-                <p class="timeline-desc">Through consistent event management and community engagement, STRIKZ ESPORTS became a trusted name among players, teams, and content creators across Odisha.</p>
-            </div>
-            <div class="timeline-item">
-                <span class="timeline-year">2025</span>
-                <h4 class="timeline-title">Empowering the Next Generation</h4>
-                <p class="timeline-desc">With free tournaments, competitive events, and a growing esports ecosystem, STRIKZ ESPORTS continues its mission to help aspiring players turn their passion into achievement.</p>
+        // If no winners in DB, use default ones
+        if (winners.length === 0) {
+            winners = [
+                { id: 'mock-1', rank: 1, year: '2025', title: 'STRIKZ ESPORTS', description: 'FFIC 2025 Champions - $80,000 USD Prize Pool', logo: 'assets/logo.png' },
+                { id: 'mock-2', rank: 2, year: '2025', title: 'TEAM STORM', description: 'FFIC 2025 Runner Up - $30,000 USD', logo: '' },
+                { id: 'mock-3', rank: 3, year: '2025', title: 'VIPER CLAN', description: 'FFIC 2025 3rd Place - $15,000 USD', logo: '' }
+            ];
+        }
+
+        const champion = winners.find(w => w.rank === 1) || winners[0];
+        const runnersUp = winners.filter(w => w.id !== champion.id && w.rank !== 1);
+
+        const championLogo = champion.logo 
+            ? `<img src="${champion.logo}" alt="${champion.title} Logo" style="max-height: 140px; max-width: 140px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.5));">`
+            : `<div style="width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.03); border: 2px dashed #d4af37; display: flex; align-items: center; justify-content: center; font-size: 40px; color: #d4af37; text-shadow: 0 0 10px rgba(212,175,55,0.5);"><i class="fa-solid fa-crown"></i></div>`;
+
+        const championHTML = `
+            <div class="champion-banner glass-panel" style="display: flex; align-items: center; gap: 40px; padding: 40px; border: 2px solid #d4af37; background: linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, rgba(10, 10, 15, 0.8) 100%); box-shadow: 0 0 30px rgba(212, 175, 55, 0.25); border-radius: 12px; margin-bottom: 40px; position: relative; overflow: hidden; flex-wrap: wrap; justify-content: center; text-align: left; transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;">
+                <div style="position: absolute; top: -10px; right: -10px; font-size: 120px; color: rgba(212,175,55,0.04); font-weight: 900; font-family: var(--font-header); pointer-events: none; z-index: 0; text-transform: uppercase;">01</div>
+                <div style="z-index: 1; flex-shrink: 0;">
+                    ${championLogo}
+                </div>
+                <div style="z-index: 1; flex: 1; min-width: 250px;">
+                    <span class="font-orbitron" style="font-size: 11px; background: #d4af37; color: #000; padding: 4px 10px; border-radius: 4px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; box-shadow: 0 0 10px rgba(212,175,55,0.4); display: inline-block; margin-bottom: 15px;"><i class="fa-solid fa-crown"></i> CHAMPION (1ST PLACE)</span>
+                    <h4 class="font-orbitron" style="font-size: 32px; font-weight: 900; color: #fff; margin-bottom: 8px; text-shadow: 0 0 8px rgba(255,255,255,0.2);">${champion.title}</h4>
+                    <span class="font-orbitron" style="font-size: 13px; color: var(--neon-cyan); letter-spacing: 0.05em; display: block; margin-bottom: 12px;">EVENT: ${champion.year}</span>
+                    <p style="font-size: 16px; color: var(--text-silver); margin: 0; line-height: 1.6;">${champion.description}</p>
+                </div>
             </div>
         `;
+
+        const runnersUpHTML = runnersUp.map(w => {
+            const logoHtml = w.logo 
+                ? `<img src="${w.logo}" alt="${w.title} Logo" style="max-height: 70px; max-width: 70px; object-fit: contain; filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2));">`
+                : `<div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.02); border: 1.5px dashed var(--text-dim); display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--text-dim);"><i class="fa-solid fa-shield"></i></div>`;
+            
+            let rankText = `#${w.rank}`;
+            let badgeBg = 'rgba(255,255,255,0.07)';
+            let badgeColor = 'var(--text-silver)';
+            if (w.rank === 2) {
+                rankText = '2ND PLACE';
+                badgeBg = 'rgba(192, 192, 192, 0.2)';
+                badgeColor = '#e0e0e0';
+            } else if (w.rank === 3) {
+                rankText = '3RD PLACE';
+                badgeBg = 'rgba(205, 127, 50, 0.2)';
+                badgeColor = '#cd7f32';
+            } else {
+                rankText = `${w.rank}TH PLACE`;
+            }
+
+            return `
+            <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: space-between; transition: transform 0.3s ease, border-color 0.3s ease; height: 100%;">
+                <div style="width: 100%;">
+                    <span class="font-orbitron" style="font-size: 9px; background: ${badgeBg}; color: ${badgeColor}; padding: 3px 8px; border-radius: 3px; font-weight: 800; letter-spacing: 0.1em; display: inline-block; margin-bottom: 15px;">${rankText}</span>
+                    <div style="height: 80px; display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                        ${logoHtml}
+                    </div>
+                    <h5 class="font-orbitron" style="font-size: 18px; color: #fff; margin-bottom: 6px; letter-spacing: 0.05em;">${w.title}</h5>
+                    <span class="font-orbitron" style="font-size: 11px; color: var(--neon-cyan); letter-spacing: 0.05em; display: block; margin-bottom: 10px;">${w.year}</span>
+                </div>
+                <p style="font-size: 13px; color: var(--text-dim); margin: 0; line-height: 1.5; width: 100%;">${w.description}</p>
+            </div>
+            `;
+        }).join('');
 
         container.innerHTML = `
             <section class="container reveal" style="padding-top: 40px; margin-bottom: 80px;">
@@ -48,7 +88,7 @@
                 <div class="about-grid reveal-stagger">
                     <div>
                         <h3 class="font-orbitron" style="font-size: 22px; color: var(--neon-cyan); margin-bottom: 15px;">DOMINATING THE BATTLE ROYALE ARENA</h3>
-                        <p style="color: var(--text-silver); margin-bottom: 18px;">Welcome to STRIKZ ESPORTS, a dedicated esports platform established in 2022 with a vision to discover and empower talented underdog players. Our mission is to create opportunities for aspiring gamers by providing a competitive environment where skill, dedication, and passion can shine.</p>
+                        <p style="color: var(--text-silver); margin-bottom: 18px;">Welcome to STRIKZ ESPORTS, a dedicated esports platform established in ${settings.establishedYear || '2022'} with a vision to discover and empower talented underdog players. Our mission is to create opportunities for aspiring gamers by providing a competitive environment where skill, dedication, and passion can shine.</p>
                         <p style="color: var(--text-silver); margin-bottom: 30px;">At STRIKZ ESPORTS, we organize free tournaments, LAN events, and competitive gaming experiences designed to help players showcase their talent and take meaningful steps toward their esports goals. Backed by a passionate team of esports enthusiasts, we are committed to building a supportive and professional community where every player has a chance to grow, compete, and succeed.</p>
                         
                         <div class="grid-2">
@@ -74,14 +114,19 @@
                     </div>
                 </div>
  
-                <!-- Organization Timeline -->
+                <!-- Winners Board Section -->
                 <div class="reveal" style="margin-top: 80px;">
-                    <h3 class="font-orbitron" style="font-size: 20px; text-align: center; margin-bottom: 30px;">${settings.historyHeading || 'OUR JOURNEY TO GLORY'}</h3>
-                    <div class="about-timeline reveal-stagger">
-                        ${timelineItemsHTML}
+                    <h3 class="font-orbitron" style="font-size: 20px; text-align: center; margin-bottom: 30px;">${settings.historyHeading || 'TOURNAMENT WINNERS BOARD'}</h3>
+                    <div class="winners-board-container" style="max-width: 1000px; margin: 0 auto;">
+                        ${championHTML}
+                        ${runnersUp.length ? `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 20px;">
+                            ${runnersUpHTML}
+                        </div>
+                        ` : ''}
                     </div>
                 </div>
-            </section>n>
+            </section>
         `;
     }
 

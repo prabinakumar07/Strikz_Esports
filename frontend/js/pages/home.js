@@ -141,12 +141,18 @@
                                     </div>
                                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                                         <span style="font-size: 11px; color: var(--text-dim);">${item.date}</span>
-                                        ${item.redirectLink ? `
-                                            <a href="${item.redirectLink}" target="_blank" class="cta-button btn-neon-orange" style="padding: 6px 14px; font-family: var(--font-header); font-size: 10px; font-weight: 800; border-radius: 4px; color:#000 !important;">
-                                                <i class="${item.contentType === 'Video' ? 'fa-solid fa-play' : 'fa-solid fa-arrow-up-right-from-square'}"></i> 
-                                                CLICK HERE
-                                            </a>
-                                        ` : `
+                                        ${item.redirectLink ? (() => {
+                                            let dest = item.redirectLink;
+                                            if (dest && dest !== '#' && !dest.startsWith('http://') && !dest.startsWith('https://') && !dest.startsWith('#')) {
+                                                dest = 'https://' + dest;
+                                            }
+                                            return `
+                                                <a href="${dest}" target="_blank" class="cta-button btn-neon-orange" style="padding: 6px 14px; font-family: var(--font-header); font-size: 10px; font-weight: 800; border-radius: 4px; color:#000 !important;">
+                                                    <i class="${item.contentType === 'Video' ? 'fa-solid fa-play' : 'fa-solid fa-arrow-up-right-from-square'}"></i> 
+                                                    CLICK HERE
+                                                </a>
+                                            `;
+                                        })() : `
                                             <a href="#/news" class="btn-neon-cyan" style="padding: 6px 14px; font-family: var(--font-header); font-size: 10px; font-weight: 800; border-radius: 4px;">CLICK HERE</a>
                                         `}
                                     </div>
@@ -184,7 +190,10 @@
                 
                 <div class="grid-3 reveal-stagger">
                     ${socials.map(post => {
-                        const targetUrl = post.link || post.url || '#';
+                        let targetUrl = post.link || post.url || '#';
+                        if (targetUrl && targetUrl !== '#' && !targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                            targetUrl = 'https://' + targetUrl;
+                        }
                         const isClickable = targetUrl && targetUrl !== '#';
                         const clickAttr = isClickable ? `onclick="window.open('${targetUrl}', '_blank')"` : '';
                         const styleAttr = isClickable ? 'style="cursor: pointer;"' : '';
@@ -247,7 +256,10 @@
                 <div class="sponsors-title font-orbitron">OFFICIAL PARTNERS</div>
                 <div class="sponsors-grid">
                     ${sponsors.map(sp => {
-                        const targetUrl = sp.link || sp.website || '#';
+                        let targetUrl = sp.link || sp.website || '#';
+                        if (targetUrl && targetUrl !== '#' && !targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                            targetUrl = 'https://' + targetUrl;
+                        }
                         const isExternal = targetUrl.startsWith('http');
                         const targetAttr = isExternal ? 'target="_blank"' : '';
                         const logoHtml = sp.logo

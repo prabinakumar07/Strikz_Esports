@@ -290,7 +290,9 @@ const models = {
     History: createModel('History', 'history', Number, {
         year: { type: String },
         title: { type: String },
-        description: { type: String }
+        description: { type: String },
+        logo: { type: String },
+        rank: { type: Number }
     })
 };
 
