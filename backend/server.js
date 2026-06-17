@@ -249,8 +249,12 @@ app.post('/', (req, res) => {
     res.redirect(303, '/');
 });
 
-// Serve the frontend for client-side routes.
+// Serve the frontend for client-side routes without caching index.html itself.
 app.get('*', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     res.sendFile(path.join(frontendDir, 'index.html'));
 });
 
