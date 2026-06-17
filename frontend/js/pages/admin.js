@@ -1259,298 +1259,415 @@
 
         loadSocialList();
     }
-
-    // 6. WINNERS CRUD PANEL
+    // 6. WINNERS CRUD PANEL (REDESIGNED)
     function renderWinnersTab(mount, db) {
+        /* ---- Medal / tier colour helpers ---- */
+        const medalColors = {
+            1: { color: '#FFE600', label: '🥇 1ST PLACE', bg: 'rgba(255,230,0,0.12)', border: 'rgba(255,230,0,0.3)' },
+            2: { color: '#c0c0c0', label: '🥈 2ND PLACE', bg: 'rgba(192,192,192,0.08)', border: 'rgba(192,192,192,0.25)' },
+            3: { color: '#cd7f32', label: '🥉 3RD PLACE', bg: 'rgba(205,127,50,0.08)', border: 'rgba(205,127,50,0.25)' },
+        };
+        const getMedal = (r) => medalColors[r] || { color: '#7e7e7e', label: `#${r} PLACE`, bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.06)' };
+
         mount.innerHTML = `
-            <h3 class="font-orbitron" style="font-size: 18px; color: var(--neon-cyan); margin-bottom: 25px;"><i class="fa-solid fa-trophy"></i> TOURNAMENT STANDINGS & WINNERS</h3>
-            
+            <h3 class="font-orbitron" style="font-size: 18px; color: var(--neon-cyan); margin-bottom: 25px;"><i class="fa-solid fa-trophy"></i> TOURNAMENT STANDINGS &amp; WINNERS</h3>
+
             <div class="grid-2" style="align-items: start;">
-                <!-- Winner Form -->
-                <div class="glass-panel" style="padding: 20px; border-color: rgba(255,255,255,0.03);">
-                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 15px;"><i class="fa-solid fa-circle-plus"></i> NEW ANNOUNCEMENT / STANDINGS</h4>
-                    
+                <!-- Left: Form -->
+                <div class="glass-panel" style="padding: 22px; border-color: rgba(255,255,255,0.03);">
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 18px;">
+                        <i class="fa-solid fa-circle-plus"></i> NEW / EDIT TOURNAMENT ANNOUNCEMENT
+                    </h4>
+
                     <form id="admin-winner-form" onsubmit="return false;">
                         <input type="hidden" id="edit-winner-id">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="winner-team">Spotlight Winner Team Name</label>
-                                <input type="text" id="winner-team" value="STRIKZ ESPORTS" required style="color: #fff;">
-                            </div>
-                            <div class="form-group">
-                                <label for="winner-title">Championship Title</label>
-                                <input type="text" id="winner-title" placeholder="E.g. Champions" required style="color: #fff;">
-                            </div>
-                        </div>
+
+                        <!-- Row 1: Event & Date -->
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="winner-event">Event / Tournament Name</label>
-                                <input type="text" id="winner-event" placeholder="E.g. Free Fire Standings Cup" required style="color: #fff;">
+                                <input type="text" id="winner-event" placeholder="E.g. Free Fire Grand Slam" required style="color:#fff;">
                             </div>
                             <div class="form-group">
-                                <label for="winner-date">Secured Date</label>
-                                <input type="text" id="winner-date" placeholder="E.g. Oct 2025" required style="color: #fff;">
+                                <label for="winner-date">Event Date</label>
+                                <input type="text" id="winner-date" placeholder="E.g. Oct 2025" required style="color:#fff;">
                             </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="winner-reward">Prize Reward Won</label>
-                                <input type="text" id="winner-reward" placeholder="E.g. $80,000 USD" required style="color: #fff;">
-                            </div>
-                            <div class="form-group">
-                                <label for="winner-tier">Trophy Tier</label>
-                                <select id="winner-tier" required style="background:#101010; border:1px solid var(--glass-border); padding:10px; color:#fff; border-radius:4px; height: 42px; width: 100%;">
-                                    <option value="gold">Gold Tier (1st)</option>
-                                    <option value="silver">Silver Tier (2nd)</option>
-                                    <option value="bronze">Bronze Tier (3rd)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="winner-image">Banner Spotlight Image Path / Upload</label>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="text" id="winner-image" value="assets/tournament_banner.png" required style="color: #fff; flex: 1;">
-                                <div style="position: relative; overflow: hidden; display: inline-block;">
-                                    <button type="button" class="admin-action-btn green" style="margin: 0; padding: 10px 14px; height: 100%; white-space: nowrap;"><i class="fa-solid fa-upload"></i> UPLOAD</button>
-                                    <input type="file" id="winner-image-file" accept="image/*" style="position: absolute; font-size: 100px; opacity: 0; right: 0; top: 0; cursor: pointer;">
-                                </div>
-                            </div>
-                            <div id="winner-image-preview" style="margin-top: 8px; display: none;">
-                                <img src="" style="max-height: 80px; border-radius: 4px; border: 1px solid var(--glass-border);">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="winner-details">Championship Highlights / Roster</label>
-                            <textarea id="winner-details" rows="3" placeholder="Roster details and tactical highlights..." required style="width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; color: #fff; font-size: 13px;"></textarea>
-                        </div>
-                        
-                        <h5 class="font-orbitron" style="font-size: 11px; color: var(--neon-yellow); margin-top: 25px; margin-bottom: 12px; border-bottom: 1px solid var(--glass-border); padding-bottom: 4px;">RANKED STANDINGS (UP TO 10 WINNERS)</h5>
-                        <div id="winners-rank-inputs" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; max-height: 350px; overflow-y: auto; padding-right: 5px;">
-                            <!-- Rendered dynamically -->
                         </div>
 
-                        <button type="submit" class="cta-button btn-neon-cyan w-full" id="btn-save-winner" style="margin-top: 15px;">
+                        <!-- Row 2: Title & Overall Reward -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="winner-title">Championship Title</label>
+                                <input type="text" id="winner-title" placeholder="E.g. Season 5 Champions" required style="color:#fff;">
+                            </div>
+                            <div class="form-group">
+                                <label for="winner-reward">Total Prize Pool (optional)</label>
+                                <input type="text" id="winner-reward" placeholder="E.g. $10,000 USD" style="color:#fff;">
+                            </div>
+                        </div>
+
+                        <!-- Banner (1st Place Only) -->
+                        <div class="form-group">
+                            <label for="winner-image">
+                                <i class="fa-solid fa-image" style="color: var(--neon-yellow);"></i>
+                                Banner Image — <span style="color: var(--neon-yellow); font-size:10px;">1ST PLACE TEAM ONLY</span>
+                            </label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="text" id="winner-image" placeholder="URL or upload..." style="color:#fff; flex:1;">
+                                <div style="position:relative; overflow:hidden; display:inline-block; flex-shrink:0;">
+                                    <button type="button" class="admin-action-btn green" id="winner-banner-btn" style="margin:0; padding:10px 14px; white-space:nowrap;">
+                                        <i class="fa-solid fa-upload"></i> UPLOAD
+                                    </button>
+                                    <input type="file" id="winner-image-file" accept="image/*" style="position:absolute; font-size:100px; opacity:0; right:0; top:0; cursor:pointer;">
+                                </div>
+                            </div>
+                            <img id="admin-banner-preview" class="admin-banner-preview" src="" alt="Banner preview">
+                        </div>
+
+                        <!-- Description -->
+                        <div class="form-group">
+                            <label for="winner-details">Tournament Summary / Highlights</label>
+                            <textarea id="winner-details" rows="3" placeholder="Brief tournament summary, roster highlights, tactical notes..." style="width:100%; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); padding:10px; border-radius:6px; color:#fff; font-size:13px; resize:vertical;"></textarea>
+                        </div>
+
+                        <!-- Ranked Team Entries -->
+                        <div style="margin-top:20px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+                            <h5 class="font-orbitron" style="font-size:11px; color:var(--neon-yellow); letter-spacing:0.07em;">
+                                <i class="fa-solid fa-list-ol"></i> RANKED TEAMS (FLEXIBLE — TOP 3, 9, 10, ETC.)
+                            </h5>
+                            <span style="font-size:10px; color:var(--text-dim);">Add up to 10</span>
+                        </div>
+                        <div id="winners-rank-inputs" style="display:flex; flex-direction:column; gap:10px; margin-bottom:10px; max-height:520px; overflow-y:auto; padding-right:4px;"></div>
+                        <button type="button" class="winner-add-rank-btn" id="btn-add-rank">
+                            <i class="fa-solid fa-plus"></i> ADD NEXT RANK POSITION
+                        </button>
+
+                        <button type="submit" class="cta-button btn-neon-cyan w-full" id="btn-save-winner" style="margin-top:18px;">
                             <span class="btn-text">SAVE WINNER RECORD</span>
                         </button>
                     </form>
                 </div>
 
-                <!-- Existing Winners List -->
-                <div style="display: flex; flex-direction: column; gap: 15px;">
-                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--text-silver); margin-bottom: 5px;">CHAMPIONSHIP STANDINGS</h4>
-                    <div id="admin-winners-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;">
+                <!-- Right: Existing Records -->
+                <div style="display:flex; flex-direction:column; gap:15px;">
+                    <h4 class="font-orbitron" style="font-size:13px; color:var(--text-silver); margin-bottom:5px;">
+                        <i class="fa-solid fa-layer-group"></i> EXISTING ANNOUNCEMENTS
+                    </h4>
+                    <div id="admin-winners-list" style="display:flex; flex-direction:column; gap:10px; max-height:600px; overflow-y:auto;">
                         <!-- Injected dynamically -->
                     </div>
                 </div>
             </div>
         `;
 
-        const form = document.getElementById('admin-winner-form');
-        const listMount = document.getElementById('admin-winners-list');
-        const editIdInput = document.getElementById('edit-winner-id');
-        const teamInput = document.getElementById('winner-team');
-        const titleInput = document.getElementById('winner-title');
-        const eventInput = document.getElementById('winner-event');
-        const dateInput = document.getElementById('winner-date');
-        const rewardInput = document.getElementById('winner-reward');
-        const tierSelect = document.getElementById('winner-tier');
-        const imageInput = document.getElementById('winner-image');
-        const detailsInput = document.getElementById('winner-details');
-        const saveBtn = document.getElementById('btn-save-winner');
-
+        /* ---- Element refs ---- */
+        const form           = document.getElementById('admin-winner-form');
+        const listMount      = document.getElementById('admin-winners-list');
+        const editIdInput    = document.getElementById('edit-winner-id');
+        const eventInput     = document.getElementById('winner-event');
+        const dateInput      = document.getElementById('winner-date');
+        const titleInput     = document.getElementById('winner-title');
+        const rewardInput    = document.getElementById('winner-reward');
+        const imageInput     = document.getElementById('winner-image');
+        const detailsInput   = document.getElementById('winner-details');
+        const saveBtn        = document.getElementById('btn-save-winner');
+        const addRankBtn     = document.getElementById('btn-add-rank');
+        const rankContainer  = document.getElementById('winners-rank-inputs');
         const imageFileInput = document.getElementById('winner-image-file');
-        const imagePreviewContainer = document.getElementById('winner-image-preview');
-        const imagePreviewImg = imagePreviewContainer.querySelector('img');
+        const bannerPreview  = document.getElementById('admin-banner-preview');
 
-        function updateWinnerPreview(src) {
-            if (src && src !== 'assets/tournament_banner.png') {
-                imagePreviewImg.src = src;
-                imagePreviewContainer.style.display = 'block';
+        /* ---- Banner preview helper ---- */
+        function updateBannerPreview(src) {
+            if (src && src.trim()) {
+                bannerPreview.src = src.trim();
+                bannerPreview.style.display = 'block';
             } else {
-                imagePreviewContainer.style.display = 'none';
+                bannerPreview.style.display = 'none';
             }
         }
+        imageInput.addEventListener('input', () => updateBannerPreview(imageInput.value));
 
-        imageInput.addEventListener('input', () => updateWinnerPreview(imageInput.value.trim()));
-
+        /* ---- Banner file upload ---- */
         imageFileInput.addEventListener('change', async function(e) {
             const file = e.target.files[0];
-            if (file) {
-                try {
-                    const res = await window.strikzDb.uploadFile(file);
-                    imageInput.value = res.imageUrl;
-                    updateWinnerPreview(res.imageUrl);
-                    alert("Image uploaded successfully!");
-                } catch (err) {
-                    alert("Upload failed: " + err.message);
-                }
+            if (!file) return;
+            try {
+                const res = await window.strikzDb.uploadFile(file);
+                imageInput.value = res.imageUrl;
+                updateBannerPreview(res.imageUrl);
+            } catch (err) {
+                alert('Upload failed: ' + err.message);
             }
         });
 
-        function loadRankInputs(winnersList = []) {
-            const container = document.getElementById('winners-rank-inputs');
-            let ranksHtml = '';
-            for (let r = 1; r <= 10; r++) {
-                const w = winnersList.find(x => x.rank === r) || {};
-                ranksHtml += `
-                    <div class="glass-panel rank-row-group" data-rank="${r}" style="padding: 12px; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.02);">
-                        <div style="font-size: 11px; color: var(--neon-cyan); font-weight: 800; font-family: var(--font-header); margin-bottom: 8px;">POSITION / RANK #${r} ${r === 1 ? '(Featured Spotlight)' : ''}</div>
-                        <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                            <div class="form-group" style="margin-bottom:0;">
-                                <label style="font-size:9px; margin-bottom:2px; display:block;">Team Name</label>
-                                <input type="text" class="rank-team-name" value="${w.teamName || ''}" placeholder="${r === 1 ? 'E.g. STRIKZ ESPORTS' : 'Leave empty to skip...'}" style="color: #fff; padding: 6px; font-size:11px;">
-                            </div>
-                            <div class="form-group" style="margin-bottom:0;">
-                                <label style="font-size:9px; margin-bottom:2px; display:block;">Trophy Tier</label>
-                                <select class="rank-tier" style="background:#101010; border:1px solid var(--glass-border); padding:6px; color:#fff; border-radius:4px; font-size:11px; height: 32px; width:100%;">
-                                    <option value="" ${!w.tier ? 'selected' : ''}>No Tier</option>
-                                    <option value="diamond" ${w.tier === 'diamond' ? 'selected' : ''}>Diamond</option>
-                                    <option value="platinum" ${w.tier === 'platinum' ? 'selected' : ''}>Platinum</option>
-                                    <option value="gold" ${w.tier === 'gold' ? 'selected' : ''}>Gold</option>
-                                    <option value="silver" ${w.tier === 'silver' ? 'selected' : ''}>Silver</option>
-                                    <option value="bronze" ${w.tier === 'bronze' ? 'selected' : ''}>Bronze</option>
-                                </select>
-                            </div>
-                            <div class="form-group" style="margin-bottom:0;">
-                                <label style="font-size:9px; margin-bottom:2px; display:block;">Prize / Reward</label>
-                                <input type="text" class="rank-prize" value="${w.prize || ''}" placeholder="E.g. $500" style="color: #fff; padding: 6px; font-size:11px;">
-                            </div>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label style="font-size:9px; margin-bottom:2px; display:block;">Team Logo / Crest URL</label>
-                            <div style="display: flex; gap: 6px; align-items: center;">
-                                <input type="text" class="rank-logo" value="${w.teamLogo || ''}" placeholder="URL or upload logo..." style="color: #fff; padding: 6px; flex: 1; font-size:11px;">
-                                <div style="position: relative; overflow: hidden; display: inline-block;">
-                                    <button type="button" class="admin-action-btn green btn-rank-upload" style="margin: 0; padding: 6px 10px; height: 32px; font-size:10px; white-space: nowrap;"><i class="fa-solid fa-upload"></i></button>
-                                    <input type="file" class="rank-logo-file" accept="image/*" style="position: absolute; font-size: 100px; opacity: 0; right: 0; top: 0; cursor: pointer;">
-                                </div>
+        /* ---- Medal metadata ---- */
+        const rankMeta = {
+            1: { color: '#FFE600', border: 'rgba(255,230,0,0.3)', label: '🥇 1ST' },
+            2: { color: '#c0c0c0', border: 'rgba(192,192,192,0.25)', label: '🥈 2ND' },
+            3: { color: '#cd7f32', border: 'rgba(205,127,50,0.25)', label: '🥉 3RD' },
+        };
+        const getRankMeta = (r) => rankMeta[r] || { color: '#7e7e7e', border: 'rgba(255,255,255,0.07)', label: `#${r}` };
+
+        /* ---- Build a single rank entry DOM element ---- */
+        function buildRankEntry(rank, data = {}) {
+            const rm = getRankMeta(rank);
+            const isFirst = rank === 1;
+            const tierOptions = ['', 'diamond', 'platinum', 'gold', 'silver', 'bronze'].map(t => {
+                const label = t ? t.charAt(0).toUpperCase() + t.slice(1) : 'No Tier';
+                const sel = (data.tier === t) ? 'selected' : '';
+                return `<option value="${t}" ${sel}>${label}</option>`;
+            }).join('');
+
+            const el = document.createElement('div');
+            el.className = `winner-rank-entry${isFirst ? ' rank-1-entry' : ''}`;
+            el.dataset.rank = rank;
+            el.innerHTML = `
+                <div class="winner-rank-header">
+                    <span class="winner-rank-badge-admin" style="color:${rm.color}; border-color:${rm.border}; background:${rm.border.replace('0.3','0.08').replace('0.25','0.06').replace('0.07','0.04')};">
+                        ${rm.label} PLACE
+                    </span>
+                    ${rank > 1 ? `<button type="button" class="winner-remove-btn" title="Remove this rank"><i class="fa-solid fa-times"></i></button>` : '<span style="font-size:9px; color:var(--text-dim);">Required</span>'}
+                </div>
+                <div style="display:grid; grid-template-columns:1.8fr 1fr; gap:10px; margin-bottom:10px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-size:9px; margin-bottom:4px; display:block;">Team Name</label>
+                        <input type="text" class="rank-team-name" value="${data.teamName || ''}"
+                            placeholder="${isFirst ? 'E.g. STRIKZ ESPORTS (required)' : 'Leave blank to skip'}"
+                            ${isFirst ? 'required' : ''}
+                            style="color:#fff; font-size:12px; padding:8px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-size:9px; margin-bottom:4px; display:block;">Prize / Reward</label>
+                        <input type="text" class="rank-prize" value="${data.prize || ''}" placeholder="E.g. $2,000" style="color:#fff; font-size:12px; padding:8px;">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-size:9px; margin-bottom:4px; display:block;">Tier / Badge</label>
+                        <select class="rank-tier" style="background:#101010; border:1px solid var(--glass-border); padding:8px; color:#fff; border-radius:4px; font-size:11px; height:36px; width:100%;">
+                            ${tierOptions}
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-size:9px; margin-bottom:4px; display:block;">Team Logo</label>
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <input type="text" class="rank-logo" value="${data.teamLogo || ''}" placeholder="URL or upload..." style="color:#fff; font-size:11px; padding:8px; flex:1;">
+                            <div style="position:relative; overflow:hidden; display:inline-block; flex-shrink:0;">
+                                <button type="button" class="admin-action-btn green btn-rank-upload" style="margin:0; padding:7px 10px; height:36px; font-size:10px;">
+                                    <i class="fa-solid fa-upload"></i>
+                                </button>
+                                <input type="file" class="rank-logo-file" accept="image/*" style="position:absolute; font-size:100px; opacity:0; right:0; top:0; cursor:pointer;">
                             </div>
                         </div>
                     </div>
-                `;
-            }
-            container.innerHTML = ranksHtml;
+                </div>
+                ${isFirst ? `
+                <div class="form-group" style="margin-bottom:0;">
+                    <label style="font-size:9px; margin-bottom:4px; display:block; color:var(--neon-yellow);">
+                        <i class="fa-solid fa-image"></i> 1ST PLACE LOGO PREVIEW
+                    </label>
+                    <div id="rank1-logo-preview-wrap" style="display:${data.teamLogo ? 'block' : 'none'}; margin-top:4px;">
+                        <img id="rank1-logo-preview" src="${data.teamLogo || ''}" style="width:50px; height:50px; border-radius:50%; border:2px solid var(--neon-yellow); object-fit:contain; background:#000; padding:4px;">
+                    </div>
+                </div>` : ''}
+            `;
 
-            // Bind file uploads
-            container.querySelectorAll('.rank-logo-file').forEach(input => {
-                input.onchange = async function(e) {
+            /* ---- Remove button ---- */
+            const removeBtn = el.querySelector('.winner-remove-btn');
+            if (removeBtn) {
+                removeBtn.onclick = () => {
+                    el.remove();
+                    syncRankBadges();
+                };
+            }
+
+            /* ---- Logo file upload per-rank ---- */
+            const logoFileInput = el.querySelector('.rank-logo-file');
+            const logoUrlInput  = el.querySelector('.rank-logo');
+            if (logoFileInput) {
+                logoFileInput.onchange = async function(e) {
                     const file = e.target.files[0];
                     if (!file) return;
                     try {
                         const res = await window.strikzDb.uploadFile(file);
-                        const row = input.closest('.rank-row-group');
-                        row.querySelector('.rank-logo').value = res.imageUrl;
-                        alert(`Logo for Rank #${row.dataset.rank} uploaded successfully!`);
+                        logoUrlInput.value = res.imageUrl;
+                        if (isFirst) updateRank1LogoPreview(res.imageUrl);
                     } catch (err) {
-                        alert("Upload failed: " + err.message);
+                        alert('Upload failed: ' + err.message);
                     }
                 };
-            });
+            }
 
-            // Bind button clicks to trigger file inputs programmatically
-            container.querySelectorAll('.btn-rank-upload').forEach(btn => {
-                btn.onclick = function() {
-                    const input = this.nextElementSibling;
-                    if (input) input.click();
-                };
+            /* ---- Rank 1: live logo preview from URL ---- */
+            if (isFirst) {
+                logoUrlInput.addEventListener('input', () => updateRank1LogoPreview(logoUrlInput.value.trim()));
+            }
+
+            return el;
+        }
+
+        function updateRank1LogoPreview(src) {
+            const wrap = document.getElementById('rank1-logo-preview-wrap');
+            const img  = document.getElementById('rank1-logo-preview');
+            if (!wrap || !img) return;
+            if (src) {
+                img.src = src;
+                wrap.style.display = 'block';
+            } else {
+                wrap.style.display = 'none';
+            }
+        }
+
+        /* ---- Sync rank position labels after removal ---- */
+        function syncRankBadges() {
+            const entries = rankContainer.querySelectorAll('.winner-rank-entry');
+            entries.forEach((el, idx) => {
+                const newRank = idx + 1;
+                el.dataset.rank = newRank;
+                const rm = getRankMeta(newRank);
+                const badge = el.querySelector('.winner-rank-badge-admin');
+                if (badge) {
+                    badge.style.color = rm.color;
+                    badge.style.borderColor = rm.border;
+                    badge.textContent = `${rm.label} PLACE`;
+                }
+                el.classList.toggle('rank-1-entry', newRank === 1);
             });
         }
 
+        /* ---- Load rank entries from data ---- */
+        function loadRankInputs(winnersList = []) {
+            rankContainer.innerHTML = '';
+            if (winnersList.length === 0) {
+                // Start with rank 1 by default
+                rankContainer.appendChild(buildRankEntry(1, {}));
+            } else {
+                const sorted = [...winnersList].sort((a, b) => a.rank - b.rank);
+                sorted.forEach((w, i) => rankContainer.appendChild(buildRankEntry(i + 1, w)));
+            }
+        }
+
+        /* ---- Add Rank Button ---- */
+        addRankBtn.addEventListener('click', () => {
+            const current = rankContainer.querySelectorAll('.winner-rank-entry').length;
+            if (current >= 10) {
+                alert('Maximum 10 ranked positions allowed.');
+                return;
+            }
+            rankContainer.appendChild(buildRankEntry(current + 1, {}));
+        });
+
+        /* ---- Initial load ---- */
         loadRankInputs([]);
 
+        /* ---- Render existing winners list ---- */
         function loadWinnersList() {
             const list = db.achievements || [];
-            listMount.innerHTML = list.map(w => `
-                <div class="glass-panel" style="padding: 15px; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="text-align: left;">
-                        <span class="font-orbitron" style="font-size: 9px; color: var(--neon-cyan);">${w.title}</span>
-                        <h5 class="font-orbitron" style="font-size: 13px; color: #fff; margin: 4px 0 2px 0;">${w.event}</h5>
-                        <p style="font-size: 11px; color: var(--text-dim);">Team: <strong>${w.teamName}</strong> | Reward: <strong style="color:var(--neon-green);">${w.reward}</strong></p>
+            if (list.length === 0) {
+                listMount.innerHTML = `
+                    <div class="glass-panel" style="padding:30px; text-align:center; border-color:rgba(255,255,255,0.02);">
+                        <i class="fa-solid fa-trophy" style="font-size:28px; color:var(--text-dim); margin-bottom:12px; display:block;"></i>
+                        <p style="font-size:12px; color:var(--text-dim);">No tournament records yet. Create your first announcement above.</p>
                     </div>
-                    <div style="display: flex; gap: 6px;">
-                        <button class="action-icon-btn approve edit-winner-btn" data-id="${w.id}" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-                        <button class="action-icon-btn delete delete-winner-btn" data-id="${w.id}" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+                return;
+            }
+            listMount.innerHTML = list.map(w => {
+                const winCount = (w.winnersList || []).length;
+                const rank1 = (w.winnersList || []).find(x => x.rank === 1);
+                const rank1Name = rank1 ? rank1.teamName : (w.teamName || '—');
+                const rank1Logo = rank1 ? rank1.teamLogo : '';
+                const logoHtml = rank1Logo
+                    ? `<img src="${rank1Logo}" style="width:36px; height:36px; border-radius:50%; border:1.5px solid var(--neon-yellow); object-fit:contain; background:#000; padding:3px;">`
+                    : `<div style="width:36px; height:36px; border-radius:50%; background:rgba(255,230,0,0.08); border:1.5px solid rgba(255,230,0,0.2); display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-crown" style="color:var(--neon-yellow); font-size:14px;"></i></div>`;
+                return `
+                    <div class="glass-panel" style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center; border-color:rgba(255,255,255,0.03);">
+                        <div style="display:flex; align-items:center; gap:12px; text-align:left; flex:1; min-width:0;">
+                            ${logoHtml}
+                            <div style="min-width:0;">
+                                <span class="font-orbitron" style="font-size:9px; color:var(--neon-yellow);">${w.title || w.event}</span>
+                                <h5 class="font-orbitron" style="font-size:12px; color:#fff; margin:3px 0 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${w.event}</h5>
+                                <p style="font-size:10px; color:var(--text-dim); margin:0;">
+                                    🥇 <strong style="color:var(--text-silver);">${rank1Name}</strong>
+                                    ${winCount > 0 ? ` &bull; <span style="color:var(--neon-cyan);">${winCount} team${winCount !== 1 ? 's' : ''} ranked</span>` : ''}
+                                </p>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:6px; flex-shrink:0; margin-left:10px;">
+                            <button class="action-icon-btn approve edit-winner-btn" data-id="${w.id}" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button class="action-icon-btn delete delete-winner-btn" data-id="${w.id}" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
-            // Bind delete
+            /* Bind delete */
             listMount.querySelectorAll('.delete-winner-btn').forEach(btn => {
                 btn.onclick = async function() {
-                    if (confirm("Delete this winner record permanently?")) {
-                        const id = this.dataset.id;
+                    if (confirm('Delete this tournament announcement permanently?')) {
                         try {
-                            await window.strikzDb.deleteWinner(id);
+                            await window.strikzDb.deleteWinner(this.dataset.id);
                             db = await window.strikzDb.fetchSnapshot();
                             loadWinnersList();
                         } catch (err) {
-                            alert("Delete failed: " + err.message);
+                            alert('Delete failed: ' + err.message);
                         }
                     }
                 };
             });
 
-            // Bind edit
+            /* Bind edit */
             listMount.querySelectorAll('.edit-winner-btn').forEach(btn => {
                 btn.onclick = function() {
                     const id = this.dataset.id;
                     const w = db.achievements.find(x => x.id === Number(id));
-                    if (w) {
-                        editIdInput.value = w.id;
-                        teamInput.value = w.teamName;
-                        titleInput.value = w.title || w.placement || '';
-                        eventInput.value = w.event;
-                        dateInput.value = w.date;
-                        rewardInput.value = w.reward || w.prize || '';
-                        tierSelect.value = w.tier;
-                        imageInput.value = w.image;
-                        updateWinnerPreview(w.image);
-                        detailsInput.value = w.details || '';
-                        
-                        loadRankInputs(w.winnersList || []);
-                        saveBtn.querySelector('.btn-text').textContent = 'UPDATE WINNER RECORD';
-                    }
+                    if (!w) return;
+                    editIdInput.value  = w.id;
+                    eventInput.value   = w.event || '';
+                    dateInput.value    = w.date  || '';
+                    titleInput.value   = w.title || '';
+                    rewardInput.value  = w.reward || '';
+                    imageInput.value   = w.image || '';
+                    updateBannerPreview(w.image || '');
+                    detailsInput.value = w.details || '';
+                    loadRankInputs(w.winnersList || []);
+                    saveBtn.querySelector('.btn-text').textContent = 'UPDATE WINNER RECORD';
+                    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 };
             });
         }
 
+        /* ---- Form Submit ---- */
         form.onsubmit = async function(e) {
             if (e) e.preventDefault();
             const id = editIdInput.value;
-            
-            // Build the standings list
+
+            /* Collect ranked team entries */
             const winnersList = [];
-            form.querySelectorAll('.rank-row-group').forEach(row => {
-                const r = Number(row.dataset.rank);
-                const teamName = row.querySelector('.rank-team-name').value.trim();
-                const tier = row.querySelector('.rank-tier').value;
-                const prize = row.querySelector('.rank-prize').value.trim();
-                const logo = row.querySelector('.rank-logo').value.trim();
-                
+            rankContainer.querySelectorAll('.winner-rank-entry').forEach((el, idx) => {
+                const rank     = idx + 1;
+                const teamName = el.querySelector('.rank-team-name').value.trim();
+                const tier     = el.querySelector('.rank-tier').value;
+                const prize    = el.querySelector('.rank-prize').value.trim();
+                const logo     = el.querySelector('.rank-logo').value.trim();
                 if (teamName) {
-                    winnersList.push({
-                        rank: r,
-                        teamName,
-                        tier,
-                        prize,
-                        teamLogo: logo
-                    });
+                    winnersList.push({ rank, teamName, tier, prize, teamLogo: logo });
                 }
             });
 
-            // Make sure rank 1 team name matches main team name if not specified
-            const r1 = winnersList.find(x => x.rank === 1);
-            const mainTeam = teamInput.value.trim() || (r1 ? r1.teamName : 'STRIKZ ESPORTS');
+            /* Derive champion name from rank-1 entry */
+            const rank1entry = winnersList.find(x => x.rank === 1);
+            const championName = rank1entry ? rank1entry.teamName : 'TBD';
 
             const winObj = {
-                teamName: mainTeam,
-                title: titleInput.value.trim(),
-                event: eventInput.value.trim(),
-                date: dateInput.value.trim(),
-                reward: rewardInput.value.trim(),
-                tier: tierSelect.value,
-                image: imageInput.value.trim(),
-                details: detailsInput.value.trim(),
+                teamName: championName,
+                event:    eventInput.value.trim(),
+                date:     dateInput.value.trim(),
+                title:    titleInput.value.trim(),
+                reward:   rewardInput.value.trim(),
+                tier:     rank1entry ? (rank1entry.tier || 'gold') : 'gold',
+                image:    imageInput.value.trim(),
+                details:  detailsInput.value.trim(),
                 winnersList
             };
 
@@ -1558,29 +1675,30 @@
                 if (id) {
                     winObj.id = Number(id);
                     await window.strikzDb.updateWinner(winObj);
-                    alert("Winners standings updated successfully!");
+                    alert('Tournament standings updated successfully!');
                 } else {
                     await window.strikzDb.addWinner(winObj);
-                    alert("New standings announcement created successfully!");
+                    alert('New tournament announcement created!');
                 }
 
+                /* Reset */
                 form.reset();
                 editIdInput.value = '';
-                teamInput.value = 'STRIKZ ESPORTS';
-                imageInput.value = 'assets/tournament_banner.png';
-                updateWinnerPreview('');
+                imageInput.value  = '';
+                updateBannerPreview('');
                 loadRankInputs([]);
                 saveBtn.querySelector('.btn-text').textContent = 'SAVE WINNER RECORD';
-                
+
                 db = await window.strikzDb.fetchSnapshot();
                 loadWinnersList();
             } catch (err) {
-                alert("Error saving winners record: " + err.message);
+                alert('Error saving record: ' + err.message);
             }
         };
 
         loadWinnersList();
     }
+
 
     // 7. CHATBOT TICKET MANAGEMENT PANEL
     function renderChatbotTab(mount, db) {
