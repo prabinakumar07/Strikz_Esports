@@ -249,6 +249,11 @@ app.post('/', (req, res) => {
     res.redirect(303, '/');
 });
 
+// Serve favicon.ico directly
+app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.join(frontendDir, 'assets/favicon.png'));
+});
+
 // Serve the frontend for client-side routes without caching index.html itself.
 app.get('*', (req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
