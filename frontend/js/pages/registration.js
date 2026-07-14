@@ -20,16 +20,18 @@
                 </section>
             `;
             
-            const btn = document.getElementById('btn-lock-login-trigger');
-            if (btn) {
-                btn.onclick = function() {
-                    if (window.strikzPlayClickSound) window.strikzPlayClickSound();
-                    const loginModal = document.getElementById('login-modal');
-                    if (loginModal) {
-                        loginModal.classList.add('active');
-                    }
-                };
-            }
+             const btn = document.getElementById('btn-lock-login-trigger');
+             if (btn) {
+                 btn.onclick = function() {
+                     if (window.strikzPlayClickSound) window.strikzPlayClickSound();
+                     if (window.strikzOpenLoginModal) {
+                         window.strikzOpenLoginModal();
+                     } else {
+                         const loginModal = document.getElementById('login-modal');
+                         if (loginModal) loginModal.classList.add('active');
+                     }
+                 };
+             }
             return;
         }
 

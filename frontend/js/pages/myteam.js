@@ -500,7 +500,7 @@
             ]);
 
             mount.innerHTML = `
-                <div style="display: grid; grid-template-columns: 320px 1fr; gap: 20px; min-height: 480px; align-items: start; flex-wrap: wrap;">
+                <div class="friends-layout-grid">
                     <!-- Left Column: Friends List & Requests -->
                     <div style="display:flex; flex-direction:column; gap:20px;">
                         <!-- Send Request Form -->
@@ -755,6 +755,10 @@
 
                     placeholder.style.display = 'none';
                     activeWindow.style.display = 'flex';
+
+                    if (activeWindow && window.innerWidth <= 768) {
+                        activeWindow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
 
                     messagesMount.innerHTML = `<div style="text-align:center; padding:20px; font-size:11px; color:var(--text-dim);">SYNCING TRANS-RECEIVERS...</div>`;
                     
@@ -1179,13 +1183,14 @@
                     </div>
                 </section>
             `;
-            const btn = document.getElementById('btn-friends-login-trigger');
             if (btn) {
                 btn.onclick = function() {
                     if (window.strikzPlayClickSound) window.strikzPlayClickSound();
-                    const loginModal = document.getElementById('login-modal');
-                    if (loginModal) {
-                        loginModal.classList.add('active');
+                    if (window.strikzOpenLoginModal) {
+                        window.strikzOpenLoginModal();
+                    } else {
+                        const loginModal = document.getElementById('login-modal');
+                        if (loginModal) loginModal.classList.add('active');
                     }
                 };
             }
@@ -1227,13 +1232,14 @@
                     </div>
                 </section>
             `;
-            const btn = document.getElementById('btn-inbox-login-trigger');
             if (btn) {
                 btn.onclick = function() {
                     if (window.strikzPlayClickSound) window.strikzPlayClickSound();
-                    const loginModal = document.getElementById('login-modal');
-                    if (loginModal) {
-                        loginModal.classList.add('active');
+                    if (window.strikzOpenLoginModal) {
+                        window.strikzOpenLoginModal();
+                    } else {
+                        const loginModal = document.getElementById('login-modal');
+                        if (loginModal) loginModal.classList.add('active');
                     }
                 };
             }

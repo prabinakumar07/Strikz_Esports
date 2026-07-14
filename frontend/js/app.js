@@ -1068,6 +1068,9 @@
         }
     }
 
+    window.strikzOpenLoginModal = openLoginModal;
+    window.strikzCloseLoginModal = closeLoginModal;
+
     function openSettingsModal() {
         if (!settingsModal) return;
         const user = authManager.getUser();
