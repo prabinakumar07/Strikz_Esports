@@ -207,6 +207,10 @@
 
                 const tab = this.dataset.tab;
                 loadTabContent(tab);
+
+                if (panelContent && window.innerWidth <= 1024) {
+                    panelContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             };
         });
 
