@@ -781,11 +781,32 @@
                         <p style="font-size: 11px; color: var(--text-dim);">Prize Pool: <strong style="color: var(--neon-yellow);">${t.prizePool}</strong> | Solo Allowed: <strong>${t.soloRegistrationEnabled !== false ? 'YES' : 'NO'}</strong></p>
                     </div>
                     <div style="display: flex; gap: 6px;">
+                        ${
+                            t.status === 'Open' ?
+                            `<button class="action-icon-btn reject toggle-status-btn" data-id="${t.id}" data-status="Closed" title="Close Registration"><i class="fa-solid fa-lock"></i></button>` :
+                            `<button class="action-icon-btn approve toggle-status-btn" data-id="${t.id}" data-status="Open" title="Open Registration"><i class="fa-solid fa-unlock"></i></button>`
+                        }
                         <button class="action-icon-btn approve edit-tourney-btn" data-id="${t.id}" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
                         <button class="action-icon-btn delete delete-tourney-btn" data-id="${t.id}" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 </div>
             `).join('');
+
+            // Bind toggle status
+            listMount.querySelectorAll('.toggle-status-btn').forEach(btn => {
+                btn.onclick = async function() {
+                    const id = this.dataset.id;
+                    const status = this.dataset.status;
+                    try {
+                        await window.strikzDb.updateTournament({ id, status });
+                        alert(`Tournament status set to ${status} successfully!`);
+                        db = await window.strikzDb.fetchSnapshot();
+                        loadTournamentsList();
+                    } catch (err) {
+                        alert("Failed to toggle status: " + err.message);
+                    }
+                };
+            });
 
             // Bind delete tourney
             listMount.querySelectorAll('.delete-tourney-btn').forEach(btn => {

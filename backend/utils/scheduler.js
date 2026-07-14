@@ -132,8 +132,7 @@ const checkTournamentReminders = async () => {
 // 3. Automatically close tournaments when their start date has arrived
 const autoCloseTournaments = async () => {
     try {
-        const now = new Date();
-        const todayStr = now.toISOString().split('T')[0]; // Format: "YYYY-MM-DD"
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // Format: "YYYY-MM-DD"
 
         const result = await models.Tournament.updateMany(
             { status: 'Open', startDate: { $lte: todayStr } },

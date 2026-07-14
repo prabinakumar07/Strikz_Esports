@@ -7,6 +7,13 @@ const publicDoc = (doc) => clean(doc);
 
 const getPublicSnapshot = async (req, res, next) => {
     try {
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        // Automatically close tournaments whose start date has arrived (in Indian Standard Time)
+        await models.Tournament.updateMany(
+            { status: 'Open', startDate: { $lte: todayStr } },
+            { $set: { status: 'Closed' } }
+        );
+
         const [tournaments, sponsors, gallery, news, roster, achievements, management, socialFeed, settings, history] = await Promise.all([
             models.Tournament.find().sort({ startDate: 1 }).lean(),
             models.Sponsor.find().sort({ tier: -1, name: 1 }).lean(),
@@ -134,6 +141,13 @@ const createRegistration = async (req, res, next) => {
         if (!tourney) {
             res.status(404);
             return next(new Error('Tournament arena not found'));
+        }
+
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        if (tourney.status === 'Open' && tourney.startDate && tourney.startDate <= todayStr) {
+            await models.Tournament.updateOne({ id: tournamentId }, { $set: { status: 'Closed' } });
+            res.status(400);
+            return next(new Error('Championship registration portal is currently closed'));
         }
 
         if (tourney.status !== 'Open') {

@@ -221,8 +221,12 @@ const updateTournament = async (req, res, next) => {
     try {
         const { id } = req.params;
         const data = pick(req.body, TOURNAMENT_FIELDS);
-        data.soloRegistrationEnabled = !!data.soloRegistrationEnabled;
-        data.featured = !!data.featured;
+        if (req.body.soloRegistrationEnabled !== undefined) {
+            data.soloRegistrationEnabled = !!req.body.soloRegistrationEnabled;
+        }
+        if (req.body.featured !== undefined) {
+            data.featured = !!req.body.featured;
+        }
         const result = await models.Tournament.updateOne({ id }, { $set: data });
         if (result.matchedCount === 0) {
             res.status(404);
