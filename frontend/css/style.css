@@ -2522,9 +2522,14 @@ button, input, select, textarea {
     .analytics-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+    .chatbot-widget {
+        bottom: 75px !important;
+        right: 15px !important;
+    }
     .chatbot-window {
         width: 320px;
         right: -10px;
+        bottom: 80px !important;
     }
 }
 @media (max-width: 480px) {
