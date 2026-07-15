@@ -1923,11 +1923,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="sponsor-partner-type">Partner Type Classification</label>
-                                <select id="sponsor-partner-type" style="background:#101010; border:1px solid var(--glass-border); padding:10px; color:#fff; border-radius:4px; width: 100%;">
-                                    <option value="">None (Standard Sponsor)</option>
-                                    <option value="Visual Partner">Visual Partner</option>
-                                    <option value="Production Partner">Production Partner</option>
-                                </select>
+                                <input type="text" id="sponsor-partner-type" placeholder="E.g. Visual Partner, Production Partner..." style="color: #fff;">
                             </div>
                         </div>
                         <div class="form-row">
