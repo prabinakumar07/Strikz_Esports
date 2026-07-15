@@ -318,10 +318,10 @@
 
                         userTeam.members.forEach((m, idx) => {
                             if (idx < 2) {
-                                duoTags[idx].value = m.name;
-                                duoReals[idx].value = m.real_name || m.name;
-                                duoUids[idx].value = m.game_uid;
-                                duoRoles[idx].value = m.role;
+                                duoTags[idx].value = m.name || "";
+                                duoReals[idx].value = m.real_name || m.name || "";
+                                duoUids[idx].value = m.game_uid || m.gameUid || "";
+                                duoRoles[idx].value = m.role || "IGL";
                             }
                         });
                         if (window.strikzPlayClickSound) window.strikzPlayClickSound();
@@ -477,15 +477,15 @@
 
                         userTeam.members.forEach((m, idx) => {
                             if (idx < 4) {
-                                squadTags[idx].value = m.name;
-                                squadReals[idx].value = m.real_name || m.name;
-                                squadUids[idx].value = m.game_uid;
-                                squadRoles[idx].value = m.role;
+                                squadTags[idx].value = m.name || "";
+                                squadReals[idx].value = m.real_name || m.name || "";
+                                squadUids[idx].value = m.game_uid || m.gameUid || "";
+                                squadRoles[idx].value = m.role || "IGL";
                             } else if (idx === 4) {
-                                document.querySelector('.squad-member-tag-opt').value = m.name;
-                                document.querySelector('.squad-member-real-opt').value = m.real_name || m.name;
-                                document.querySelector('.squad-member-uid-opt').value = m.game_uid;
-                                document.querySelector('.squad-member-role-opt').value = m.role;
+                                document.querySelector('.squad-member-tag-opt').value = m.name || "";
+                                document.querySelector('.squad-member-real-opt').value = m.real_name || m.name || "";
+                                document.querySelector('.squad-member-uid-opt').value = m.game_uid || m.gameUid || "";
+                                document.querySelector('.squad-member-role-opt').value = m.role || "IGL";
                             }
                         });
                         if (window.strikzPlayClickSound) window.strikzPlayClickSound();

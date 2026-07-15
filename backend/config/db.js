@@ -113,7 +113,10 @@ const models = {
         user_uid: { type: String, index: true },
         team_id: { type: String, index: true },
         role: { type: String },
-        confirmed: { type: Boolean }
+        confirmed: { type: Boolean },
+        name: { type: String },
+        real_name: { type: String },
+        game_uid: { type: String }
     }),
     News: createModel('News', 'news', String, {
         title: { type: String },
