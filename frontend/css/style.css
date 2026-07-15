@@ -4200,7 +4200,8 @@ button, input, select, textarea {
    ========================================================================== */
 .quick-portal-bar {
     display: none;
-    z-index: 1000;
+    z-index: 999999 !important;
+    pointer-events: auto !important;
 }
 
 .quick-portal-bar:not(.hidden) {
@@ -4265,6 +4266,8 @@ button, input, select, textarea {
     padding: 6px 12px;
     border-radius: 20px;
     transition: all 0.2s ease;
+    cursor: pointer !important;
+    pointer-events: auto !important;
 }
 
 /* Individual Portal Themes */

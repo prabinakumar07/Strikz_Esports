@@ -1184,6 +1184,20 @@
         initMusicToggle();
         updateAuthUI();
 
+        const quickPortalEl = document.getElementById('quick-portal-bar');
+        if (quickPortalEl) {
+            quickPortalEl.addEventListener('click', (e) => {
+                const btn = e.target.closest('.portal-btn');
+                if (btn) {
+                    const href = btn.getAttribute('href');
+                    if (href) {
+                        e.preventDefault();
+                        window.location.hash = href;
+                    }
+                }
+            });
+        }
+
         // Mobile Bottom Menu Toggle
         const mobMoreTrigger = document.getElementById('mob-more-trigger');
         const mobMoreMenu = document.getElementById('mobile-more-menu');

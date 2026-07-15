@@ -316,10 +316,11 @@
                         const duoUids = document.querySelectorAll('.duo-member-uid');
                         const duoRoles = document.querySelectorAll('.duo-member-role');
 
+                        console.log("Duo Autofill roster button clicked. userTeam:", userTeam);
                         userTeam.members.forEach((m, idx) => {
                             if (idx < 2) {
-                                duoTags[idx].value = m.name || "";
-                                duoReals[idx].value = m.real_name || m.name || "";
+                                duoTags[idx].value = m.name || m.username || "";
+                                duoReals[idx].value = m.real_name || m.realName || m.name || m.username || "";
                                 duoUids[idx].value = m.game_uid || m.gameUid || "";
                                 duoRoles[idx].value = m.role || "IGL";
                             }
@@ -475,15 +476,16 @@
                         const squadUids = document.querySelectorAll('.squad-member-uid');
                         const squadRoles = document.querySelectorAll('.squad-member-role');
 
+                        console.log("Squad Autofill roster button clicked. userTeam:", userTeam);
                         userTeam.members.forEach((m, idx) => {
                             if (idx < 4) {
-                                squadTags[idx].value = m.name || "";
-                                squadReals[idx].value = m.real_name || m.name || "";
+                                squadTags[idx].value = m.name || m.username || "";
+                                squadReals[idx].value = m.real_name || m.realName || m.name || m.username || "";
                                 squadUids[idx].value = m.game_uid || m.gameUid || "";
                                 squadRoles[idx].value = m.role || "IGL";
                             } else if (idx === 4) {
-                                document.querySelector('.squad-member-tag-opt').value = m.name || "";
-                                document.querySelector('.squad-member-real-opt').value = m.real_name || m.name || "";
+                                document.querySelector('.squad-member-tag-opt').value = m.name || m.username || "";
+                                document.querySelector('.squad-member-real-opt').value = m.real_name || m.realName || m.name || m.username || "";
                                 document.querySelector('.squad-member-uid-opt').value = m.game_uid || m.gameUid || "";
                                 document.querySelector('.squad-member-role-opt').value = m.role || "IGL";
                             }
