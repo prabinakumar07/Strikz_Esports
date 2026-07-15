@@ -111,8 +111,8 @@
     const mobileDrawer = document.getElementById('mobile-drawer');
     const mobileToggle = document.getElementById('mobile-menu-toggle');
     const mobileClose = document.getElementById('mobile-drawer-close');
-    const soundToggle = document.getElementById('sound-toggle');
-    const musicToggle = document.getElementById('music-toggle');
+    const soundToggles = document.querySelectorAll('#sound-toggle, #mobile-sound-toggle');
+    const musicToggles = document.querySelectorAll('#music-toggle, #mobile-music-toggle');
     const bgMusic = document.getElementById('bg-music');
 
     // Audio Hooks
@@ -331,21 +331,22 @@
 
     // Sound Toggle Button Handler
     function initSoundToggle() {
-        if (!soundToggle) return;
         updateSoundUI();
-        soundToggle.addEventListener('click', () => {
-            soundEnabled = !soundEnabled;
-            localStorage.setItem('strikz_sound_enabled', soundEnabled);
-            updateSoundUI();
-            if (soundEnabled) {
-                playSound(clickSfx);
-            }
+        soundToggles.forEach(btn => {
+            btn.addEventListener('click', () => {
+                soundEnabled = !soundEnabled;
+                localStorage.setItem('strikz_sound_enabled', soundEnabled);
+                updateSoundUI();
+                if (soundEnabled) {
+                    playSound(clickSfx);
+                }
+            });
         });
     }
 
     // Music Toggle Button Handler
     function initMusicToggle() {
-        if (!musicToggle || !bgMusic) return;
+        if (!bgMusic) return;
         bgMusic.volume = 0.15;
         updateMusicUI();
 
@@ -355,15 +356,17 @@
             });
         }
 
-        musicToggle.addEventListener('click', () => {
-            musicEnabled = !musicEnabled;
-            localStorage.setItem('strikz_music_enabled', musicEnabled);
-            updateMusicUI();
-            if (musicEnabled) {
-                bgMusic.play().catch(e => console.log("Music play blocked:", e));
-            } else {
-                bgMusic.pause();
-            }
+        musicToggles.forEach(btn => {
+            btn.addEventListener('click', () => {
+                musicEnabled = !musicEnabled;
+                localStorage.setItem('strikz_music_enabled', musicEnabled);
+                updateMusicUI();
+                if (musicEnabled) {
+                    bgMusic.play().catch(e => console.log("Music play blocked:", e));
+                } else {
+                    bgMusic.pause();
+                }
+            });
         });
 
         const unlockAudio = () => {
@@ -388,33 +391,39 @@
     }
 
     function updateMusicUI() {
-        const icon = musicToggle.querySelector('i');
-        if (musicEnabled) {
-            icon.className = 'fa-solid fa-music logo-spin-glow';
-            musicToggle.title = 'Mute Theme Music';
-            musicToggle.style.borderColor = 'var(--neon-orange)';
-            musicToggle.style.color = 'var(--neon-orange)';
-        } else {
-            icon.className = 'fa-solid fa-music';
-            musicToggle.title = 'Enable Theme Music';
-            musicToggle.style.borderColor = 'var(--glass-border)';
-            musicToggle.style.color = 'var(--text-dim)';
-        }
+        musicToggles.forEach(btn => {
+            const icon = btn.querySelector('i');
+            if (!icon) return;
+            if (musicEnabled) {
+                icon.className = 'fa-solid fa-music logo-spin-glow';
+                btn.title = 'Mute Theme Music';
+                btn.style.borderColor = 'var(--neon-orange)';
+                btn.style.color = 'var(--neon-orange)';
+            } else {
+                icon.className = 'fa-solid fa-music';
+                btn.title = 'Enable Theme Music';
+                btn.style.borderColor = 'var(--glass-border)';
+                btn.style.color = 'var(--text-dim)';
+            }
+        });
     }
 
     function updateSoundUI() {
-        const icon = soundToggle.querySelector('i');
-        if (soundEnabled) {
-            icon.className = 'fa-solid fa-volume-high';
-            soundToggle.title = 'Mute Sound FX';
-            soundToggle.style.borderColor = 'var(--neon-cyan)';
-            soundToggle.style.color = 'var(--neon-cyan)';
-        } else {
-            icon.className = 'fa-solid fa-volume-xmark';
-            soundToggle.title = 'Enable Sound FX';
-            soundToggle.style.borderColor = 'var(--glass-border)';
-            soundToggle.style.color = 'var(--text-dim)';
-        }
+        soundToggles.forEach(btn => {
+            const icon = btn.querySelector('i');
+            if (!icon) return;
+            if (soundEnabled) {
+                icon.className = 'fa-solid fa-volume-high';
+                btn.title = 'Mute Sound FX';
+                btn.style.borderColor = 'var(--neon-cyan)';
+                btn.style.color = 'var(--neon-cyan)';
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark';
+                btn.title = 'Enable Sound FX';
+                btn.style.borderColor = 'var(--glass-border)';
+                btn.style.color = 'var(--text-dim)';
+            }
+        });
     }
 
     // Drawer Controls

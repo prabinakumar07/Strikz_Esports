@@ -2485,6 +2485,10 @@ button, input, select, textarea {
         min-height: calc(100vh - 95px);
         padding: 40px 20px 110px 20px !important;
         margin-bottom: 40px;
+        background: radial-gradient(circle at center, rgba(20, 10, 35, 0.95) 0%, rgba(5, 2, 10, 1) 100%) !important;
+    }
+    .hero-video-bg {
+        display: none !important;
     }
     .hero-logo {
         max-width: 90px !important;
