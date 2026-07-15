@@ -144,6 +144,11 @@ const createRegistration = async (req, res, next) => {
         }
 
         const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        if (tourney.registrationStartDate && todayStr < tourney.registrationStartDate) {
+            res.status(400);
+            return next(new Error('Championship registration has not started yet'));
+        }
+
         if (tourney.status === 'Open' && tourney.startDate && tourney.startDate <= todayStr) {
             await models.Tournament.updateOne({ id: tournamentId }, { $set: { status: 'Closed' } });
             res.status(400);

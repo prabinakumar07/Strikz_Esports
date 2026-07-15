@@ -18,9 +18,37 @@
         const allNews = db.news || [];
         const sponsors = db.sponsors || [];
         const socials = db.socialFeed || [];
+
+        // Sort tournaments: Open first, then Temporary Close, Slot Full, Closed, Completed, Cancelled
+        const sortedTournaments = [...tournaments].sort((a, b) => {
+            // Sort by featured first
+            if (a.featured && !b.featured) return -1;
+            if (!a.featured && b.featured) return 1;
+
+            const statusOrder = {
+                'Open': 1,
+                'Temporary Close': 2,
+                'Slot Full': 3,
+                'Closed': 4,
+                'Completed': 5,
+                'Cancelled': 6
+            };
+            const priorityA = statusOrder[a.status] || 10;
+            const priorityB = statusOrder[b.status] || 10;
+            if (priorityA !== priorityB) {
+                return priorityA - priorityB;
+            }
+            
+            // Secondary sort: closest start date first
+            const dateA = new Date(a.startDate || '9999-12-31').getTime();
+            const dateB = new Date(b.startDate || '9999-12-31').getTime();
+            return dateA - dateB;
+        });
         
-        // Find featured tournament for countdown
-        const featuredTourney = tournaments.find(t => t.featured) || tournaments[0];
+        // Find featured tournament for countdown (active first, fallback to first active/open, fallback to first)
+        const featuredTourney = sortedTournaments.find(t => t.featured && t.status !== 'Closed' && t.status !== 'Completed') ||
+                                sortedTournaments.find(t => t.status === 'Open' || t.status === 'Temporary Close' || t.status === 'Slot Full') ||
+                                sortedTournaments[0];
 
         // Split news into General News (left) and Notices/Alerts (right)
         const noticesTags = ['notice', 'alert', 'system'];
@@ -50,7 +78,7 @@
                     <!-- EWC-Styled Countdown Clock -->
                     ${featuredTourney ? `
                     <div class="countdown-container-wrap">
-                        <div class="countdown-tournament-title font-orbitron">
+                        <div class="countdown-tournament-title font-orbitron" id="countdown-label-slot">
                             <span class="live-indicator"><span class="live-dot"></span>LIVE ARENA</span>
                             ${featuredTourney.name.toUpperCase()}
                         </div>
@@ -278,7 +306,7 @@
 
         // INJECT TOURNAMENT CARDS
         const tournamentsGrid = document.getElementById('home-tournaments-grid');
-        const displayedTourneys = tournaments.filter(t => t.status !== 'Cancelled');
+        const displayedTourneys = sortedTournaments.filter(t => t.status !== 'Cancelled');
         
         if (displayedTourneys.length === 0) {
             tournamentsGrid.innerHTML = `
@@ -290,8 +318,16 @@
             tournamentsGrid.innerHTML = displayedTourneys.map(t => {
                 let badgeStyle = '';
                 let buttonHtml = '';
+                let statusText = t.status;
                 
-                if (t.status === 'Open') {
+                const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+                const isComingSoon = t.status === 'Open' && t.registrationStartDate && todayStr < t.registrationStartDate;
+                
+                if (isComingSoon) {
+                    statusText = 'Coming Soon';
+                    badgeStyle = 'background: rgba(255, 165, 0, 0.15); border: 1px solid #ffa500; color: #ffa500;';
+                    buttonHtml = `<button class="cta-button w-full" disabled style="cursor: not-allowed; opacity: 0.6; background: rgba(255,255,255,0.05); color: #ffa500; border-color: rgba(255, 165, 0, 0.3); box-shadow: none; font-size: 11px;">REGISTRATION STARTS SOON</button>`;
+                } else if (t.status === 'Open') {
                     badgeStyle = 'background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; color: #22c55e;';
                     buttonHtml = `<a href="#/registration" class="cta-button btn-neon-orange w-full btn-register-intercept">REGISTER NOW</a>`;
                 } else if (t.status === 'Closed') {
@@ -315,7 +351,7 @@
                     <div class="tournament-card">
                         <div class="tournament-img-wrap">
                             <img src="${t.image}" alt="${t.name}" class="tournament-img">
-                            <span class="tournament-badge" style="${badgeStyle}">${t.status}</span>
+                            <span class="tournament-badge" style="${badgeStyle}">${statusText}</span>
                         </div>
                         <div class="tournament-info">
                             <div class="tournament-game">${t.game.toUpperCase()}</div>
@@ -325,6 +361,7 @@
                                 <div class="stat-item"><i class="fa-solid fa-calendar-days"></i> <span>Starts: ${window.strikzFormatDate(t.startDate)}</span></div>
                                 <div class="stat-item"><i class="fa-solid fa-gamepad"></i> <span>Mode: ${t.mode}</span></div>
                                 <div class="stat-item"><i class="fa-solid fa-clock"></i> <span>Reg Close: ${window.strikzFormatDate(t.regCloseDate)}</span></div>
+                                ${t.registrationStartDate ? `<div class="stat-item" style="grid-column: span 2;"><i class="fa-solid fa-calendar-plus"></i> <span>Reg Open: ${window.strikzFormatDate(t.registrationStartDate)}</span></div>` : ''}
                             </div>
                             ${buttonHtml}
                         </div>
@@ -335,7 +372,7 @@
 
         // INITIALIZE COUNTDOWN
         if (featuredTourney) {
-            initCountdown(featuredTourney.startDate);
+            initCountdown(featuredTourney);
         }
 
         // BIND SCROLL EXPLORE CLICK BEHAVIOR
@@ -394,14 +431,41 @@
         // Subtitle and description are statically defined in the template above.
     }
 
-    function initCountdown(targetDateStr) {
-        const targetDate = new Date(targetDateStr + 'T00:00:00').getTime();
+    function initCountdown(tourney) {
+        if (!tourney) return;
+        
+        const regStartDate = tourney.registrationStartDate ? new Date(tourney.registrationStartDate + 'T00:00:00').getTime() : 0;
+        const startDate = new Date(tourney.startDate + 'T00:00:00').getTime();
 
         function updateClock() {
             const now = new Date().getTime();
+            
+            let targetDate = startDate;
+            let phase = 'live'; // 'coming_soon' or 'live'
+            
+            if (regStartDate && now < regStartDate) {
+                targetDate = regStartDate;
+                phase = 'coming_soon';
+            }
+
             const distance = targetDate - now;
 
+            // Update label/indicator dynamically
+            const labelContainer = document.getElementById('countdown-label-slot');
+            if (labelContainer) {
+                if (phase === 'coming_soon') {
+                    labelContainer.innerHTML = `<span class="live-indicator" style="background: rgba(255, 165, 0, 0.2); border-color: orange; color: orange; margin-right: 10px;"><span class="live-dot" style="background: orange; box-shadow: 0 0 8px orange;"></span>COMING SOON</span> REGISTRATION STARTS IN: <span style="color:var(--neon-cyan); margin-left: 5px;">${tourney.name.toUpperCase()}</span>`;
+                } else {
+                    labelContainer.innerHTML = `<span class="live-indicator"><span class="live-dot"></span>LIVE ARENA</span> TOURNAMENT STARTS IN: <span style="color:var(--neon-cyan); margin-left: 5px;">${tourney.name.toUpperCase()}</span>`;
+                }
+            }
+
             if (distance < 0) {
+                if (phase === 'coming_soon') {
+                    // Registration just started, recheck state
+                    return;
+                }
+                
                 if (countdownInterval) clearInterval(countdownInterval);
                 const container = document.getElementById('home-countdown');
                 if (container) {

@@ -15,7 +15,7 @@ const pick = (obj, allowedFields) => {
     return result;
 };
 
-const TOURNAMENT_FIELDS = ['name', 'game', 'mode', 'category', 'prizePool', 'startDate', 'regCloseDate', 'status', 'rules', 'ruleBook', 'soloRegistrationEnabled', 'description', 'image', 'featured'];
+const TOURNAMENT_FIELDS = ['name', 'game', 'mode', 'category', 'prizePool', 'startDate', 'regCloseDate', 'registrationStartDate', 'status', 'rules', 'ruleBook', 'soloRegistrationEnabled', 'description', 'image', 'featured'];
 const NEWS_FIELDS = ['title', 'tag', 'summary', 'content', 'image', 'contentType', 'redirectLink'];
 const GALLERY_FIELDS = ['title', 'url', 'type'];
 const ROSTER_FIELDS = ['tag', 'fullName', 'role', 'team', 'avatar', 'image', 'bio', 'stats', 'socials', 'kd', 'hs', 'matches', 'winRate', 'twitter', 'youtube', 'instagram', 'rank'];
@@ -186,7 +186,7 @@ const deleteRegistration = async (req, res, next) => {
 const createTournament = async (req, res, next) => {
     try {
         const data = pick(req.body, TOURNAMENT_FIELDS);
-        const { id: bodyId, name, game, mode, category, prizePool, startDate, regCloseDate } = { ...req.body };
+        const { id: bodyId, name, game, mode, category, prizePool, startDate, regCloseDate, registrationStartDate } = { ...req.body };
 
         let tourneyId = bodyId;
         if (!tourneyId && name) {

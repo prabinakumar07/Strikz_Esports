@@ -686,12 +686,18 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="tourney-start">Start Date</label>
-                                <input type="date" id="tourney-start" required style="color: #fff; display: block;">
+                                <label for="tourney-reg-start">Registration Start Date</label>
+                                <input type="date" id="tourney-reg-start" required style="color: #fff; display: block;">
                             </div>
                             <div class="form-group">
-                                <label for="tourney-close">Registration Close Date</label>
+                                <label for="tourney-close">Registration End Date</label>
                                 <input type="date" id="tourney-close" required style="color: #fff; display: block;">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tourney-start">Tournament Start Date</label>
+                                <input type="date" id="tourney-start" required style="color: #fff; display: block;">
                             </div>
                         </div>
                         <div class="form-row">
@@ -744,6 +750,7 @@
         const modeInput = document.getElementById('tourney-mode');
         const categorySelect = document.getElementById('tourney-category');
         const soloEnabledCheck = document.getElementById('tourney-solo-enabled');
+        const regStartInput = document.getElementById('tourney-reg-start');
         const startInput = document.getElementById('tourney-start');
         const closeInput = document.getElementById('tourney-close');
         const rulesInput = document.getElementById('tourney-rules');
@@ -853,6 +860,7 @@
                         soloEnabledCheck.checked = t.soloRegistrationEnabled !== false;
                         startInput.value = t.startDate;
                         closeInput.value = t.regCloseDate;
+                        regStartInput.value = t.registrationStartDate || '';
                         rulesInput.value = t.rules;
                         rulebookInput.value = t.ruleBook || t.rules || '';
                         bannerBase64Input.value = t.image || '';
@@ -879,6 +887,7 @@
                 prizePool: prizeInput.value.trim(),
                 startDate: startInput.value,
                 regCloseDate: closeInput.value,
+                registrationStartDate: regStartInput.value,
                 rules: rulesInput.value.trim(),
                 ruleBook: rulebookInput.value.trim(),
                 image: bannerBase64Input.value.trim() || 'assets/tournament_banner.png',
@@ -899,6 +908,7 @@
                 editIdInput.value = '';
                 bannerBase64Input.value = '';
                 if (statusSelect) statusSelect.value = 'Open';
+                if (regStartInput) regStartInput.value = '';
                 saveBtn.querySelector('.btn-text').textContent = 'SAVE TOURNAMENT';
                 
                 db = await window.strikzDb.fetchSnapshot();

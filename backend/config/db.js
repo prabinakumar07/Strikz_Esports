@@ -66,6 +66,7 @@ const models = {
         prizePool: { type: String },
         startDate: { type: String },
         regCloseDate: { type: String },
+        registrationStartDate: { type: String },
         status: { type: String, enum: ['Open', 'Closed', 'Temporary Close', 'Slot Full', 'Completed', 'Cancelled'] },
         rules: { type: String },
         ruleBook: { type: String },
