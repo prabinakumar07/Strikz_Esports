@@ -1441,6 +1441,8 @@
             </section>
         `;
 
+        const form = document.getElementById('edit-team-form');
+
         // Bind cancel button
         const cancelBtn = document.getElementById('btn-cancel-edit-team');
         if (cancelBtn) {
@@ -1476,7 +1478,6 @@
         bindAutocompleteSearchInputs(form);
 
         // Bind form submit
-        const form = document.getElementById('edit-team-form');
         form.onsubmit = async function(e) {
             if (e) e.preventDefault();
             const teamName = document.getElementById('edit-team-name').value.trim().toUpperCase();
