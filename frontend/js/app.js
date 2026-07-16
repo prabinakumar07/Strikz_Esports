@@ -582,6 +582,7 @@
                         ${safeUid || 'STRIKZ-XXXXXX'}
                     </div>
                 </div>
+                <div style="margin-top: 8px; font-size: 9px; font-family: var(--font-header); font-weight: 800; color: var(--neon-cyan); text-transform: uppercase; border: 1px solid var(--neon-cyan-border); padding: 4px 8px; border-radius: 4px; background: rgba(0, 242, 254, 0.04); letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-user-gear" style="font-size: 10px; color: var(--neon-cyan);"></i> Profile</div>
             </div>
         `;
         };

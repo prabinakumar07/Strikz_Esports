@@ -115,10 +115,7 @@
                                 </div>
                             </div>
 
-                            <div class="form-group">
-                                <label>Custom Avatar Image URL</label>
-                                <input type="text" id="account-input-avatar-url" placeholder="https://example.com/avatar.jpg" value="${user.avatar || ''}" style="color:#fff;">
-                            </div>
+                            <input type="hidden" id="account-input-avatar-url" value="${user.avatar || ''}">
 
                             <button type="submit" class="cta-button btn-neon-orange w-full" style="padding: 15px; margin-top: 10px; font-weight: 800;">
                                 SAVE PROFILE CHANGES
