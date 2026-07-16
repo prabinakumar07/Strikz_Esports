@@ -63,7 +63,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Custom Style Sheet (versioned for cache busting) -->
-    <link rel="stylesheet" href="css/style.css?v=1.1.27">
+    <link rel="stylesheet" href="css/style.css?v=1.1.28">
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -116,7 +116,7 @@
             <nav class="sidebar-menu" aria-label="Site sections">
                 <ul role="list">
                     <li><a href="#/" class="nav-link active" id="nav-home" aria-current="page"><i class="fa-solid fa-house" aria-hidden="true"></i> <span class="link-text">Home</span></a></li>
-                    <li id="li-nav-account" style="display: none;"><a href="#/account" class="nav-link" id="nav-account"><i class="fa-solid fa-user" aria-hidden="true"></i> <span class="link-text">Profile</span></a></li>
+
                     <li><a href="#/registration" class="nav-link" id="nav-register"><i class="fa-solid fa-gamepad" aria-hidden="true"></i> <span class="link-text">Competitions</span></a></li>
                     <li><a href="#/about" class="nav-link" id="nav-about"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> <span class="link-text">About Us</span></a></li>
                     <li><a href="#/team" class="nav-link" id="nav-team"><i class="fa-solid fa-users" aria-hidden="true"></i> <span class="link-text">Official Esports Team</span></a></li>
@@ -140,6 +140,9 @@
                     <button class="sound-toggle-btn" id="sound-toggle" aria-label="Toggle sound effects" aria-pressed="true">
                         <i class="fa-solid fa-volume-high" aria-hidden="true"></i>
                     </button>
+                    <a href="#/account" class="sound-toggle-btn" id="nav-floating-settings" aria-label="Account Settings" style="display: none;">
+                        <i class="fa-solid fa-gear" aria-hidden="true"></i>
+                    </a>
                     <a href="#/admin" class="admin-link" id="nav-admin" aria-label="Admin portal" style="display: none !important;">
                         <i class="fa-solid fa-lock" aria-hidden="true"></i>
                     </a>
@@ -194,7 +197,7 @@
                     <a href="#/team" class="mobile-more-link mobile-link" id="mob-team"><i class="fa-solid fa-users"></i><span>Official Team</span></a>
                     <a href="#/history" class="mobile-more-link mobile-link" id="mob-history"><i class="fa-solid fa-calendar-days"></i><span>History</span></a>
                     <a href="#/achievements" class="mobile-more-link mobile-link" id="mob-achievements"><i class="fa-solid fa-trophy"></i><span>Winners</span></a>
-                    <a href="#/account" class="mobile-more-link mobile-link" id="mob-account" style="display: none;"><i class="fa-solid fa-user"></i><span>Profile</span></a>
+
                     <a href="#/partners" class="mobile-more-link mobile-link" id="mob-partners"><i class="fa-solid fa-handshake"></i><span>Partners</span></a>
                     <a href="#/sponsors" class="mobile-more-link mobile-link" id="mob-sponsors"><i class="fa-solid fa-rectangle-ad"></i><span>Sponsors</span></a>
                     <a href="#/gallery" class="mobile-more-link mobile-link" id="mob-gallery"><i class="fa-solid fa-images"></i><span>Gallery</span></a>
@@ -213,6 +216,9 @@
                     <button class="sound-toggle-btn" id="mobile-sound-toggle" aria-label="Toggle sound effects" aria-pressed="true" style="width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); color: var(--text-dim); cursor: pointer; transition: all 0.3s;">
                         <i class="fa-solid fa-volume-high" aria-hidden="true"></i>
                     </button>
+                    <a href="#/account" class="sound-toggle-btn mobile-more-link mobile-link" id="mobile-floating-settings" aria-label="Account Settings" style="width: 45px; height: 45px; border-radius: 50%; display: none; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); color: var(--text-dim); cursor: pointer; transition: all 0.3s;">
+                        <i class="fa-solid fa-gear" aria-hidden="true"></i>
+                    </a>
                 </div>
             </div>
         </div>
@@ -478,6 +484,6 @@
     <script src="js/pages/admin.js?v=1.1.25"></script>
     <script src="js/pages/account.js?v=1.1.28"></script>
     <script src="js/pages/earning.js?v=1.1.2"></script>
-    <script src="js/app.js?v=1.1.28"></script>
+    <script src="js/app.js?v=1.1.29"></script>
 </body>
 </html>

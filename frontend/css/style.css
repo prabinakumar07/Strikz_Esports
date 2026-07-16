@@ -4953,13 +4953,13 @@ button, input, select, textarea {
         justify-content: center !important;
         align-items: center !important;
         width: auto !important;
-        background: rgba(10, 10, 14, 0.8) !important;
+        background: rgba(10, 10, 14, 0.85) !important;
         backdrop-filter: blur(12px) !important;
         -webkit-backdrop-filter: blur(12px) !important;
-        border: 1.5px solid var(--neon-cyan) !important;
+        border: 1px solid var(--glass-border) !important;
         padding: 8px 14px !important;
         border-radius: 30px !important;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 242, 254, 0.15) !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
         gap: 10px !important;
     }
 }

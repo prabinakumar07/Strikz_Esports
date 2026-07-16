@@ -613,11 +613,11 @@
             
             document.body.classList.add('logged-in');
 
-            // Show My Account links
-            const navAccount = document.getElementById('li-nav-account');
-            const mobAccount = document.getElementById('mob-account');
-            if (navAccount) navAccount.style.display = 'block';
-            if (mobAccount) mobAccount.style.display = 'flex';
+            // Show floating settings gear icons near sound options
+            const navFloatingSettings = document.getElementById('nav-floating-settings');
+            const mobFloatingSettings = document.getElementById('mobile-floating-settings');
+            if (navFloatingSettings) navFloatingSettings.style.display = 'flex';
+            if (mobFloatingSettings) mobFloatingSettings.style.display = 'flex';
 
             if (quickPortal) {
                 quickPortal.innerHTML = `
@@ -717,11 +717,11 @@
         } else {
             document.body.classList.remove('logged-in');
 
-            // Hide My Account links
-            const navAccount = document.getElementById('li-nav-account');
-            const mobAccount = document.getElementById('mob-account');
-            if (navAccount) navAccount.style.display = 'none';
-            if (mobAccount) mobAccount.style.display = 'none';
+            // Hide floating settings gear icons near sound options
+            const navFloatingSettings = document.getElementById('nav-floating-settings');
+            const mobFloatingSettings = document.getElementById('mobile-floating-settings');
+            if (navFloatingSettings) navFloatingSettings.style.display = 'none';
+            if (mobFloatingSettings) mobFloatingSettings.style.display = 'none';
             if (quickPortal) {
                 quickPortal.classList.add('hidden');
                 quickPortal.innerHTML = '';
