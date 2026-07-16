@@ -56,7 +56,8 @@ const models = {
         showRank: { type: Boolean, default: true },
         establishedYear: { type: String, default: '2022' },
         arenaLocation: { type: String, default: 'Bermuda Arena' },
-        historyHeading: { type: String, default: 'OUR JOURNEY TO GLORY' }
+        historyHeading: { type: String, default: 'OUR JOURNEY TO GLORY' },
+        showHistoryPage: { type: Boolean, default: true }
     }),
     Tournament: createModel('Tournament', 'tournaments', String, {
         name: { type: String },

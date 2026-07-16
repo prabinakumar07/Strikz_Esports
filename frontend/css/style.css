@@ -334,50 +334,43 @@ button, input, select, textarea {
 
 .main-content {
     flex: 1;
-    margin-left: 95px;
+    margin-left: 80px;
     margin-top: 0;
     padding-bottom: 60px;
     position: relative;
     z-index: 1;
 }
-.sidebar-nav:hover ~ .main-content {
-    margin-left: 95px;
-}
-@media (min-width: 769px) {
-    .sidebar-nav:hover ~ .global-footer {
-        margin-left: 95px;
-    }
-}
 
 /* ==========================================================================
-   VERTICAL SIDEBAR NAVIGATION (EWC COLLAPSIBLE STYLE)
+   VERTICAL SIDEBAR NAVIGATION (EXPANDING COLLAPSIBLE ACCORDION STYLE)
    ========================================================================== */
 .sidebar-nav {
     position: fixed;
     top: 0;
     left: 0;
-    width: 95px;
+    width: 80px;
     height: 100vh;
-    background: #050505;
-    border-right: 1px solid var(--neon-orange-border);
+    background: #050508;
+    border-right: 1.5px solid var(--neon-cyan-border);
     display: flex;
     flex-direction: column;
     align-items: center;
-    z-index: 99;
+    z-index: 9999;
     padding: 20px 0;
     box-sizing: border-box;
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, box-shadow 0.3s ease;
+    overflow-x: hidden;
 }
 
 .sidebar-nav:hover {
-    width: 95px;
-    background-color: #050505;
-    box-shadow: 4px 0 25px rgba(0, 0, 0, 0.7);
+    width: 240px;
+    background-color: #0b0b10;
+    box-shadow: 10px 0 35px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 242, 254, 0.05);
 }
 
 .sidebar-header {
     margin-bottom: 20px;
-    padding-bottom: 10px;
+    padding-bottom: 12px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     width: 100%;
     display: flex;
@@ -386,30 +379,33 @@ button, input, select, textarea {
 
 .logo-area {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
+    justify-content: flex-start;
     width: 100%;
-    padding: 0 5px;
+    padding: 0 20px;
+    box-sizing: border-box;
     overflow: hidden;
-    gap: 6px;
+    gap: 12px;
 }
 .brand-logo {
-    height: 36px;
-    width: 36px;
+    height: 40px;
+    width: 40px;
     flex-shrink: 0;
     object-fit: contain;
 }
 .brand-name {
     font-family: var(--font-orbitron);
-    font-size: 8.5px;
+    font-size: 13px;
     font-weight: 800;
     letter-spacing: 0.05em;
     color: var(--text-white);
-    opacity: 1;
-    max-width: none;
-    overflow: visible;
     white-space: nowrap;
-    text-align: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.sidebar-nav:hover .brand-name {
+    opacity: 1;
 }
 .brand-highlight {
     color: var(--neon-yellow) !important;
@@ -420,75 +416,80 @@ button, input, select, textarea {
 .sidebar-menu {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     width: 100%;
     margin-bottom: 10px;
 }
 .sidebar-menu::-webkit-scrollbar {
-    width: 4px;
+    width: 3px;
 }
 .sidebar-menu::-webkit-scrollbar-thumb {
-    background: var(--obsidian-light);
+    background: var(--neon-cyan-border);
     border-radius: 2px;
 }
 
 .sidebar-menu ul {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
+    padding: 0 8px;
+    box-sizing: border-box;
 }
 
 .nav-link {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     font-family: var(--font-header);
-    font-size: 9px;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--text-silver);
-    padding: 10px 4px;
+    padding: 12px 14px;
     width: 100%;
-    border-radius: var(--border-radius-sm);
-    border-bottom: 3px solid transparent;
-    transition: all 0.2s ease;
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     box-sizing: border-box;
-    overflow: visible;
-    white-space: normal;
-    text-align: center;
-    gap: 5px;
+    overflow: hidden;
+    white-space: nowrap;
+    gap: 15px;
 }
 
 .nav-link i {
     font-size: 18px;
-    width: 20px;
+    width: 24px;
     text-align: center;
     color: var(--text-dim);
-    transition: color 0.2s ease;
+    transition: color 0.2s ease, transform 0.25s ease;
     flex-shrink: 0;
 }
 
 .nav-link:hover i, .nav-link.active i {
-    color: var(--neon-orange);
+    color: var(--neon-cyan);
+    transform: scale(1.1);
 }
 
 .nav-link:hover, .nav-link.active {
     color: var(--text-white);
-    background: rgba(255, 230, 0, 0.04);
-    border-bottom-color: var(--neon-orange);
-    text-shadow: 0 0 8px var(--neon-orange-glow);
+    background: rgba(0, 242, 254, 0.04);
+    border-left-color: var(--neon-cyan);
+    text-shadow: 0 0 8px rgba(0, 242, 254, 0.2);
 }
 
 .link-text {
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    white-space: nowrap;
+}
+
+.sidebar-nav:hover .link-text {
     opacity: 1;
-    max-width: none;
-    overflow: visible;
-    white-space: normal;
-    text-align: center;
-    line-height: 1.1;
-    display: block;
+    transform: translateX(0);
 }
 
 .sidebar-footer {
@@ -2372,7 +2373,7 @@ button, input, select, textarea {
 }
 @media (min-width: 769px) {
     .global-footer {
-        margin-left: 75px;
+        margin-left: 80px;
     }
 }
 .footer-container {
@@ -4940,5 +4941,27 @@ button, input, select, textarea {
     border: 1px solid rgba(255,255,255,0.06);
     margin-top: 8px;
     display: none;
+}
+
+@media (min-width: 769px) {
+    .sound-controls {
+        position: fixed !important;
+        bottom: 30px !important;
+        right: 110px !important;
+        z-index: 99999 !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: auto !important;
+        background: rgba(10, 10, 14, 0.8) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 1.5px solid var(--neon-cyan) !important;
+        padding: 8px 14px !important;
+        border-radius: 30px !important;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 242, 254, 0.15) !important;
+        gap: 10px !important;
+    }
 }
 

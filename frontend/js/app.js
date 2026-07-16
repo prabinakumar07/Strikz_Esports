@@ -190,6 +190,14 @@
             path = path.split('?')[0];
         }
 
+        if (window.strikzDb) {
+            const settings = window.strikzDb.getSettings();
+            if (settings && settings.showHistoryPage === false && (path === '/history' || path === 'history')) {
+                window.location.hash = '#/';
+                return;
+            }
+        }
+
         // Intercept Reset Password Link
         if (path.startsWith('/reset-password') || path.startsWith('reset-password')) {
             const urlParams = new URLSearchParams(queryStr);
@@ -775,7 +783,22 @@
                 a.href = settings.youtubeLink;
             }
         });
+
+        // Hide/unhide History section links dynamically based on admin config
+        const showHistory = settings.showHistoryPage !== false;
+        const navHistory = document.getElementById('nav-history');
+        const mobHistory = document.getElementById('mob-history');
+        
+        if (navHistory) {
+            navHistory.parentNode.style.display = showHistory ? '' : 'none';
+        }
+        if (mobHistory) {
+            mobHistory.style.display = showHistory ? '' : 'none';
+        }
     }
+
+    // Expose updateDynamicLinks globally so admin page setting updates can refresh it reactively
+    window.strikzUpdateDynamicLinks = updateDynamicLinks;
 
     // Modal controls
     const loginModal = document.getElementById('login-modal');

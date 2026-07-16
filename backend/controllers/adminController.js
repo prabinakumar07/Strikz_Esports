@@ -23,7 +23,7 @@ const SPONSOR_FIELDS = ['name', 'logo', 'tier', 'partnerType', 'website', 'descr
 const WINNER_FIELDS = ['teamName', 'event', 'date', 'prize', 'tier', 'image', 'placement', 'title', 'reward', 'details', 'winnersList'];
 const SOCIAL_FIELDS = ['platform', 'author', 'authorAvatar', 'content', 'date', 'link', 'mediaUrl'];
 const MANAGEMENT_FIELDS = ['name', 'tag', 'role', 'image', 'avatar', 'bio', 'instagram', 'youtube', 'socials'];
-const SETTINGS_FIELDS = ['discordLink', 'instagramLink', 'youtubeLink', 'twitterLink', 'announcementBanner', 'announcementActive', 'maintenanceMode', 'contactEmail', 'partnerEmail', 'showKd', 'showHs', 'showMatches', 'showWinRate', 'showRank', 'supportEmail', 'address', 'establishedYear', 'arenaLocation', 'historyHeading'];
+const SETTINGS_FIELDS = ['discordLink', 'instagramLink', 'youtubeLink', 'twitterLink', 'announcementBanner', 'announcementActive', 'maintenanceMode', 'contactEmail', 'partnerEmail', 'showKd', 'showHs', 'showMatches', 'showWinRate', 'showRank', 'supportEmail', 'address', 'establishedYear', 'arenaLocation', 'historyHeading', 'showHistoryPage'];
 const HISTORY_FIELDS = ['year', 'title', 'description', 'logo', 'rank', 'tournamentName', 'date', 'type'];
 
 // ==========================================

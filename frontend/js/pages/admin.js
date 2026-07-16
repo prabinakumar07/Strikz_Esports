@@ -3007,6 +3007,13 @@
                         </label>
                     </div>
 
+                    <h5 class="font-orbitron" style="font-size: 11px; color: var(--neon-yellow); margin-top: 25px; margin-bottom: 12px; border-bottom: 1px solid var(--glass-border); padding-bottom: 4px;">PAGE VISIBILITY TOGGLES</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; color: var(--text-silver);">
+                            <input type="checkbox" id="set-show-history" ${settings.showHistoryPage !== false ? 'checked' : ''} style="width: 16px; height: 16px;"> Show History Section
+                        </label>
+                    </div>
+
                     <button type="submit" class="cta-button btn-neon-cyan w-full" style="margin-top: 20px; padding: 15px;">
                         <span class="btn-text">APPLY GLOBAL CHANGES</span>
                     </button>
@@ -3033,11 +3040,13 @@
                 showHs: document.getElementById('set-show-hs').checked,
                 showMatches: document.getElementById('set-show-matches').checked,
                 showWinRate: document.getElementById('set-show-winrate').checked,
-                showRank: document.getElementById('set-show-rank').checked
+                showRank: document.getElementById('set-show-rank').checked,
+                showHistoryPage: document.getElementById('set-show-history').checked
             };
 
             try {
                 await window.strikzDb.updateSettings(updated);
+                if (window.strikzUpdateDynamicLinks) window.strikzUpdateDynamicLinks();
                 alert("Global site settings updated successfully!");
                 
                 if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
