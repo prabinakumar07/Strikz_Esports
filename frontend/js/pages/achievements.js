@@ -192,26 +192,17 @@
             `;
         }
 
-        // --- Milestones section (static) ---
         const milestonesHtml = `
             <div class="reveal" style="margin-top: 80px;">
                 <h3 class="font-orbitron" style="font-size: 20px; text-align: center; margin-bottom: 40px; letter-spacing: 0.05em;">STRIKZ CLUB MILESTONES</h3>
                 <div class="grid-2 reveal-stagger">
                     <div class="glass-panel" style="padding: 24px;">
-                        <h4 class="font-orbitron" style="color: var(--neon-orange); font-size: 15px; margin-bottom: 12px;"><i class="fa-solid fa-users"></i> 10,000+ DISCORD SURVIVORS</h4>
-                        <p style="font-size: 13px; color: var(--text-silver);">Our official community server surpassed 10k members, serving as the main recruitment ground for Free Fire Max scrims and team matching.</p>
+                        <h4 class="font-orbitron" style="color: var(--neon-orange); font-size: 15px; margin-bottom: 12px;"><i class="fa-solid fa-trophy"></i> ODISHA'S FIRST FREE ENTRY LAN 🏆</h4>
+                        <p style="font-size: 13px; color: var(--text-silver); line-height: 1.6;">Proudly organizing Odisha's first free-entry LAN tournament, bringing gamers together, discovering rising talent, and elevating the state's esports community nationwide.</p>
                     </div>
                     <div class="glass-panel" style="padding: 24px;">
-                        <h4 class="font-orbitron" style="color: var(--neon-cyan); font-size: 15px; margin-bottom: 12px;"><i class="fa-solid fa-bolt"></i> GARENA LEVEL 4 GUILD</h4>
-                        <p style="font-size: 13px; color: var(--text-silver);">Achieved Level 4 Guild status in-game, unlocking premium benefits, regional leaderboard multipliers, and guild showdown entries.</p>
-                    </div>
-                    <div class="glass-panel" style="padding: 24px; margin-top: 20px;">
-                        <h4 class="font-orbitron" style="color: var(--neon-cyan); font-size: 15px; margin-bottom: 12px;"><i class="fa-solid fa-tv"></i> 5,000,000+ STREAM VIEWS</h4>
-                        <p style="font-size: 13px; color: var(--text-silver);">Cumulative streaming views across tournament showcases, pro scrim channels, and YouTube highlights reached 5M views.</p>
-                    </div>
-                    <div class="glass-panel" style="padding: 24px; margin-top: 20px;">
-                        <h4 class="font-orbitron" style="color: var(--neon-orange); font-size: 15px; margin-bottom: 12px;"><i class="fa-solid fa-handshake"></i> RED BULL TITLE SPONSORSHIP</h4>
-                        <p style="font-size: 13px; color: var(--text-silver);">Signed our landmark title sponsorship deal, securing advanced bootcamp facilities, travel funding, and gear support.</p>
+                        <h4 class="font-orbitron" style="color: var(--neon-cyan); font-size: 15px; margin-bottom: 12px;"><i class="fa-solid fa-handshake"></i> FFM ODISHA OFFICIAL PARTNER</h4>
+                        <p style="font-size: 13px; color: var(--text-silver); line-height: 1.6;">Official community partner supporting competitive Free Fire MAX esports, empowering players, tournaments, and the growth of Odisha's gaming ecosystem.</p>
                     </div>
                 </div>
             </div>
