@@ -31,7 +31,10 @@ const {
     deleteManagement,
     updateSettings,
     getTickets,
-    resolveTicket
+    resolveTicket,
+    createProduct,
+    updateProduct,
+    deleteProduct
 } = require('../controllers/adminController');
 const {
     getAllUsers,
@@ -121,6 +124,11 @@ router.delete('/history/:id', deleteHistory);
 
 // Global settings
 router.put('/settings', updateSettings);
+
+// Products CRUD
+router.post('/products', createProduct);
+router.put('/products/:id', updateProduct);
+router.delete('/products/:id', deleteProduct);
 
 // Chatbot ticket inbox
 router.get('/tickets', getTickets);

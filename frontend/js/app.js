@@ -143,7 +143,7 @@
         '/registration': window.renderRegistration,
         '/admin': window.renderAdmin,
         '/partners': window.renderPartners,
-        '/earning': window.renderEarning,
+        '/shop': window.renderShop,
         '/privacy': window.renderPrivacy || function(el) {
             el.innerHTML = `<div class="container" style="padding: 60px 20px; max-width: 800px; margin: 0 auto;">
                 <h1 class="font-orbitron" style="color: var(--neon-cyan); margin-bottom: 30px;">Privacy Policy</h1>

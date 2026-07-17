@@ -559,6 +559,7 @@
 
             const isSolo = reg.type === 'Solo';
             const competitorName = isSolo ? reg.playerName : reg.teamName;
+            const statusClass = reg.status === 'Approved' ? 'status-approved' : (reg.status === 'Pending' ? 'status-pending' : 'status-rejected');
 
             formMount.parentElement.innerHTML = `
                 <div class="text-center" style="margin-bottom: 25px;">
@@ -581,7 +582,7 @@
                     <div class="ticket-header" style="border-bottom: 1px dashed var(--glass-border); padding-bottom:15px; margin-bottom:15px;">
                         <span class="ticket-title font-orbitron" style="color:var(--text-silver); font-size:10px;">STRIKZ ENTRY TICKET</span>
                         <div class="ticket-id-large font-orbitron" style="font-size:24px; color:var(--neon-yellow); font-weight:900; margin: 5px 0;">${reg.id}</div>
-                        <span class="badge-status status-pending">${reg.status}</span>
+                        <span class="badge-status ${statusClass}">${reg.status}</span>
                     </div>
 
                     <div class="ticket-details" style="display:grid; gap:12px; font-size:12px;">

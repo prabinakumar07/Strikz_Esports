@@ -14,7 +14,7 @@ const getPublicSnapshot = async (req, res, next) => {
             { $set: { status: 'Closed' } }
         );
 
-        const [tournaments, sponsors, gallery, news, roster, achievements, management, socialFeed, settings, history] = await Promise.all([
+        const [tournaments, sponsors, gallery, news, roster, achievements, management, socialFeed, settings, history, products] = await Promise.all([
             models.Tournament.find().sort({ startDate: 1 }).lean(),
             models.Sponsor.find().sort({ tier: -1, name: 1 }).lean(),
             models.Gallery.find().sort({ id: -1 }).lean(),
@@ -24,7 +24,8 @@ const getPublicSnapshot = async (req, res, next) => {
             models.Management.find().sort({ id: 1 }).lean(),
             models.SocialFeed.find().sort({ id: -1 }).lean(),
             models.Setting.findOne({ id: 1 }).lean(),
-            models.History.find().sort({ id: 1 }).lean()
+            models.History.find().sort({ id: 1 }).lean(),
+            models.Product.find().sort({ id: -1 }).lean()
         ]);
 
         res.json({
@@ -81,7 +82,8 @@ const getPublicSnapshot = async (req, res, next) => {
                     return doc;
                 }),
                 settings: publicDoc(settings) || {},
-                history: history.map(publicDoc)
+                history: history.map(publicDoc),
+                products: (products || []).map(publicDoc)
             }
         });
     } catch (err) {

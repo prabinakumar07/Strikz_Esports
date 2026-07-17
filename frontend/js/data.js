@@ -400,6 +400,24 @@
             return res.success;
         },
 
+        addProduct: async function(item) {
+            const res = await apiRequest('/admin/products', 'POST', item);
+            this.fetchSnapshot();
+            return res.success;
+        },
+
+        updateProduct: async function(item) {
+            const res = await apiRequest(`/admin/products/${item.id}`, 'PUT', item);
+            this.fetchSnapshot();
+            return res.success;
+        },
+
+        deleteProduct: async function(id) {
+            const res = await apiRequest(`/admin/products/${id}`, 'DELETE');
+            this.fetchSnapshot();
+            return res.success;
+        },
+
         // Helper for file uploads
         uploadFile: async function(file) {
             const formData = new FormData();

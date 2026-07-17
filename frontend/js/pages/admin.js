@@ -167,6 +167,7 @@
                     <aside class="admin-sidebar glass-panel" style="padding: 15px; display: flex; flex-direction: column; gap: 8px;">
                         <button class="admin-tab-btn active" data-tab="overview"><i class="fa-solid fa-chart-line"></i> Overview</button>
                         <button class="admin-tab-btn" data-tab="registrations"><i class="fa-solid fa-address-card"></i> Registrations</button>
+                        <button class="admin-tab-btn" data-tab="products"><i class="fa-solid fa-cart-shopping"></i> Shop Products</button>
                         <button class="admin-tab-btn" data-tab="tournaments"><i class="fa-solid fa-gamepad"></i> Tournaments</button>
                         <button class="admin-tab-btn" data-tab="news"><i class="fa-solid fa-newspaper"></i> News & Notices</button>
                         <button class="admin-tab-btn" data-tab="gallery"><i class="fa-solid fa-images"></i> Gallery Manager</button>
@@ -233,6 +234,10 @@
                     db = { ...db, registrations: regs };
                     renderRegistrationsTab(panelContent, db);
                 } 
+                else if (tab === 'products') {
+                    db = await window.strikzDb.fetchSnapshot();
+                    renderProductsTab(panelContent, db);
+                }
                 else if (tab === 'tournaments') {
                     db = await window.strikzDb.fetchSnapshot();
                     renderTournamentsTab(panelContent, db);
@@ -2310,6 +2315,227 @@
         loadManagementList();
     }
 
+    // 9.5. SHOP PRODUCTS TAB PANEL
+    function renderProductsTab(mount, db) {
+        mount.innerHTML = `
+            <h3 class="font-orbitron" style="font-size: 18px; color: var(--neon-cyan); margin-bottom: 25px;"><i class="fa-solid fa-cart-shopping"></i> SHOP PRODUCTS MANAGER</h3>
+            
+            <div class="grid-2" style="align-items: start; gap: 25px;">
+                <!-- Upload/Edit Form -->
+                <div class="glass-panel" style="padding: 20px; border-color: rgba(255,255,255,0.03);">
+                    <h4 class="font-orbitron" id="product-form-title" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 15px;"><i class="fa-solid fa-circle-plus"></i> ADD NEW PRODUCT</h4>
+                    
+                    <form id="admin-product-form" onsubmit="return false;">
+                        <input type="hidden" id="product-edit-id" value="">
+                        <input type="hidden" id="product-current-image" value="">
+
+                        <div class="form-group">
+                            <label for="product-name">Product Name</label>
+                            <input type="text" id="product-name" placeholder="E.g. Netflix Premium (1 Month)" required style="color: #fff;">
+                        </div>
+                        <div class="form-group">
+                            <label for="product-category">Category</label>
+                            <select id="product-category" required style="background: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; font-size: 12px; width: 100%;">
+                                <option value="OTT">OTT Subscriptions</option>
+                                <option value="AI">AI & Developer Tools</option>
+                                <option value="Other">Other Licenses</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="product-price">Regular Price (INR)</label>
+                                <input type="number" id="product-price" placeholder="E.g. 199" required style="color: #fff;">
+                            </div>
+                            <div class="form-group">
+                                <label for="product-discounted-price">Discounted Price (INR)</label>
+                                <input type="number" id="product-discounted-price" placeholder="E.g. 99" required style="color: #fff;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="product-description">Description</label>
+                            <textarea id="product-description" rows="3" placeholder="Description of the plan, benefits, activation time..." style="color: #fff; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); padding: 10px; border-radius: 4px; font-size: 12px; width: 100%; resize: vertical;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="product-image-upload">Product Logo / Image</label>
+                            <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 8px;">
+                                <img id="product-image-preview" src="assets/coming_soon.png" style="width: 50px; height: 50px; border-radius: 6px; border: 1px solid var(--glass-border); object-fit: contain; background: rgba(0,0,0,0.4);">
+                                <input type="file" id="product-image-upload" accept="image/*" style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; color:#fff; font-size: 11px; width: 100%;">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <button type="submit" class="cta-button btn-neon-cyan w-full" id="btn-save-product">
+                                <span class="btn-text">SAVE PRODUCT</span>
+                            </button>
+                            <button type="button" class="cta-button btn-neon-orange" id="btn-cancel-product-edit" style="display: none; padding: 10px 15px;">
+                                CANCEL
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Existing Products List -->
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--text-silver); margin-bottom: 5px;">CURRENT PRODUCTS IN SHOP</h4>
+                    <div id="admin-products-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 520px; overflow-y: auto; padding-right: 5px;">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const form = document.getElementById('admin-product-form');
+        const listMount = document.getElementById('admin-products-list');
+        const saveBtn = document.getElementById('btn-save-product');
+        const cancelBtn = document.getElementById('btn-cancel-product-edit');
+        const formTitle = document.getElementById('product-form-title');
+        
+        const editIdInput = document.getElementById('product-edit-id');
+        const currentImgInput = document.getElementById('product-current-image');
+        const nameInput = document.getElementById('product-name');
+        const catInput = document.getElementById('product-category');
+        const priceInput = document.getElementById('product-price');
+        const discInput = document.getElementById('product-discounted-price');
+        const descInput = document.getElementById('product-description');
+        const fileInput = document.getElementById('product-image-upload');
+        const imgPreview = document.getElementById('product-image-preview');
+
+        // Preview local file change
+        fileInput.onchange = function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imgPreview.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        cancelBtn.onclick = function() {
+            form.reset();
+            editIdInput.value = '';
+            currentImgInput.value = '';
+            imgPreview.src = 'assets/coming_soon.png';
+            formTitle.innerHTML = '<i class="fa-solid fa-circle-plus"></i> ADD NEW PRODUCT';
+            saveBtn.querySelector('.btn-text').textContent = 'SAVE PRODUCT';
+            cancelBtn.style.display = 'none';
+        };
+
+        function loadProductsList() {
+            const list = db.products || [];
+            listMount.innerHTML = list.length === 0 ? `
+                <div class="text-center glass-panel" style="padding: 40px 20px; color: var(--text-dim);">No products currently listed in shop.</div>
+            ` : list.map(p => `
+                <div class="glass-panel" style="padding: 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px; background: rgba(0,0,0,0.2);">
+                    <div style="display: flex; align-items: center; gap: 15px; text-align: left;">
+                        <img src="${p.image || 'assets/coming_soon.png'}" style="width: 44px; height: 44px; object-fit: contain; border-radius: 6px; border: 1px solid var(--glass-border); padding: 3px; background: rgba(0,0,0,0.3);">
+                        <div>
+                            <span class="font-orbitron" style="font-size: 8px; color: var(--neon-cyan); font-weight: bold; background: rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.15); padding: 2px 6px; border-radius:3px;">${p.category}</span>
+                            <h5 class="font-orbitron" style="font-size: 13px; color: #fff; margin: 5px 0 2px 0;">${p.name}</h5>
+                            <span style="font-size: 10px; color: var(--neon-yellow); font-family: var(--font-header);">INR ${p.discountedPrice || p.price} <span style="text-decoration: line-through; color: var(--text-dim); margin-left: 5px;">INR ${p.price || ''}</span></span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="action-icon-btn edit-product-btn" data-id="${p.id}" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="action-icon-btn delete delete-product-btn" data-id="${p.id}" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Bind events
+            listMount.querySelectorAll('.edit-product-btn').forEach(btn => {
+                btn.onclick = function() {
+                    if (window.strikzPlayClickSound) window.strikzPlayClickSound();
+                    const id = parseInt(this.dataset.id);
+                    const prod = list.find(p => p.id === id);
+                    if (prod) {
+                        editIdInput.value = prod.id;
+                        currentImgInput.value = prod.image || '';
+                        nameInput.value = prod.name || '';
+                        catInput.value = prod.category || 'OTT';
+                        priceInput.value = prod.price || '';
+                        discInput.value = prod.discountedPrice || '';
+                        descInput.value = prod.description || '';
+                        imgPreview.src = prod.image || 'assets/coming_soon.png';
+                        
+                        formTitle.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> EDIT PRODUCT';
+                        saveBtn.querySelector('.btn-text').textContent = 'UPDATE PRODUCT';
+                        cancelBtn.style.display = 'block';
+                        
+                        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                };
+            });
+
+            listMount.querySelectorAll('.delete-product-btn').forEach(btn => {
+                btn.onclick = async function() {
+                    if (confirm("Remove this product from the shop?")) {
+                        const id = this.dataset.id;
+                        try {
+                            await window.strikzDb.deleteProduct(id);
+                            if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                            db = await window.strikzDb.fetchSnapshot();
+                            loadProductsList();
+                        } catch (err) {
+                            alert("Delete failed: " + err.message);
+                        }
+                    }
+                };
+            });
+        }
+
+        form.onsubmit = async function(e) {
+            if (e) e.preventDefault();
+            
+            try {
+                let imgUrl = currentImgInput.value;
+                const file = fileInput.files[0];
+                
+                if (file) {
+                    saveBtn.querySelector('.btn-text').textContent = 'UPLOADING LOGO...';
+                    const uploadRes = await window.strikzDb.uploadFile(file);
+                    imgUrl = uploadRes.url;
+                }
+
+                const prodObj = {
+                    name: nameInput.value.trim(),
+                    category: catInput.value,
+                    price: priceInput.value.trim(),
+                    discountedPrice: discInput.value.trim(),
+                    description: descInput.value.trim(),
+                    image: imgUrl
+                };
+
+                const editId = editIdInput.value;
+                if (editId) {
+                    prodObj.id = parseInt(editId);
+                    await window.strikzDb.updateProduct(prodObj);
+                    alert("Product updated successfully!");
+                } else {
+                    await window.strikzDb.addProduct(prodObj);
+                    alert("Product added to shop successfully!");
+                }
+
+                form.reset();
+                editIdInput.value = '';
+                currentImgInput.value = '';
+                imgPreview.src = 'assets/coming_soon.png';
+                formTitle.innerHTML = '<i class="fa-solid fa-circle-plus"></i> ADD NEW PRODUCT';
+                saveBtn.querySelector('.btn-text').textContent = 'SAVE PRODUCT';
+                cancelBtn.style.display = 'none';
+
+                if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                db = await window.strikzDb.fetchSnapshot();
+                loadProductsList();
+            } catch (err) {
+                alert("Error saving product: " + err.message);
+                saveBtn.querySelector('.btn-text').textContent = editIdInput.value ? 'UPDATE PRODUCT' : 'SAVE PRODUCT';
+            }
+        };
+
+        loadProductsList();
+    }
+
     // 10. GALLERY CONTROL PANEL
     function renderGalleryTab(mount, db) {
         mount.innerHTML = `
@@ -2987,6 +3213,10 @@
                         <label for="set-history-heading">Journey / History Section Heading</label>
                         <input type="text" id="set-history-heading" value="${settings.historyHeading || 'OUR JOURNEY TO GLORY'}" required style="color: #fff;">
                     </div>
+                    <div class="form-group">
+                        <label for="set-whatsapp-number">WhatsApp Support Number (For Shop Redirects)</label>
+                        <input type="text" id="set-whatsapp-number" value="${settings.whatsappNumber || ''}" placeholder="e.g. 919876543210 (include country code)" style="color: #fff;">
+                    </div>
 
                     <h5 class="font-orbitron" style="font-size: 11px; color: var(--neon-yellow); margin-top: 25px; margin-bottom: 12px; border-bottom: 1px solid var(--glass-border); padding-bottom: 4px;">ROSTER STATISTICS VISIBILITY</h5>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 15px; margin-bottom: 20px;">
@@ -3036,6 +3266,7 @@
                 establishedYear: document.getElementById('set-est-year').value.trim(),
                 arenaLocation: document.getElementById('set-arena-location').value.trim(),
                 historyHeading: document.getElementById('set-history-heading').value.trim(),
+                whatsappNumber: document.getElementById('set-whatsapp-number').value.trim(),
                 showKd: document.getElementById('set-show-kd').checked,
                 showHs: document.getElementById('set-show-hs').checked,
                 showMatches: document.getElementById('set-show-matches').checked,

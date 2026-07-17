@@ -23,8 +23,9 @@ const SPONSOR_FIELDS = ['name', 'logo', 'tier', 'partnerType', 'website', 'descr
 const WINNER_FIELDS = ['teamName', 'event', 'date', 'prize', 'tier', 'image', 'placement', 'title', 'reward', 'details', 'winnersList'];
 const SOCIAL_FIELDS = ['platform', 'author', 'authorAvatar', 'content', 'date', 'link', 'mediaUrl'];
 const MANAGEMENT_FIELDS = ['name', 'tag', 'role', 'image', 'avatar', 'bio', 'instagram', 'youtube', 'socials'];
-const SETTINGS_FIELDS = ['discordLink', 'instagramLink', 'youtubeLink', 'twitterLink', 'announcementBanner', 'announcementActive', 'maintenanceMode', 'contactEmail', 'partnerEmail', 'showKd', 'showHs', 'showMatches', 'showWinRate', 'showRank', 'supportEmail', 'address', 'establishedYear', 'arenaLocation', 'historyHeading', 'showHistoryPage'];
+const SETTINGS_FIELDS = ['discordLink', 'instagramLink', 'youtubeLink', 'twitterLink', 'announcementBanner', 'announcementActive', 'maintenanceMode', 'contactEmail', 'partnerEmail', 'showKd', 'showHs', 'showMatches', 'showWinRate', 'showRank', 'supportEmail', 'address', 'establishedYear', 'arenaLocation', 'historyHeading', 'showHistoryPage', 'whatsappNumber'];
 const HISTORY_FIELDS = ['year', 'title', 'description', 'logo', 'rank', 'tournamentName', 'date', 'type'];
+const PRODUCT_FIELDS = ['name', 'category', 'price', 'discountedPrice', 'image', 'description'];
 
 // ==========================================
 // AUDIT LOGGING
@@ -108,13 +109,19 @@ const getRegistrations = async (req, res, next) => {
             const players = reg.type !== 'Solo' ? (playersMap.get(reg.id) || []) : [];
             return {
                 ...clean(reg),
+                teamName: reg.team_name || '',
+                playerName: reg.player_name || '',
+                captainName: reg.captain_name || '',
+                captainEmail: reg.captain_email || '',
+                captainPhone: reg.captain_phone || '',
+                gameUid: reg.game_uid || '',
                 tournamentName: tournamentMap.get(reg.tournament_id) || '',
                 tournamentId: reg.tournament_id,
-                submissionDate: reg.submission_date,
+                submissionDate: reg.submission_date || '',
                 players: players.map((p) => ({
                     ...clean(p),
-                    gameUid: p.game_uid,
-                    realName: p.real_name,
+                    gameUid: p.game_uid || '',
+                    realName: p.real_name || '',
                     confirmed: p.confirmed === true
                 }))
             };
@@ -901,6 +908,40 @@ const promoteUser = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+const createProduct = async (req, res, next) => {
+    try {
+        const data = pick(req.body, PRODUCT_FIELDS);
+        await models.Product.create({ id: await nextNumberId(models.Product), ...data });
+        await logAdminAction(req, 'CREATE_PRODUCT', { name: data.name, category: data.category });
+        res.status(201).json({ success: true, message: 'Product catalog updated' });
+    } catch (err) { next(err); }
+};
+
+const updateProduct = async (req, res, next) => {
+    try {
+        const data = pick(req.body, PRODUCT_FIELDS);
+        const result = await updateById(models.Product, req.params.id, data);
+        if (result.matchedCount === 0) {
+            res.status(404);
+            return next(new Error('Product not found'));
+        }
+        await logAdminAction(req, 'UPDATE_PRODUCT', { id: req.params.id, name: data.name });
+        res.json({ success: true, message: 'Product catalog updated' });
+    } catch (err) { next(err); }
+};
+
+const deleteProduct = async (req, res, next) => {
+    try {
+        const result = await deleteById(models.Product, req.params.id);
+        if (result.deletedCount === 0) {
+            res.status(404);
+            return next(new Error('Product not found'));
+        }
+        await logAdminAction(req, 'DELETE_PRODUCT', { id: req.params.id });
+        res.json({ success: true, message: 'Product removed' });
+    } catch (err) { next(err); }
+};
+
 module.exports = {
     getStats,
     getRegistrations,
@@ -943,5 +984,8 @@ module.exports = {
     createHistory,
     updateHistory,
     deleteHistory,
-    promoteUser
+    promoteUser,
+    createProduct,
+    updateProduct,
+    deleteProduct
 };

@@ -57,7 +57,8 @@ const models = {
         establishedYear: { type: String, default: '2022' },
         arenaLocation: { type: String, default: 'Bermuda Arena' },
         historyHeading: { type: String, default: 'OUR JOURNEY TO GLORY' },
-        showHistoryPage: { type: Boolean, default: true }
+        showHistoryPage: { type: Boolean, default: true },
+        whatsappNumber: { type: String }
     }),
     Tournament: createModel('Tournament', 'tournaments', String, {
         name: { type: String },
@@ -224,6 +225,14 @@ const models = {
             instagram: { type: String },
             youtube: { type: String }
         }
+    }),
+    Product: createModel('Product', 'products', Number, {
+        name: { type: String },
+        category: { type: String },
+        price: { type: String },
+        discountedPrice: { type: String },
+        image: { type: String },
+        description: { type: String }
     }),
     AuditLog: createModel('AuditLog', 'audit_logs', Number, {
         admin_id: { type: Number },
