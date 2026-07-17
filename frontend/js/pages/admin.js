@@ -2604,7 +2604,7 @@
                 if (file) {
                     saveBtn.querySelector('.btn-text').textContent = 'UPLOADING LOGO...';
                     const uploadRes = await window.strikzDb.uploadFile(file);
-                    imgUrl = uploadRes.url;
+                    imgUrl = uploadRes.imageUrl;
                 }
 
                 // Features array split by line breaks
