@@ -18,6 +18,29 @@
         const allNews = db.news || [];
         const sponsors = db.sponsors || [];
         const socials = db.socialFeed || [];
+        const products = db.products || [];
+
+        const activeProducts = products.filter(p => p.enabled !== false);
+        const featuredProducts = activeProducts.filter(p => p.featured === true).slice(0, 4);
+
+        const getSavingsPercent = (p) => {
+            const reg = parseFloat(p.price) || 0;
+            const disc = parseFloat(p.discountedPrice) || reg;
+            return reg > 0 ? Math.round(((reg - disc) / reg) * 100) : 0;
+        };
+
+        const bestDeals = [...activeProducts]
+            .filter(p => p.price && p.discountedPrice)
+            .sort((a, b) => getSavingsPercent(b) - getSavingsPercent(a))
+            .slice(0, 3);
+
+        const popAi = activeProducts
+            .filter(p => p.category === 'AI Tools' || p.category === 'AI')
+            .slice(0, 3);
+
+        const popOtt = activeProducts
+            .filter(p => p.category === 'OTT' || p.category === 'Streaming')
+            .slice(0, 3);
 
         // Sort tournaments: Open first, then Temporary Close, Slot Full, Closed, Completed, Cancelled
         const sortedTournaments = [...tournaments].sort((a, b) => {
@@ -207,6 +230,101 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Subscription Shop Showcase Section -->
+            \${activeProducts.length > 0 ? \`
+            <section class="container reveal" style="margin-bottom: 80px;">
+                <div class="section-header">
+                    <span class="section-subtitle">STORE DEALS</span>
+                    <h2 class="section-title">SUBSCRIBERS <span>MARKET</span></h2>
+                    <div class="section-divider"></div>
+                </div>
+
+                <!-- Featured Products Grid -->
+                \${featuredProducts.length > 0 ? \`
+                    <div style="margin-bottom: 40px;">
+                        <h3 class="font-orbitron" style="font-size: 13px; color: var(--neon-cyan); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-weight: 800; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px; text-transform: uppercase;">
+                            <i class="fa-solid fa-star"></i> FEATURED SUBSCRIPTIONS
+                        </h3>
+                        <div class="grid-4" style="gap: 20px;">
+                            \${featuredProducts.map(p => \`
+                                <div class="glass-panel text-center" style="padding: 15px; border-color: rgba(0, 240, 255, 0.1); background: rgba(0,0,0,0.25); display: flex; flex-direction: column; justify-content: space-between; min-height: 250px; position: relative;">
+                                    \${p.badge && p.badge !== 'none' ? \`
+                                        <span class="badge-status status-approved font-orbitron" style="position: absolute; top: 10px; left: 10px; font-size: 7.5px; padding: 2px 6px;">\${p.badge}</span>
+                                    \` : ''}
+                                    <div>
+                                        <img src="\${p.image || 'assets/coming_soon.png'}" style="width: 44px; height: 44px; object-fit: contain; margin: 10px auto; display: block; border-radius: 6px; background: rgba(0,0,0,0.3); padding: 3px; border: 1px solid var(--glass-border);">
+                                        <h5 class="font-orbitron" style="font-size: 12px; color: #fff; margin: 8px 0 4px 0; text-transform: uppercase;">\${p.name}</h5>
+                                        <p style="font-size: 10.5px; color: var(--text-silver); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; margin-bottom: 10px;">\${p.description || 'Premium plan'}</p>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 12px; color: var(--neon-yellow); font-family: var(--font-header); font-weight: bold; margin-bottom: 10px;">INR \${p.discountedPrice || p.price}</div>
+                                        <a href="#/shop?product=\${p.id}" class="cta-button btn-neon-cyan w-full" style="padding: 6px 8px; font-size: 9.5px; font-weight: 800;" onclick="if(window.strikzPlayClickSound) window.strikzPlayClickSound();">BUY NOW</a>
+                                    </div>
+                                </div>
+                            \`).join('')}
+                        </div>
+                    </div>
+                \` : ''}
+
+                <!-- Best Deals & Category Highlights Grid -->
+                <div class="account-grid" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 30px; align-items: start;">
+                    
+                    <!-- Left: Best Deals -->
+                    \${bestDeals.length > 0 ? \`
+                        <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.03); background: rgba(0,0,0,0.15);">
+                            <h3 class="font-orbitron" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 20px; font-weight: 800; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px; text-transform: uppercase;">
+                                <i class="fa-solid fa-fire"></i> BEST DISCOUNT DEALS
+                            </h3>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                \${bestDeals.map(p => \`
+                                    <a href="#/shop?product=\${p.id}" class="glass-panel" style="padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px; text-decoration: none; background: rgba(0,0,0,0.3); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='none'" onclick="if(window.strikzPlayClickSound) window.strikzPlayClickSound();">
+                                        <div style="display: flex; align-items: center; gap: 12px; text-align: left;">
+                                            <img src="\${p.image || 'assets/coming_soon.png'}" style="width: 36px; height: 36px; object-fit: contain; border-radius: 4px; border: 1px solid var(--glass-border); padding: 2px; background: rgba(0,0,0,0.3);">
+                                            <div>
+                                                <h5 class="font-orbitron" style="font-size: 12px; color: #fff; margin: 0; text-transform: uppercase;">\${p.name}</h5>
+                                                <span style="font-size: 9px; color: var(--text-dim); text-transform: uppercase;">\${p.category}</span>
+                                            </div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 12px; color: var(--neon-yellow); font-family: var(--font-header); font-weight: bold;">INR \${p.discountedPrice}</div>
+                                            <span class="badge-status status-approved font-orbitron" style="font-size: 7.5px; font-weight: 800; padding: 1px 4px; color: var(--neon-green); border-color: rgba(34,197,94,0.25); background: none;">\${getSavingsPercent(p)}% OFF</span>
+                                        </div>
+                                    </a>
+                                \`).join('')}
+                            </div>
+                        </div>
+                    \` : ''}
+
+                    <!-- Right: Popular Tabs Switcher -->
+                    <div class="glass-panel" style="padding: 25px; border-color: rgba(255,255,255,0.03); background: rgba(0,0,0,0.15);">
+                        
+                        <!-- Tabs Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                            <h3 class="font-orbitron" style="font-size: 13px; color: #fff; margin: 0; font-weight: 800; text-transform: uppercase;">
+                                <i class="fa-solid fa-cubes" style="color: var(--neon-cyan);"></i> COMMUNITY FAVORITES
+                            </h3>
+                            <div style="display: flex; gap: 8px;">
+                                <button id="btn-home-shop-tab-ai" class="cta-button" style="padding: 4px 10px; font-size: 9.5px; border-color: var(--neon-cyan-border); color: var(--neon-cyan); background: rgba(0,240,255,0.05);" onclick="if(window.strikzPlayClickSound) window.strikzPlayClickSound();">AI TOOLS</button>
+                                <button id="btn-home-shop-tab-ott" class="cta-button" style="padding: 4px 10px; font-size: 9.5px; border-color: var(--glass-border); color: var(--text-dim);" onclick="if(window.strikzPlayClickSound) window.strikzPlayClickSound();">OTT STREAMING</button>
+                            </div>
+                        </div>
+
+                        <!-- Tab Content mounts -->
+                        <div id="home-shop-tab-content-mount" style="display: flex; flex-direction: column; gap: 10px;">
+                            <!-- Loaded dynamically -->
+                        </div>
+                    </div>
+
+                </div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="#/shop" class="cta-button btn-neon-cyan" style="padding: 10px 25px; font-size: 11px;" onclick="if(window.strikzPlayClickSound) window.strikzPlayClickSound();">
+                        <i class="fa-solid fa-store"></i> VISIT FULL STOREFRONT
+                    </a>
+                </div>
+            </section>
+            \` : ''}
 
             <!-- Social Media Feed Section -->
             <section class="container reveal" style="margin-bottom: 80px;">
@@ -426,6 +544,56 @@
             }).catch(err => {
                 console.error("Home inbox fetch error:", err);
             });
+        }
+
+        // BIND HOME SHOP TABS
+        const btnHomeShopTabAi = document.getElementById('btn-home-shop-tab-ai');
+        const btnHomeShopTabOtt = document.getElementById('btn-home-shop-tab-ott');
+        const homeShopMount = document.getElementById('home-shop-tab-content-mount');
+
+        if (btnHomeShopTabAi && btnHomeShopTabOtt && homeShopMount) {
+            const renderHomeTabList = (list) => {
+                if (list.length === 0) {
+                    homeShopMount.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-dim); font-size: 11.5px;">No popular subscriptions in this category.</div>`;
+                    return;
+                }
+                homeShopMount.innerHTML = list.map(p => `
+                    <a href="#/shop?product=${p.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); text-decoration: none; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.015)'" onmouseout="this.style.background='none'" onclick="if(window.strikzPlayClickSound) window.strikzPlayClickSound();">
+                        <div style="display: flex; align-items: center; gap: 10px; text-align: left;">
+                            <img src="${p.image || 'assets/coming_soon.png'}" style="width: 28px; height: 28px; object-fit: contain; border-radius: 4px; border: 1px solid var(--glass-border); padding: 1px; background: rgba(0,0,0,0.3);">
+                            <span class="font-orbitron" style="font-size: 12px; color: #fff; font-weight: bold; text-transform: uppercase;">${p.name}</span>
+                        </div>
+                        <span style="font-size: 11px; color: var(--neon-yellow); font-family: var(--font-header);">INR ${p.discountedPrice || p.price}</span>
+                    </a>
+                `).join('');
+            };
+
+            btnHomeShopTabAi.onclick = function() {
+                this.style.borderColor = 'var(--neon-cyan-border)';
+                this.style.color = 'var(--neon-cyan)';
+                this.style.background = 'rgba(0, 240, 255, 0.05)';
+
+                btnHomeShopTabOtt.style.borderColor = 'var(--glass-border)';
+                btnHomeShopTabOtt.style.color = 'var(--text-dim)';
+                btnHomeShopTabOtt.style.background = 'none';
+
+                renderHomeTabList(popAi);
+            };
+
+            btnHomeShopTabOtt.onclick = function() {
+                this.style.borderColor = 'var(--neon-cyan-border)';
+                this.style.color = 'var(--neon-cyan)';
+                this.style.background = 'rgba(0, 240, 255, 0.05)';
+
+                btnHomeShopTabAi.style.borderColor = 'var(--glass-border)';
+                btnHomeShopTabAi.style.color = 'var(--text-dim)';
+                btnHomeShopTabAi.style.background = 'none';
+
+                renderHomeTabList(popOtt);
+            };
+
+            // Initial Tab Content
+            renderHomeTabList(popAi);
         }
 
         // Subtitle and description are statically defined in the template above.

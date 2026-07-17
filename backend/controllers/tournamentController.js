@@ -25,7 +25,7 @@ const getPublicSnapshot = async (req, res, next) => {
             models.SocialFeed.find().sort({ id: -1 }).lean(),
             models.Setting.findOne({ id: 1 }).lean(),
             models.History.find().sort({ id: 1 }).lean(),
-            models.Product.find().sort({ id: -1 }).lean()
+            models.Product.find().sort({ sortOrder: 1, id: -1 }).lean()
         ]);
 
         res.json({

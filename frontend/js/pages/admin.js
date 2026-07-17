@@ -2320,7 +2320,7 @@
         mount.innerHTML = `
             <h3 class="font-orbitron" style="font-size: 18px; color: var(--neon-cyan); margin-bottom: 25px;"><i class="fa-solid fa-cart-shopping"></i> SHOP PRODUCTS MANAGER</h3>
             
-            <div class="grid-2" style="align-items: start; gap: 25px;">
+            <div class="grid-2" style="align-items: start; gap: 25px; grid-template-columns: 1.1fr 1fr;">
                 <!-- Upload/Edit Form -->
                 <div class="glass-panel" style="padding: 20px; border-color: rgba(255,255,255,0.03);">
                     <h4 class="font-orbitron" id="product-form-title" style="font-size: 13px; color: var(--neon-orange); margin-bottom: 15px;"><i class="fa-solid fa-circle-plus"></i> ADD NEW PRODUCT</h4>
@@ -2331,15 +2331,25 @@
 
                         <div class="form-group">
                             <label for="product-name">Product Name</label>
-                            <input type="text" id="product-name" placeholder="E.g. Netflix Premium (1 Month)" required style="color: #fff;">
+                            <input type="text" id="product-name" placeholder="E.g. Netflix Premium" required style="color: #fff;">
                         </div>
-                        <div class="form-group">
-                            <label for="product-category">Category</label>
-                            <select id="product-category" required style="background: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; font-size: 12px; width: 100%;">
-                                <option value="OTT">OTT Subscriptions</option>
-                                <option value="AI">AI & Developer Tools</option>
-                                <option value="Other">Other Licenses</option>
-                            </select>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="product-category">Category</label>
+                                <select id="product-category" required style="background: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; font-size: 12px; width: 100%;">
+                                    <option value="OTT">OTT Subscriptions</option>
+                                    <option value="AI Tools">AI Tools</option>
+                                    <option value="Software">Software</option>
+                                    <option value="Productivity">Productivity</option>
+                                    <option value="Design">Design</option>
+                                    <option value="Streaming">Streaming</option>
+                                    <option value="Others">Others</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="product-duration">Duration</label>
+                                <input type="text" id="product-duration" placeholder="E.g. Monthly, Yearly, 3 Months" required style="color: #fff;">
+                            </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
@@ -2351,14 +2361,51 @@
                                 <input type="number" id="product-discounted-price" placeholder="E.g. 99" required style="color: #fff;">
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="product-description">Description</label>
-                            <textarea id="product-description" rows="3" placeholder="Description of the plan, benefits, activation time..." style="color: #fff; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); padding: 10px; border-radius: 4px; font-size: 12px; width: 100%; resize: vertical;"></textarea>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="product-badge">Card Badge</label>
+                                <select id="product-badge" required style="background: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; font-size: 12px; width: 100%;">
+                                    <option value="none">None</option>
+                                    <option value="Best Seller">Best Seller</option>
+                                    <option value="Hot Deal">Hot Deal</option>
+                                    <option value="New">New</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="product-availability">Availability</label>
+                                <select id="product-availability" required style="background: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; font-size: 12px; width: 100%;">
+                                    <option value="In Stock">In Stock</option>
+                                    <option value="Limited Slots">Limited Slots</option>
+                                    <option value="Out of Stock">Out of Stock</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="form-group">
+                            <label for="product-description">Short Description</label>
+                            <textarea id="product-description" rows="2" placeholder="Brief outline of the service..." style="color: #fff; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; font-size: 12px; width: 100%; resize: vertical;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="product-features">Plan Benefits / Features (One per line)</label>
+                            <textarea id="product-features" rows="3" placeholder="4K Ultra HD screen&#10;Private profile pin access&#10;Supports Mobile, Tablet, TV&#10;Full-duration warranty replacement" style="color: #fff; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; font-size: 12px; width: 100%; resize: vertical;"></textarea>
+                        </div>
+                        <div class="form-row" style="align-items: center;">
+                            <div class="form-group">
+                                <label for="product-sort-order">Sort Priority Order</label>
+                                <input type="number" id="product-sort-order" placeholder="0" value="0" style="color: #fff;">
+                            </div>
+                            <div style="display: flex; gap: 15px; margin-top: 15px;">
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; color: var(--text-silver);">
+                                    <input type="checkbox" id="product-enabled" checked style="width: 16px; height: 16px;"> Enabled
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; color: var(--text-silver);">
+                                    <input type="checkbox" id="product-featured" style="width: 16px; height: 16px;"> Featured
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 12px;">
                             <label for="product-image-upload">Product Logo / Image</label>
                             <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 8px;">
-                                <img id="product-image-preview" src="assets/coming_soon.png" style="width: 50px; height: 50px; border-radius: 6px; border: 1px solid var(--glass-border); object-fit: contain; background: rgba(0,0,0,0.4);">
+                                <img id="product-image-preview" src="assets/coming_soon.png" style="width: 48px; height: 48px; border-radius: 6px; border: 1px solid var(--glass-border); object-fit: contain; background: rgba(0,0,0,0.4);">
                                 <input type="file" id="product-image-upload" accept="image/*" style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; color:#fff; font-size: 11px; width: 100%;">
                             </div>
                         </div>
@@ -2375,7 +2422,23 @@
 
                 <!-- Existing Products List -->
                 <div style="display: flex; flex-direction: column; gap: 15px;">
-                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--text-silver); margin-bottom: 5px;">CURRENT PRODUCTS IN SHOP</h4>
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--text-silver); margin-bottom: 5px;">CURRENT PRODUCTS</h4>
+                    
+                    <!-- Search & filter header inside admin -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+                        <input type="text" id="admin-product-search" placeholder="Search products..." style="padding: 8px 12px; color: #fff; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 4px; font-size: 12px; flex-grow: 1;">
+                        <select id="admin-product-cat-filter" style="background: rgba(0,0,0,0.4); color: #fff; border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                            <option value="All">All Categories</option>
+                            <option value="OTT">OTT</option>
+                            <option value="AI Tools">AI Tools</option>
+                            <option value="Software">Software</option>
+                            <option value="Productivity">Productivity</option>
+                            <option value="Design">Design</option>
+                            <option value="Streaming">Streaming</option>
+                            <option value="Others">Others</option>
+                        </select>
+                    </div>
+
                     <div id="admin-products-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 520px; overflow-y: auto; padding-right: 5px;">
                         <!-- Injected dynamically -->
                     </div>
@@ -2393,11 +2456,22 @@
         const currentImgInput = document.getElementById('product-current-image');
         const nameInput = document.getElementById('product-name');
         const catInput = document.getElementById('product-category');
+        const durInput = document.getElementById('product-duration');
         const priceInput = document.getElementById('product-price');
         const discInput = document.getElementById('product-discounted-price');
+        const badgeInput = document.getElementById('product-badge');
+        const availInput = document.getElementById('product-availability');
         const descInput = document.getElementById('product-description');
+        const featInput = document.getElementById('product-features');
+        const sortInput = document.getElementById('product-sort-order');
+        const enabledCheck = document.getElementById('product-enabled');
+        const featuredCheck = document.getElementById('product-featured');
         const fileInput = document.getElementById('product-image-upload');
         const imgPreview = document.getElementById('product-image-preview');
+
+        // Admin sidebar search filters
+        const adminSearch = document.getElementById('admin-product-search');
+        const adminCat = document.getElementById('admin-product-cat-filter');
 
         // Preview local file change
         fileInput.onchange = function() {
@@ -2422,20 +2496,45 @@
         };
 
         function loadProductsList() {
-            const list = db.products || [];
+            let list = db.products || [];
+            
+            // Search query filter
+            const query = adminSearch.value.trim().toLowerCase();
+            if (query) {
+                list = list.filter(p => p.name.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query)));
+            }
+
+            // Category filter
+            const catSelected = adminCat.value;
+            if (catSelected !== "All") {
+                list = list.filter(p => p.category === catSelected);
+            }
+
+            // Sort products list: sortOrder asc, id desc
+            list.sort((a, b) => {
+                const sortA = parseInt(a.sortOrder) || 0;
+                const sortB = parseInt(b.sortOrder) || 0;
+                if (sortA !== sortB) return sortA - sortB;
+                return b.id - a.id;
+            });
+
             listMount.innerHTML = list.length === 0 ? `
-                <div class="text-center glass-panel" style="padding: 40px 20px; color: var(--text-dim);">No products currently listed in shop.</div>
+                <div class="text-center glass-panel" style="padding: 40px 20px; color: var(--text-dim);">No products currently match filters.</div>
             ` : list.map(p => `
-                <div class="glass-panel" style="padding: 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px; background: rgba(0,0,0,0.2);">
-                    <div style="display: flex; align-items: center; gap: 15px; text-align: left;">
-                        <img src="${p.image || 'assets/coming_soon.png'}" style="width: 44px; height: 44px; object-fit: contain; border-radius: 6px; border: 1px solid var(--glass-border); padding: 3px; background: rgba(0,0,0,0.3);">
-                        <div>
-                            <span class="font-orbitron" style="font-size: 8px; color: var(--neon-cyan); font-weight: bold; background: rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.15); padding: 2px 6px; border-radius:3px;">${p.category}</span>
-                            <h5 class="font-orbitron" style="font-size: 13px; color: #fff; margin: 5px 0 2px 0;">${p.name}</h5>
-                            <span style="font-size: 10px; color: var(--neon-yellow); font-family: var(--font-header);">INR ${p.discountedPrice || p.price} <span style="text-decoration: line-through; color: var(--text-dim); margin-left: 5px;">INR ${p.price || ''}</span></span>
+                <div class="glass-panel" style="padding: 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px; background: rgba(0,0,0,0.25); border-color: ${p.enabled === false ? 'rgba(239,68,68,0.1)' : 'var(--glass-border)'}; opacity: ${p.enabled === false ? 0.6 : 1};">
+                    <div style="display: flex; align-items: center; gap: 15px; text-align: left; min-width: 0;">
+                        <img src="${p.image || 'assets/coming_soon.png'}" style="width: 44px; height: 44px; object-fit: contain; border-radius: 6px; border: 1px solid var(--glass-border); padding: 3px; background: rgba(0,0,0,0.3); flex-shrink: 0;">
+                        <div style="min-width: 0; overflow: hidden;">
+                            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                                <span class="font-orbitron" style="font-size: 8px; color: var(--neon-cyan); font-weight: bold; background: rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.15); padding: 1px 5px; border-radius:3px;">${p.category}</span>
+                                ${p.featured ? `<span class="badge-status status-pending" style="font-size: 7px; padding: 1px 4px; font-weight: 800;">FEATURED</span>` : ''}
+                                ${p.badge && p.badge !== 'none' ? `<span class="badge-status status-approved" style="font-size: 7px; padding: 1px 4px; font-weight: 800; background: none; border-color: var(--neon-cyan-border); color: var(--neon-cyan);">${p.badge.toUpperCase()}</span>` : ''}
+                            </div>
+                            <h5 class="font-orbitron" style="font-size: 13px; color: #fff; margin: 5px 0 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.name}</h5>
+                            <span style="font-size: 10px; color: var(--neon-yellow); font-family: var(--font-header);">INR ${p.discountedPrice || p.price} <span style="text-decoration: line-through; color: var(--text-dim); margin-left: 5px;">INR ${p.price || ''}</span> <span style="color: var(--text-dim); margin-left: 4px;">(${p.duration})</span></span>
                         </div>
                     </div>
-                    <div style="display: flex; gap: 8px;">
+                    <div style="display: flex; gap: 8px; flex-shrink: 0;">
                         <button class="action-icon-btn edit-product-btn" data-id="${p.id}" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
                         <button class="action-icon-btn delete delete-product-btn" data-id="${p.id}" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
@@ -2453,9 +2552,16 @@
                         currentImgInput.value = prod.image || '';
                         nameInput.value = prod.name || '';
                         catInput.value = prod.category || 'OTT';
+                        durInput.value = prod.duration || 'Monthly';
                         priceInput.value = prod.price || '';
                         discInput.value = prod.discountedPrice || '';
+                        badgeInput.value = prod.badge || 'none';
+                        availInput.value = prod.availability || 'In Stock';
                         descInput.value = prod.description || '';
+                        featInput.value = (prod.features || []).join('\n');
+                        sortInput.value = prod.sortOrder || 0;
+                        enabledCheck.checked = prod.enabled !== false;
+                        featuredCheck.checked = prod.featured === true;
                         imgPreview.src = prod.image || 'assets/coming_soon.png';
                         
                         formTitle.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> EDIT PRODUCT';
@@ -2484,6 +2590,10 @@
             });
         }
 
+        // Live filters
+        adminSearch.oninput = loadProductsList;
+        adminCat.onchange = loadProductsList;
+
         form.onsubmit = async function(e) {
             if (e) e.preventDefault();
             
@@ -2497,12 +2607,23 @@
                     imgUrl = uploadRes.url;
                 }
 
+                // Features array split by line breaks
+                const featuresRaw = featInput.value.trim().split('\n');
+                const features = featuresRaw.map(f => f.trim()).filter(f => f.length > 0);
+
                 const prodObj = {
                     name: nameInput.value.trim(),
                     category: catInput.value,
-                    price: priceInput.value.trim(),
-                    discountedPrice: discInput.value.trim(),
+                    duration: durInput.value.trim(),
+                    price: parseFloat(priceInput.value),
+                    discountedPrice: parseFloat(discInput.value),
+                    badge: badgeInput.value,
+                    availability: availInput.value,
                     description: descInput.value.trim(),
+                    features: features,
+                    sortOrder: parseInt(sortInput.value) || 0,
+                    enabled: enabledCheck.checked,
+                    featured: featuredCheck.checked,
                     image: imgUrl
                 };
 
@@ -3217,6 +3338,11 @@
                         <label for="set-whatsapp-number">WhatsApp Support Number (For Shop Redirects)</label>
                         <input type="text" id="set-whatsapp-number" value="${settings.whatsappNumber || ''}" placeholder="e.g. 919876543210 (include country code)" style="color: #fff;">
                     </div>
+                    <div class="form-group">
+                        <label for="set-whatsapp-template">WhatsApp Message Template</label>
+                        <textarea id="set-whatsapp-template" rows="2" placeholder="Hello, I'm interested in purchasing the {product_name} subscription ({duration}) for {price}." style="color: #fff; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); padding: 8px; border-radius: 4px; font-size: 12px; width: 100%; resize: vertical;">${settings.whatsappMessageTemplate || "Hello, I'm interested in purchasing the {product_name} subscription ({duration}) for {price}."}</textarea>
+                        <span style="font-size: 10px; color: var(--text-dim); margin-top: 4px; display: block;">Placeholders allowed: <code>{product_name}</code>, <code>{price}</code>, <code>{duration}</code></span>
+                    </div>
 
                     <h5 class="font-orbitron" style="font-size: 11px; color: var(--neon-yellow); margin-top: 25px; margin-bottom: 12px; border-bottom: 1px solid var(--glass-border); padding-bottom: 4px;">ROSTER STATISTICS VISIBILITY</h5>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 15px; margin-bottom: 20px;">
@@ -3267,6 +3393,7 @@
                 arenaLocation: document.getElementById('set-arena-location').value.trim(),
                 historyHeading: document.getElementById('set-history-heading').value.trim(),
                 whatsappNumber: document.getElementById('set-whatsapp-number').value.trim(),
+                whatsappMessageTemplate: document.getElementById('set-whatsapp-template').value.trim(),
                 showKd: document.getElementById('set-show-kd').checked,
                 showHs: document.getElementById('set-show-hs').checked,
                 showMatches: document.getElementById('set-show-matches').checked,

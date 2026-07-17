@@ -58,7 +58,8 @@ const models = {
         arenaLocation: { type: String, default: 'Bermuda Arena' },
         historyHeading: { type: String, default: 'OUR JOURNEY TO GLORY' },
         showHistoryPage: { type: Boolean, default: true },
-        whatsappNumber: { type: String }
+        whatsappNumber: { type: String },
+        whatsappMessageTemplate: { type: String, default: "Hello, I'm interested in purchasing the {product_name} subscription ({duration}) for {price}." }
     }),
     Tournament: createModel('Tournament', 'tournaments', String, {
         name: { type: String },
@@ -229,10 +230,17 @@ const models = {
     Product: createModel('Product', 'products', Number, {
         name: { type: String },
         category: { type: String },
-        price: { type: String },
-        discountedPrice: { type: String },
+        price: { type: Number },
+        discountedPrice: { type: Number },
         image: { type: String },
-        description: { type: String }
+        description: { type: String },
+        features: { type: [String], default: [] },
+        duration: { type: String, default: 'Monthly' },
+        enabled: { type: Boolean, default: true },
+        featured: { type: Boolean, default: false },
+        badge: { type: String, default: 'none' },
+        sortOrder: { type: Number, default: 0 },
+        availability: { type: String, default: 'In Stock' }
     }),
     AuditLog: createModel('AuditLog', 'audit_logs', Number, {
         admin_id: { type: Number },
