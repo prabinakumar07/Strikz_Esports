@@ -823,6 +823,7 @@ const getMyTeamInbox = async (req, res, next) => {
                 message: `Invite from Captain ${team.captain || 'unknown'} to join as ${invite.role}.`,
                 date: invite.created_at ? new Date(invite.created_at).toISOString() : new Date().toISOString(),
                 timestamp: invite.created_at ? new Date(invite.created_at).getTime() : Date.now(),
+                read: invite.read === true,
                 metadata: {
                     teamId: team.id,
                     teamName: team.name,
@@ -848,6 +849,7 @@ const getMyTeamInbox = async (req, res, next) => {
                 message: `Roster join confirmation requested for squad '${reg.team_name}' in the tournament '${tourney ? tourney.name : 'Unknown Championship'}'.`,
                 date: reg.created_at ? new Date(reg.created_at).toISOString() : new Date().toISOString(),
                 timestamp: reg.created_at ? new Date(reg.created_at).getTime() : Date.now(),
+                read: player.read === true,
                 metadata: {
                     regId: reg.id,
                     tournamentId: reg.tournament_id,
@@ -866,6 +868,7 @@ const getMyTeamInbox = async (req, res, next) => {
             message: a.content,
             date: a.created_at ? new Date(a.created_at).toISOString() : new Date().toISOString(),
             timestamp: a.created_at ? new Date(a.created_at).getTime() : Date.now(),
+            read: a.read === true,
             metadata: {
                 dbNotifId: a.id
             }
@@ -892,6 +895,53 @@ const dismissNotification = async (req, res, next) => {
         const numericId = Number(id);
         await models.Notification.deleteOne({ id: isNaN(numericId) ? id : numericId, user_uid: uid });
         res.json({ success: true, message: 'Notification dismissed' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const markMessageAsRead = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const uid = req.user.uid;
+
+        if (!id) {
+            res.status(400);
+            return next(new Error('Please provide message ID'));
+        }
+
+        let updated = false;
+
+        if (id.startsWith('invite-')) {
+            const parts = id.split('-');
+            const inviteId = parseInt(parts[1]);
+            if (!isNaN(inviteId)) {
+                await models.TeamMember.updateOne({ id: inviteId, user_uid: uid }, { $set: { read: true } });
+                updated = true;
+            }
+        } else if (id.startsWith('confirm-')) {
+            const parts = id.split('-');
+            const playerId = parseInt(parts[1]);
+            if (!isNaN(playerId)) {
+                await models.RegistrationPlayer.updateOne({ id: playerId, user_uid: uid }, { $set: { read: true } });
+                updated = true;
+            }
+        } else if (id.startsWith('alert-')) {
+            const parts = id.split('-');
+            const alertId = parseInt(parts[1]);
+            if (!isNaN(alertId)) {
+                await models.Notification.updateOne({ id: alertId, user_uid: uid }, { $set: { read: true } });
+                updated = true;
+            }
+        } else {
+            const alertId = parseInt(id);
+            if (!isNaN(alertId)) {
+                await models.Notification.updateOne({ id: alertId, user_uid: uid }, { $set: { read: true } });
+                updated = true;
+            }
+        }
+
+        res.json({ success: updated, message: 'Message read status updated successfully' });
     } catch (err) {
         next(err);
     }
@@ -1218,6 +1268,7 @@ module.exports = {
     getPendingConfirmations,
     getMyTeamInbox,
     dismissNotification,
+    markMessageAsRead,
     leaveTeam,
     disbandTeam,
     kickMember,

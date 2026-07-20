@@ -112,6 +112,10 @@
             return await apiRequest(`/my-team/inbox/${id}`, 'DELETE');
         },
 
+        markInboxRead: async function(id) {
+            return await apiRequest(`/my-team/inbox/${id}/read`, 'PUT');
+        },
+
         leaveTeam: async function() {
             return await apiRequest('/my-team/leave', 'POST');
         },

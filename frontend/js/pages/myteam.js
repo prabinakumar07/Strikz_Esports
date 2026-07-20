@@ -356,6 +356,78 @@
 
     // INBOX TAB VIEW RENDERING
     function renderInboxTab(mount, inbox, container) {
+        if (!document.getElementById('inbox-custom-styles')) {
+            const style = document.createElement('style');
+            style.id = 'inbox-custom-styles';
+            style.innerHTML = `
+                .inbox-card {
+                    transition: all 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                    border: 1px solid var(--glass-border);
+                }
+                .inbox-card.unread {
+                    background: rgba(255, 255, 255, 0.02) !important;
+                    box-shadow: 0 0 15px rgba(255, 255, 255, 0.02), inset 0 0 10px rgba(255,255,255,0.01) !important;
+                    border-color: rgba(255,255,255,0.15) !important;
+                }
+                .inbox-card.read {
+                    opacity: 0.8;
+                    background: rgba(0, 0, 0, 0.2) !important;
+                    border-color: var(--glass-border) !important;
+                }
+                .badge-new-message {
+                    position: absolute;
+                    top: 15px;
+                    right: 50px;
+                    background: var(--neon-orange);
+                    color: #000;
+                    font-family: var(--font-header);
+                    font-size: 9px;
+                    font-weight: 800;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    letter-spacing: 0.5px;
+                    pointer-events: none;
+                }
+                .message-time {
+                    font-size: 9px;
+                    color: var(--text-dim);
+                    display: block;
+                    margin-top: 8px;
+                }
+                .btn-neon-green {
+                    background: #25d366 !important;
+                    color: #000 !important;
+                    border: 1px solid #25d366 !important;
+                    box-shadow: 0 0 10px rgba(37, 211, 102, 0.3) !important;
+                }
+                .btn-neon-green:hover {
+                    box-shadow: 0 0 15px rgba(37, 211, 102, 0.6) !important;
+                    background: #20ba5a !important;
+                }
+                .btn-copy-action {
+                    background: rgba(0,0,0,0.4);
+                    border: 1px solid var(--glass-border);
+                    color: var(--text-silver);
+                    transition: all 0.2s ease;
+                }
+                .btn-copy-action:hover {
+                    border-color: var(--neon-cyan);
+                    color: #fff;
+                    box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+                }
+                @media (max-width: 600px) {
+                    .badge-new-message {
+                        position: static;
+                        display: inline-block;
+                        margin-bottom: 8px;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
         if (inbox.length === 0) {
             mount.innerHTML = `
                 <div class="glass-panel text-center" style="border-color: var(--glass-border); padding: 60px 20px;">
@@ -369,74 +441,282 @@
             return;
         }
 
+        function parseInboxMessage(item) {
+            const text = (item.message || '').trim();
+            const title = (item.title || '').trim();
+            
+            // 1. Detect WhatsApp group invitation
+            const waRegex = /(https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+)/i;
+            const waMatch = text.match(waRegex);
+            if (waMatch) {
+                let cleanDesc = text.replace(waMatch[1], '').replace(/WhatsApp Link:?/gi, '').trim();
+                cleanDesc = cleanDesc.replace(/^[:\-\s\n]+|[:\-\s\n]+$/g, '');
+                return {
+                    type: 'whatsapp',
+                    title: title || 'WhatsApp Group Invitation',
+                    description: cleanDesc || 'Join your official tournament group to receive updates.',
+                    link: waMatch[1]
+                };
+            }
+
+            // 2. Detect Room ID and Password
+            const roomIdRegex = /(?:Room\s*ID|Room|ID)[:\-\s]*([0-9]+)/i;
+            const passRegex = /(?:Password|Pass|PW)[:\-\s]*([a-zA-Z0-9@#$]+)/i;
+            
+            const roomMatch = text.match(roomIdRegex);
+            const passMatch = text.match(passRegex);
+            
+            if (roomMatch && passMatch) {
+                let cleanDesc = text.replace(roomIdRegex, '').replace(passRegex, '').trim();
+                cleanDesc = cleanDesc.replace(/^[:\-\s\n,]+|[:\-\s\n,]+$/g, '');
+                return {
+                    type: 'room_details',
+                    title: title || 'Match Room Details',
+                    roomId: roomMatch[1],
+                    password: passMatch[1],
+                    description: cleanDesc
+                };
+            }
+
+            // 3. Detect Match Schedule
+            const dateRegex = /(?:Date)[:\-\s]*([0-9a-zA-Z\s,\-\/]+)/i;
+            const timeRegex = /(?:Time)[:\-\s]*([0-9a-zA-Z\s:\-\/]+)/i;
+            const roundRegex = /(?:Round)[:\-\s]*([0-9a-zA-Z\s\-\/]+)/i;
+            
+            const dateMatch = text.match(dateRegex);
+            const timeMatch = text.match(timeRegex);
+            
+            if (dateMatch || timeMatch) {
+                return {
+                    type: 'schedule',
+                    title: title || 'Match Schedule',
+                    tournamentName: item.metadata?.tournamentName || 'Tournament Championship',
+                    date: dateMatch ? dateMatch[1].trim() : 'TBD',
+                    time: timeMatch ? timeMatch[1].trim() : 'TBD',
+                    round: text.match(roundRegex) ? text.match(roundRegex)[1].trim() : 'Main Bracket',
+                    status: 'Scheduled',
+                    description: text
+                };
+            }
+
+            // 4. Default to announcement or admin message
+            if (title.toLowerCase().includes('announcement') || text.toLowerCase().includes('announcement')) {
+                return {
+                    type: 'announcement',
+                    title: title || 'Tournament Announcement',
+                    message: text
+                };
+            }
+
+            return {
+                type: 'admin_message',
+                title: title || 'Admin Message',
+                message: text
+            };
+        }
+
         mount.innerHTML = `
             <div style="display: grid; gap: 15px;">
                 ${inbox.map(item => {
                     if (item.type === 'team_invite') {
                         return `
-                            <div class="glass-panel" style="border-color: var(--neon-yellow-border); padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; background: rgba(255,230,0,0.01);">
-                                <div style="display: flex; gap: 15px; align-items: center; min-width: 250px; flex: 1;">
-                                    <img src="${item.metadata.logo}" alt="Logo" style="width: 50px; height: 50px; border-radius: 4px; border: 1px solid var(--glass-border); background:rgba(0,0,0,0.5); padding:3px;">
-                                    <div>
-                                        <h4 class="font-orbitron" style="font-size: 15px; color: #fff; margin:0;">${item.title}</h4>
-                                        <div style="font-size: 11px; color: var(--neon-yellow); margin-top:4px; font-weight:700;">CAPTAIN: ${item.metadata.captainName} | ROLE: ${item.metadata.role}</div>
-                                        <p style="font-size:12px; color:var(--text-dim); margin: 6px 0 0 0; line-height:1.4;">${item.metadata.description}</p>
-                                        <span style="font-size:9px; color:var(--text-dim); display:block; margin-top:6px;"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
+                            <div class="inbox-card glass-panel ${item.read ? 'read' : 'unread'}" data-id="${item.id}" style="border-left: 4px solid var(--neon-yellow); padding: 20px;">
+                                ${!item.read ? '<span class="badge-new-message">NEW</span>' : ''}
+                                <div style="display: flex; justify-content: space-between; align-items: start; gap: 15px; flex-wrap: wrap;">
+                                    <div style="display: flex; gap: 15px; align-items: center; min-width: 250px; flex: 1;">
+                                        <img src="${item.metadata.logo || 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(item.metadata.teamName)}" alt="Logo" style="width: 50px; height: 50px; border-radius: 4px; border: 1px solid var(--glass-border); background:rgba(0,0,0,0.5); padding:3px; flex-shrink:0;">
+                                        <div>
+                                            <h4 class="font-orbitron" style="font-size: 14px; color: #fff; margin:0; font-weight: ${item.read ? 'normal' : 'bold'};">${item.title}</h4>
+                                            <div style="font-size: 11px; color: var(--neon-yellow); margin-top:4px; font-weight:700; text-transform: uppercase;">CAPTAIN: ${item.metadata.captainName} | ROLE: ${item.metadata.role}</div>
+                                            <p style="font-size:12px; color:var(--text-silver); margin: 6px 0 0 0; line-height:1.4; word-break: break-word;">${item.metadata.description || 'No description provided.'}</p>
+                                            <span class="message-time"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
+                                        </div>
                                     </div>
-                                </div>
-                                <div style="display: flex; gap: 10px;">
-                                    <button class="cta-button btn-neon-yellow btn-inbox-accept-invite" data-team-id="${item.metadata.teamId}" style="padding: 8px 16px; font-size: 11px; font-weight:800; color:#000 !important;">
-                                        ACCEPT
-                                    </button>
-                                    <button class="cta-button btn-neon-orange btn-inbox-decline-invite" data-team-id="${item.metadata.teamId}" style="padding: 8px 16px; font-size: 11px; font-weight:800;">
-                                        DECLINE
-                                    </button>
+                                    <div style="display: flex; gap: 10px; align-self: center;">
+                                        <button class="cta-button btn-neon-yellow btn-inbox-accept-invite" data-team-id="${item.metadata.teamId}" style="padding: 8px 16px; font-size: 11px; font-weight:800; color:#000 !important;">
+                                            ACCEPT
+                                        </button>
+                                        <button class="cta-button btn-neon-orange btn-inbox-decline-invite" data-team-id="${item.metadata.teamId}" style="padding: 8px 16px; font-size: 11px; font-weight:800;">
+                                            DECLINE
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         `;
                     } else if (item.type === 'tournament_confirm') {
                         return `
-                            <div class="glass-panel" style="border-color: var(--neon-orange-border); padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; background: rgba(255,94,0,0.01);">
-                                <div style="min-width: 250px; flex: 1;">
-                                    <h4 class="font-orbitron" style="font-size: 15px; color: #fff; margin:0; display:flex; align-items:center; gap:8px;">
-                                        <i class="fa-solid fa-file-signature" style="color:var(--neon-orange)"></i> ${item.title}
-                                    </h4>
-                                    <p style="font-size:13px; color:var(--text-silver); margin: 8px 0 0 0; line-height:1.4;">${item.message}</p>
-                                    <div style="font-size:11px; color:var(--text-dim); margin-top:5px;">Ticket Code: <strong>${item.metadata.regId}</strong></div>
-                                    <span style="font-size:9px; color:var(--text-dim); display:block; margin-top:6px;"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
-                                </div>
-                                <div>
-                                    <button class="cta-button btn-neon-yellow btn-inbox-confirm-join" data-reg-id="${item.metadata.regId}" style="padding: 8px 16px; font-size: 11px; font-weight:800; color:#000 !important; white-space:nowrap;">
-                                        CONFIRM JOIN
-                                    </button>
+                            <div class="inbox-card glass-panel ${item.read ? 'read' : 'unread'}" data-id="${item.id}" style="border-left: 4px solid var(--neon-orange); padding: 20px;">
+                                ${!item.read ? '<span class="badge-new-message">NEW</span>' : ''}
+                                <div style="display: flex; justify-content: space-between; align-items: start; gap: 15px; flex-wrap: wrap;">
+                                    <div style="display: flex; gap: 15px; align-items: center; min-width: 250px; flex: 1;">
+                                        <div style="width: 45px; height: 45px; border-radius: 50%; background: rgba(255, 94, 0, 0.1); border: 1px solid rgba(255, 94, 0, 0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                            <i class="fa-solid fa-file-signature" style="font-size: 20px; color: var(--neon-orange);"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-orbitron" style="font-size: 14px; color: #fff; margin:0; font-weight: ${item.read ? 'normal' : 'bold'};">${item.title}</h4>
+                                            <p style="font-size:12px; color:var(--text-silver); margin: 6px 0 0 0; line-height:1.4; word-break: break-word;">${item.message}</p>
+                                            <div style="font-size:10px; color:var(--text-dim); margin-top:5px; text-transform: uppercase;">Ticket Code: <strong style="color: var(--neon-orange);">${item.metadata.regId}</strong></div>
+                                            <span class="message-time"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
+                                        </div>
+                                    </div>
+                                    <div style="align-self: center;">
+                                        <button class="cta-button btn-neon-yellow btn-inbox-confirm-join" data-reg-id="${item.metadata.regId}" style="padding: 8px 16px; font-size: 11px; font-weight:800; color:#000 !important; white-space:nowrap;">
+                                            CONFIRM JOIN
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         `;
                     } else {
-                        // General alerts / notifications from database
-                        return `
-                            <div class="glass-panel" style="border-color: var(--glass-border); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
-                                <div style="flex:1;">
-                                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-cyan); margin:0; display:flex; align-items:center; gap:6px;">
-                                        <i class="fa-solid fa-circle-info"></i> ${item.title}
-                                    </h4>
-                                    <p style="font-size:12px; color:var(--text-silver); margin: 6px 0 0 0; line-height:1.4;">${item.message}</p>
-                                    <span style="font-size:9px; color:var(--text-dim); display:block; margin-top:4px;"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
+                        const parsed = parseInboxMessage(item);
+                        if (parsed.type === 'whatsapp') {
+                            return `
+                                <div class="inbox-card glass-panel ${item.read ? 'read' : 'unread'}" data-id="${item.id}" style="border-left: 4px solid #25d366; padding: 20px;">
+                                    ${!item.read ? '<span class="badge-new-message">NEW</span>' : ''}
+                                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                                        <div style="display: flex; gap: 15px; align-items: center; width: 100%;">
+                                            <div style="width: 45px; height: 45px; border-radius: 50%; background: rgba(37, 211, 102, 0.1); border: 1px solid rgba(37, 211, 102, 0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                                <i class="fa-brands fa-whatsapp" style="font-size: 24px; color: #25d366;"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-orbitron" style="font-size: 14px; color: #fff; margin: 0; font-weight: ${item.read ? 'normal' : 'bold'};">${parsed.title}</h4>
+                                                <p style="font-size: 12px; color: var(--text-silver); margin: 6px 0 0 0; line-height: 1.5; word-break: break-word;">${parsed.description}</p>
+                                                <span class="message-time"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
+                                            </div>
+                                        </div>
+                                        <button class="btn-inbox-dismiss" data-notif-id="${item.id}" title="Dismiss message" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:6px; transition:color 0.2s;">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                    <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
+                                        <a href="${parsed.link}" target="_blank" class="cta-button btn-neon-green btn-whatsapp-join" data-id="${item.id}" style="padding: 8px 16px; font-size: 11px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+                                            <i class="fa-brands fa-whatsapp"></i> JOIN WHATSAPP GROUP
+                                        </a>
+                                    </div>
                                 </div>
-                                <div>
-                                    <button class="btn-inbox-dismiss" data-notif-id="${item.id}" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:6px; transition:color 0.2s;" title="Dismiss message">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
+                            `;
+                        } else if (parsed.type === 'room_details') {
+                            return `
+                                <div class="inbox-card glass-panel ${item.read ? 'read' : 'unread'}" data-id="${item.id}" style="border-left: 4px solid var(--neon-cyan); padding: 20px;">
+                                    ${!item.read ? '<span class="badge-new-message">NEW</span>' : ''}
+                                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                                        <div style="display: flex; gap: 15px; align-items: center; width: 100%;">
+                                            <div style="width: 45px; height: 45px; border-radius: 50%; background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                                <i class="fa-solid fa-gamepad" style="font-size: 20px; color: var(--neon-cyan);"></i>
+                                            </div>
+                                            <div style="flex-grow: 1;">
+                                                <h4 class="font-orbitron" style="font-size: 14px; color: #fff; margin: 0; font-weight: ${item.read ? 'normal' : 'bold'};">${parsed.title}</h4>
+                                                ${parsed.description ? `<p style="font-size: 12px; color: var(--text-silver); margin: 6px 0 10px 0; line-height: 1.5; word-break: break-word;">${parsed.description}</p>` : ''}
+                                                
+                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; padding: 12px;">
+                                                    <div>
+                                                        <span style="font-size: 10px; color: var(--text-dim); display: block; text-transform: uppercase;">ROOM ID</span>
+                                                        <span class="font-orbitron" style="font-size: 15px; color: var(--neon-cyan); font-weight: bold; letter-spacing: 1px;">${parsed.roomId}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span style="font-size: 10px; color: var(--text-dim); display: block; text-transform: uppercase;">PASSWORD</span>
+                                                        <span class="font-orbitron" style="font-size: 15px; color: var(--neon-yellow); font-weight: bold; letter-spacing: 1px;">${parsed.password}</span>
+                                                    </div>
+                                                </div>
+
+                                                <span class="message-time"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
+                                            </div>
+                                        </div>
+                                        <button class="btn-inbox-dismiss" data-notif-id="${item.id}" title="Dismiss message" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:6px; transition:color 0.2s;">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                    <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+                                        <button class="cta-button btn-copy-action btn-copy-room" data-room="${parsed.roomId}" data-id="${item.id}" style="padding: 6px 12px; font-size: 10px;">
+                                            <i class="fa-solid fa-copy"></i> COPY ROOM ID
+                                        </button>
+                                        <button class="cta-button btn-copy-action btn-copy-pass" data-pass="${parsed.password}" data-id="${item.id}" style="padding: 6px 12px; font-size: 10px;">
+                                            <i class="fa-solid fa-copy"></i> COPY PASSWORD
+                                        </button>
+                                        <button class="cta-button btn-neon-yellow btn-copy-action btn-copy-all" data-all="Room ID: ${parsed.roomId}\nPassword: ${parsed.password}" data-id="${item.id}" style="padding: 6px 12px; font-size: 10px; color: #000 !important;">
+                                            <i class="fa-solid fa-copy"></i> COPY ALL
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        `;
+                            `;
+                        } else if (parsed.type === 'schedule') {
+                            return `
+                                <div class="inbox-card glass-panel ${item.read ? 'read' : 'unread'}" data-id="${item.id}" style="border-left: 4px solid var(--neon-yellow); padding: 20px;">
+                                    ${!item.read ? '<span class="badge-new-message">NEW</span>' : ''}
+                                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                                        <div style="display: flex; gap: 15px; align-items: center; width: 100%;">
+                                            <div style="width: 45px; height: 45px; border-radius: 50%; background: rgba(255, 230, 0, 0.1); border: 1px solid rgba(255, 230, 0, 0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                                <i class="fa-solid fa-calendar-days" style="font-size: 20px; color: var(--neon-yellow);"></i>
+                                            </div>
+                                            <div style="flex-grow: 1;">
+                                                <h4 class="font-orbitron" style="font-size: 14px; color: #fff; margin: 0; font-weight: ${item.read ? 'normal' : 'bold'};">${parsed.title}</h4>
+                                                
+                                                <div style="margin-top: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; padding: 12px; font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                                    <div><span style="color:var(--text-dim);">Tournament:</span> <strong style="color:#fff;">${parsed.tournamentName}</strong></div>
+                                                    <div><span style="color:var(--text-dim);">Round:</span> <strong style="color:#fff;">${parsed.round}</strong></div>
+                                                    <div><span style="color:var(--text-dim);">Date:</span> <strong style="color:var(--neon-cyan);">${parsed.date}</strong></div>
+                                                    <div><span style="color:var(--text-dim);">Time:</span> <strong style="color:var(--neon-yellow);">${parsed.time}</strong></div>
+                                                </div>
+
+                                                <span class="message-time"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
+                                            </div>
+                                        </div>
+                                        <button class="btn-inbox-dismiss" data-notif-id="${item.id}" title="Dismiss message" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:6px; transition:color 0.2s;">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        } else if (parsed.type === 'announcement') {
+                            return `
+                                <div class="inbox-card glass-panel ${item.read ? 'read' : 'unread'}" data-id="${item.id}" style="border-left: 4px solid var(--neon-orange); padding: 20px;">
+                                    ${!item.read ? '<span class="badge-new-message">NEW</span>' : ''}
+                                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                                        <div style="display: flex; gap: 15px; align-items: center; width: 100%;">
+                                            <div style="width: 45px; height: 45px; border-radius: 50%; background: rgba(255, 110, 0, 0.1); border: 1px solid rgba(255, 110, 0, 0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                                <i class="fa-solid fa-bullhorn" style="font-size: 20px; color: var(--neon-orange);"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-orbitron" style="font-size: 14px; color: #fff; margin: 0; font-weight: ${item.read ? 'normal' : 'bold'};">${parsed.title}</h4>
+                                                <p style="font-size: 12px; color: var(--text-silver); margin: 6px 0 0 0; line-height: 1.5; word-break: break-word;">${parsed.message}</p>
+                                                <span class="message-time"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
+                                            </div>
+                                        </div>
+                                        <button class="btn-inbox-dismiss" data-notif-id="${item.id}" title="Dismiss message" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:6px; transition:color 0.2s;">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            return `
+                                <div class="inbox-card glass-panel ${item.read ? 'read' : 'unread'}" data-id="${item.id}" style="border-left: 4px solid #9c27b0; padding: 20px;">
+                                    ${!item.read ? '<span class="badge-new-message">NEW</span>' : ''}
+                                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                                        <div style="display: flex; gap: 15px; align-items: center; width: 100%;">
+                                            <div style="width: 45px; height: 45px; border-radius: 50%; background: rgba(156, 39, 176, 0.1); border: 1px solid rgba(156, 39, 176, 0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                                <i class="fa-solid fa-comment-dots" style="font-size: 20px; color: #e040fb;"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-orbitron" style="font-size: 14px; color: #fff; margin: 0; font-weight: ${item.read ? 'normal' : 'bold'};">${parsed.title}</h4>
+                                                <p style="font-size: 12px; color: var(--text-silver); margin: 6px 0 0 0; line-height: 1.5; word-break: break-word;">${parsed.message}</p>
+                                                <span class="message-time"><i class="fa-solid fa-clock"></i> ${window.strikzFormatDate(item.date)}</span>
+                                            </div>
+                                        </div>
+                                        <button class="btn-inbox-dismiss" data-notif-id="${item.id}" title="Dismiss message" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:6px; transition:color 0.2s;">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }
                     }
                 }).join('')}
             </div>
         `;
 
         // Bind Accept Team Invitation
-        document.querySelectorAll('.btn-inbox-accept-invite').forEach(btn => {
+        mount.querySelectorAll('.btn-inbox-accept-invite').forEach(btn => {
             btn.onclick = async function() {
                 const teamId = this.dataset.teamId;
                 if (window.strikzPlayClickSound) window.strikzPlayClickSound();
@@ -452,7 +732,7 @@
         });
 
         // Bind Decline Team Invitation
-        document.querySelectorAll('.btn-inbox-decline-invite').forEach(btn => {
+        mount.querySelectorAll('.btn-inbox-decline-invite').forEach(btn => {
             btn.onclick = async function() {
                 const teamId = this.dataset.teamId;
                 if (window.strikzPlayClickSound) window.strikzPlayClickSound();
@@ -468,7 +748,7 @@
         });
 
         // Bind Tournament Roster Confirmation Join
-        document.querySelectorAll('.btn-inbox-confirm-join').forEach(btn => {
+        mount.querySelectorAll('.btn-inbox-confirm-join').forEach(btn => {
             btn.onclick = async function() {
                 const regId = this.dataset.regId;
                 if (window.strikzPlayClickSound) window.strikzPlayClickSound();
@@ -484,7 +764,7 @@
         });
 
         // Bind Alert Dismissal
-        document.querySelectorAll('.btn-inbox-dismiss').forEach(btn => {
+        mount.querySelectorAll('.btn-inbox-dismiss').forEach(btn => {
             btn.onmouseenter = () => btn.style.color = 'var(--neon-orange)';
             btn.onmouseleave = () => btn.style.color = 'var(--text-dim)';
             btn.onclick = async function() {
@@ -498,6 +778,63 @@
                 }
             };
         });
+
+        // Bind Copy Actions
+        mount.querySelectorAll('.btn-copy-action').forEach(btn => {
+            btn.onclick = function() {
+                let textToCopy = '';
+                if (this.dataset.room) {
+                    textToCopy = this.dataset.room;
+                } else if (this.dataset.pass) {
+                    textToCopy = this.dataset.pass;
+                } else if (this.dataset.all) {
+                    textToCopy = this.dataset.all;
+                }
+
+                if (textToCopy) {
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        const originalHtml = this.innerHTML;
+                        this.innerHTML = '<i class="fa-solid fa-check"></i> COPIED!';
+                        if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
+                        setTimeout(() => {
+                            this.innerHTML = originalHtml;
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Could not copy text: ', err);
+                    });
+                }
+            };
+        });
+
+        // Automatically mark unread items as Read after 1.5 seconds delay with micro-animations
+        setTimeout(async () => {
+            const unreadCards = mount.querySelectorAll('.inbox-card.unread');
+            if (unreadCards.length > 0) {
+                unreadCards.forEach(async card => {
+                    const id = card.dataset.id;
+                    try {
+                        await window.strikzDb.markInboxRead(id);
+                        
+                        const badge = card.querySelector('.badge-new-message');
+                        if (badge) {
+                            badge.style.transition = 'opacity 0.5s ease';
+                            badge.style.opacity = '0';
+                            setTimeout(() => badge.remove(), 500);
+                        }
+                        
+                        card.classList.remove('unread');
+                        card.classList.add('read');
+                    } catch (e) {
+                        console.error('Failed to mark message as read:', e);
+                    }
+                });
+                
+                // Trigger badges count update after DB update has settled
+                setTimeout(() => {
+                    if (window.updateInboxBadges) window.updateInboxBadges();
+                }, 200);
+            }
+        }, 1500);
     }
 
     // FRIENDS & DM TAB RENDERING

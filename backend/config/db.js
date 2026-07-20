@@ -104,7 +104,8 @@ const models = {
         role: { type: String },
         confirmed: { type: Boolean },
         real_name: { type: String },
-        game_uid: { type: String }
+        game_uid: { type: String },
+        read: { type: Boolean, default: false }
     }),
     Team: createModel('Team', 'teams', String, {
         captain_uid: { type: String, unique: true, sparse: true, index: true },
@@ -120,7 +121,8 @@ const models = {
         confirmed: { type: Boolean },
         name: { type: String },
         real_name: { type: String },
-        game_uid: { type: String }
+        game_uid: { type: String },
+        read: { type: Boolean, default: false }
     }),
     News: createModel('News', 'news', String, {
         title: { type: String },

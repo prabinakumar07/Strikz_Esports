@@ -12,6 +12,7 @@ const {
     getPendingConfirmations,
     getMyTeamInbox,
     dismissNotification,
+    markMessageAsRead,
     leaveTeam,
     disbandTeam,
     kickMember,
@@ -36,6 +37,7 @@ router.post('/my-team/confirm-join', protect, confirmJoin);
 
 router.get('/my-team/inbox', protect, getMyTeamInbox);
 router.delete('/my-team/inbox/:id', protect, dismissNotification);
+router.put('/my-team/inbox/:id/read', protect, markMessageAsRead);
 router.post('/my-team/leave', protect, leaveTeam);
 router.post('/my-team/disband', protect, disbandTeam);
 router.post('/my-team/kick', protect, kickMember);

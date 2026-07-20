@@ -555,6 +555,7 @@
             sessionStorage.removeItem('strikz_jwt_token');
             sessionStorage.removeItem('strikz_user_profile');
             sessionStorage.removeItem('strikz_inbox_popup_shown');
+            sessionStorage.removeItem('strikz_popup_shown_ids');
             updateAuthUI();
             router();
             window.dispatchEvent(new CustomEvent('strikz-auth-changed', { detail: null }));
@@ -1074,7 +1075,10 @@
         if (!authManager.isLoggedIn()) return;
         try {
             const res = await window.strikzDb.getMyTeamInbox();
-            const count = (res && res.inbox) ? res.inbox.length : 0;
+            const inboxList = (res && res.inbox) ? res.inbox : [];
+            const unreadItems = inboxList.filter(item => !item.read);
+            const count = unreadItems.length;
+
             const desktopBadge = document.getElementById('desktop-inbox-badge');
             const mobileBadge = document.getElementById('mobile-inbox-badge');
             if (desktopBadge) {
@@ -1091,9 +1095,19 @@
                 else portalBadge.classList.add('hidden');
             }
 
-            if (count > 0 && !sessionStorage.getItem('strikz_inbox_popup_shown')) {
-                sessionStorage.setItem('strikz_inbox_popup_shown', 'true');
-                showInboxPopup(count);
+            if (count > 0) {
+                let shownIds = [];
+                try {
+                    shownIds = JSON.parse(sessionStorage.getItem('strikz_popup_shown_ids') || '[]');
+                } catch(e){}
+
+                const newUnreadItems = unreadItems.filter(item => !shownIds.includes(item.id));
+                if (newUnreadItems.length > 0) {
+                    const newShownIds = [...shownIds, ...newUnreadItems.map(item => item.id)];
+                    sessionStorage.setItem('strikz_popup_shown_ids', JSON.stringify(newShownIds));
+                    sessionStorage.setItem('strikz_inbox_popup_shown', 'true');
+                    showInboxPopup(count);
+                }
             }
         } catch (e) {
             console.error('Failed to update inbox badges', e);
