@@ -2532,7 +2532,7 @@ button, input, select, textarea {
     }
     .form-row {
         grid-template-columns: 1fr;
-        gap: 0;
+        gap: 15px;
     }
     .analytics-grid {
         grid-template-columns: repeat(2, 1fr);

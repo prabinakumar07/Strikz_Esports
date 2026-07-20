@@ -554,6 +554,7 @@
             sessionStorage.removeItem('strikz_admin_logged_in');
             sessionStorage.removeItem('strikz_jwt_token');
             sessionStorage.removeItem('strikz_user_profile');
+            sessionStorage.removeItem('strikz_inbox_popup_shown');
             updateAuthUI();
             router();
             window.dispatchEvent(new CustomEvent('strikz-auth-changed', { detail: null }));
@@ -1004,6 +1005,71 @@
         }
     }
 
+    function showInboxPopup(count) {
+        if (document.getElementById('inbox-popup-modal')) return;
+
+        const popup = document.createElement('div');
+        popup.id = 'inbox-popup-modal';
+        popup.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999999;
+            backdrop-filter: blur(8px);
+            animation: fadeIn 0.3s ease;
+        `;
+
+        popup.innerHTML = `
+            <div class="glass-panel text-center reveal active" style="max-width: 420px; padding: 35px 25px; border: 1.5px solid var(--neon-orange); border-radius: 12px; background: rgba(14, 14, 18, 0.95); box-shadow: 0 0 20px rgba(255, 110, 0, 0.2); animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);">
+                <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(255, 110, 0, 0.1); border: 1px solid var(--neon-orange); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; position: relative;">
+                    <i class="fa-solid fa-envelope" style="font-size: 28px; color: var(--neon-orange);"></i>
+                    <span style="position: absolute; top: -5px; right: -5px; background: var(--neon-orange); color: #000; font-family: var(--font-header); font-size: 11px; font-weight: 800; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border: 2px solid #000;">
+                        ${count}
+                    </span>
+                </div>
+                <h3 class="font-orbitron" style="color: #fff; font-size: 18px; margin-bottom: 12px; letter-spacing: 0.05em;">UNREAD INBOX MESSAGES</h3>
+                <p style="font-size: 13.5px; color: var(--text-silver); line-height: 1.6; margin-bottom: 25px;">
+                    You have <strong style="color: var(--neon-orange);">${count}</strong> unread message${count > 1 ? 's' : ''} waiting in your Arena Inbox. Please review your notifications or squad invitations.
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <a href="#/inbox" id="btn-popup-view-inbox" class="cta-button btn-neon-orange" style="padding: 12px; font-size: 12px; text-decoration: none; display: block;" onclick="if(window.strikzPlayClickSound) window.strikzPlayClickSound();">
+                        <i class="fa-solid fa-eye"></i> VIEW MESSAGES
+                    </a>
+                    <button id="btn-popup-close-inbox" class="cta-button" style="padding: 10px; font-size: 11px; border: 1px solid var(--glass-border); color: #fff; background: none;" onclick="if(window.strikzPlayClickSound) window.strikzPlayClickSound();">
+                        LATER
+                    </button>
+                </div>
+            </div>
+        `;
+
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes scaleIn {
+                from { transform: scale(0.9); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+            }
+        `;
+        popup.appendChild(style);
+        document.body.appendChild(popup);
+
+        document.getElementById('btn-popup-view-inbox').onclick = () => {
+            popup.remove();
+        };
+        document.getElementById('btn-popup-close-inbox').onclick = () => {
+            popup.remove();
+        };
+    }
+
     async function updateInboxBadges() {
         if (!authManager.isLoggedIn()) return;
         try {
@@ -1023,6 +1089,11 @@
             if (portalBadge) {
                 if (count > 0) portalBadge.classList.remove('hidden');
                 else portalBadge.classList.add('hidden');
+            }
+
+            if (count > 0 && !sessionStorage.getItem('strikz_inbox_popup_shown')) {
+                sessionStorage.setItem('strikz_inbox_popup_shown', 'true');
+                showInboxPopup(count);
             }
         } catch (e) {
             console.error('Failed to update inbox badges', e);

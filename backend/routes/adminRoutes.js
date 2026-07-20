@@ -34,7 +34,11 @@ const {
     resolveTicket,
     createProduct,
     updateProduct,
-    deleteProduct
+    deleteProduct,
+    bulkActionRegistrations,
+    renameGroup,
+    autoDivideGroups,
+    sendInboxMessages
 } = require('../controllers/adminController');
 const {
     getAllUsers,
@@ -77,6 +81,10 @@ router.get('/stats', getStats);
 router.get('/registrations', getRegistrations);
 router.put('/registrations/:id/status', updateRegistrationStatus);
 router.delete('/registrations/:id', deleteRegistration);
+router.post('/registrations/bulk', bulkActionRegistrations);
+router.post('/registrations/groups/rename', renameGroup);
+router.post('/registrations/groups/auto-divide', autoDivideGroups);
+router.post('/messages/send', sendInboxMessages);
 
 // Tournaments management
 router.post('/tournaments', createTournament);

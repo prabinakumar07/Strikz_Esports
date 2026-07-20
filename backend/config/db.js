@@ -94,7 +94,8 @@ const models = {
         role: { type: String },
         submission_date: { type: String },
         remindersSent: { type: mongoose.Schema.Types.Mixed },
-        attendanceReminders: { type: mongoose.Schema.Types.Mixed }
+        attendanceReminders: { type: mongoose.Schema.Types.Mixed },
+        group: { type: String, default: '' }
     }),
     RegistrationPlayer: createModel('RegistrationPlayer', 'registration_players', Number, {
         registration_id: { type: String, index: true },
@@ -251,8 +252,11 @@ const models = {
     Notification: createModel('Notification', 'notifications', Number, {
         user_uid: { type: String, index: true },
         type: { type: String },
+        title: { type: String },
         message: { type: String },
-        read: { type: Boolean, default: false }
+        content: { type: String },
+        read: { type: Boolean, default: false },
+        created_at: { type: Date, default: Date.now }
     }),
     UploadedFile: createModel('UploadedFile', 'uploaded_files', String, {
         filename: { type: String, index: true },

@@ -138,19 +138,23 @@ const updateRegistrationStatus = async (req, res, next) => {
         const { id } = req.params;
         const { status } = req.body;
 
-        if (!status || !['Pending', 'Approved', 'Rejected'].includes(status)) {
+        if (!status || !['Pending', 'Ready to Confirm', 'Confirmed', 'Approved', 'Rejected'].includes(status)) {
             res.status(400);
             return next(new Error('Invalid verification status value'));
         }
 
         let stage = 1;
-        if (status === 'Approved') stage = 3;
-        if (status === 'Pending') {
+        if (status === 'Confirmed' || status === 'Approved') stage = 3;
+        else if (status === 'Ready to Confirm') stage = 2;
+        else if (status === 'Rejected') stage = 4;
+        else if (status === 'Pending') {
             const players = await models.RegistrationPlayer.find({ registration_id: id }).select('confirmed').lean();
             stage = players.length > 0 && players.every((p) => p.confirmed === true) ? 2 : 1;
         }
 
-        const result = await models.Registration.updateOne({ id }, { $set: { status, stage } });
+        const normalizedStatus = status === 'Approved' ? 'Confirmed' : status;
+
+        const result = await models.Registration.updateOne({ id }, { $set: { status: normalizedStatus, stage } });
         if (result.matchedCount === 0) {
             res.status(404);
             return next(new Error('Registration ticket not found'));
@@ -158,13 +162,13 @@ const updateRegistrationStatus = async (req, res, next) => {
 
         try {
             const emailService = require('../utils/emailService');
-            await emailService.notifyRegistrationStatusChange(id, status);
+            await emailService.notifyRegistrationStatusChange(id, normalizedStatus);
         } catch (emailErr) {
             console.error('Failed to notify team of status update:', emailErr.message);
         }
 
-        await logAdminAction(req, 'UPDATE_REGISTRATION_STATUS', { id, status, stage });
-        res.json({ success: true, message: `Registration ticket status updated to: ${status} (Stage ${stage})` });
+        await logAdminAction(req, 'UPDATE_REGISTRATION_STATUS', { id, status: normalizedStatus, stage });
+        res.json({ success: true, message: `Registration ticket status updated to: ${normalizedStatus} (Stage ${stage})` });
     } catch (err) {
         next(err);
     }
@@ -942,6 +946,268 @@ const deleteProduct = async (req, res, next) => {
     } catch (err) { next(err); }
 };
 
+const escapeRegExp = (string) => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
+// Bulk registration updates (Status changes, Group assignments, Deletions, and Group Inbox messaging)
+const bulkActionRegistrations = async (req, res, next) => {
+    try {
+        const { ids, action, value } = req.body;
+
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            res.status(400);
+            return next(new Error('Please provide an array of registration IDs'));
+        }
+
+        if (action === 'status') {
+            if (!value || !['Pending', 'Ready to Confirm', 'Confirmed', 'Approved', 'Rejected'].includes(value)) {
+                res.status(400);
+                return next(new Error('Invalid bulk status value'));
+            }
+
+            let stage = 1;
+            if (value === 'Confirmed' || value === 'Approved') stage = 3;
+            else if (value === 'Ready to Confirm') stage = 2;
+            else if (value === 'Rejected') stage = 4;
+
+            const normalizedStatus = value === 'Approved' ? 'Confirmed' : value;
+
+            await models.Registration.updateMany({ id: { $in: ids } }, { $set: { status: normalizedStatus, stage } });
+
+            // Notify teams via email
+            const emailService = require('../utils/emailService');
+            for (const id of ids) {
+                try {
+                    await emailService.notifyRegistrationStatusChange(id, normalizedStatus);
+                } catch (emailErr) {
+                    console.error('Failed to notify team of status update in bulk:', emailErr.message);
+                }
+            }
+
+            await logAdminAction(req, 'BULK_UPDATE_REGISTRATION_STATUS', { ids, status: normalizedStatus, stage });
+
+        } else if (action === 'group') {
+            const groupName = (value || '').trim();
+            await models.Registration.updateMany({ id: { $in: ids } }, { $set: { group: groupName } });
+            await logAdminAction(req, 'BULK_ASSIGN_REGISTRATION_GROUP', { ids, group: groupName });
+
+        } else if (action === 'delete') {
+            await models.Registration.deleteMany({ id: { $in: ids } });
+            await models.RegistrationPlayer.deleteMany({ registration_id: { $in: ids } });
+            await logAdminAction(req, 'BULK_DELETE_REGISTRATIONS', { ids });
+
+        } else if (action === 'message') {
+            const { title, message } = value || {};
+            if (!title || !message) {
+                res.status(400);
+                return next(new Error('Please provide message title and content'));
+            }
+
+            // Find all players of these registrations
+            const players = await models.RegistrationPlayer.find({ registration_id: { $in: ids } }).lean();
+            const uids = [...new Set(players.map(p => p.user_uid).filter(Boolean))];
+
+            // Also include captains
+            const regs = await models.Registration.find({ id: { $in: ids } }).lean();
+            const captainEmails = regs.map(r => r.captain_email).filter(Boolean);
+            if (captainEmails.length > 0) {
+                const captains = await models.User.find({ email: { $in: captainEmails } }).select('uid').lean();
+                captains.forEach(c => {
+                    if (c.uid && !uids.includes(c.uid)) uids.push(c.uid);
+                });
+            }
+
+            let nextId = await nextNumberId(models.Notification);
+            const notificationsToCreate = uids.map(uid => ({
+                id: nextId++,
+                user_uid: uid,
+                type: 'alert',
+                title: title,
+                message: message,
+                content: message,
+                read: false,
+                created_at: new Date()
+            }));
+
+            if (notificationsToCreate.length > 0) {
+                await models.Notification.insertMany(notificationsToCreate);
+            }
+
+            await logAdminAction(req, 'BULK_MESSAGE_REGISTRATIONS', { ids, title });
+        } else {
+            res.status(400);
+            return next(new Error('Invalid bulk action target'));
+        }
+
+        res.json({ success: true, message: `Bulk action '${action}' completed successfully for ${ids.length} items` });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Rename a specific group within a tournament
+const renameGroup = async (req, res, next) => {
+    try {
+        const { tournamentId, oldGroupName, newGroupName } = req.body;
+
+        if (!tournamentId || oldGroupName === undefined || newGroupName === undefined) {
+            res.status(400);
+            return next(new Error('Please provide tournamentId, oldGroupName and newGroupName'));
+        }
+
+        const oldTrim = (oldGroupName || '').trim();
+        const newTrim = (newGroupName || '').trim();
+
+        const result = await models.Registration.updateMany(
+            { tournament_id: tournamentId, group: oldTrim },
+            { $set: { group: newTrim } }
+        );
+
+        await logAdminAction(req, 'RENAME_REGISTRATION_GROUP', { tournamentId, oldGroupName: oldTrim, newGroupName: newTrim });
+        res.json({ success: true, message: `Group '${oldTrim}' renamed to '${newTrim}' in ${result.modifiedCount} registrations` });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Automatically divide registrations into groups
+const autoDivideGroups = async (req, res, next) => {
+    try {
+        const { tournamentId, numGroups, groupSize, statusFilter } = req.body;
+
+        if (!tournamentId) {
+            res.status(400);
+            return next(new Error('Please provide the tournamentId'));
+        }
+
+        const nGroups = parseInt(numGroups) || 12;
+        const size = parseInt(groupSize) || 12;
+
+        const query = { tournament_id: tournamentId, type: { $ne: 'Solo' } };
+        if (statusFilter && statusFilter !== 'All') {
+            query.status = statusFilter;
+        } else {
+            query.status = { $in: ['Confirmed', 'Approved', 'Ready to Confirm'] };
+        }
+
+        const regs = await models.Registration.find(query).sort({ submission_date: 1 }).lean();
+
+        if (regs.length === 0) {
+            res.status(404);
+            return next(new Error('No matching registrations found to partition into groups'));
+        }
+
+        const getGroupName = (index) => {
+            const letter = String.fromCharCode(65 + (index % 26));
+            const suffix = index >= 26 ? Math.floor(index / 26) + 1 : '';
+            return `Group ${letter}${suffix}`;
+        };
+
+        const groupNames = Array.from({ length: nGroups }, (_, i) => getGroupName(i));
+
+        for (let i = 0; i < regs.length; i++) {
+            const groupIndex = Math.min(Math.floor(i / size), nGroups - 1);
+            const assignedGroup = groupNames[groupIndex];
+            await models.Registration.updateOne({ id: regs[i].id }, { $set: { group: assignedGroup } });
+        }
+
+        await logAdminAction(req, 'AUTO_DIVIDE_REGISTRATION_GROUPS', { tournamentId, numGroups: nGroups, groupSize: size });
+        res.json({ success: true, message: `Successfully divided ${regs.length} registrations into ${nGroups} groups of up to ${size} teams` });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Send targeted segment inbox notifications
+const sendInboxMessages = async (req, res, next) => {
+    try {
+        const { targetType, targetIds, title, message, tournamentId } = req.body;
+
+        if (!targetType || !title || !message) {
+            res.status(400);
+            return next(new Error('Missing required fields: targetType, title, and message'));
+        }
+
+        let uids = [];
+
+        if (targetType === 'player') {
+            uids = targetIds;
+        } else if (targetType === 'team') {
+            const players = await models.RegistrationPlayer.find({ registration_id: { $in: targetIds } }).lean();
+            uids = [...new Set(players.map(p => p.user_uid).filter(Boolean))];
+
+            const regs = await models.Registration.find({ id: { $in: targetIds } }).lean();
+            const captainEmails = regs.map(r => r.captain_email).filter(Boolean);
+            if (captainEmails.length > 0) {
+                const captains = await models.User.find({ email: { $in: captainEmails } }).select('uid').lean();
+                captains.forEach(c => {
+                    if (c.uid && !uids.includes(c.uid)) uids.push(c.uid);
+                });
+            }
+        } else if (targetType === 'group') {
+            if (!tournamentId) {
+                res.status(400);
+                return next(new Error('Tournament ID is required to message by group'));
+            }
+            const regs = await models.Registration.find({ tournament_id: tournamentId, group: { $in: targetIds } }).lean();
+            const regIds = regs.map(r => r.id);
+            const players = await models.RegistrationPlayer.find({ registration_id: { $in: regIds } }).lean();
+            uids = [...new Set(players.map(p => p.user_uid).filter(Boolean))];
+
+            const captainEmails = regs.map(r => r.captain_email).filter(Boolean);
+            if (captainEmails.length > 0) {
+                const captains = await models.User.find({ email: { $in: captainEmails } }).select('uid').lean();
+                captains.forEach(c => {
+                    if (c.uid && !uids.includes(c.uid)) uids.push(c.uid);
+                });
+            }
+        } else if (targetType === 'tournament') {
+            const regs = await models.Registration.find({ tournament_id: { $in: targetIds } }).lean();
+            const regIds = regs.map(r => r.id);
+            const players = await models.RegistrationPlayer.find({ registration_id: { $in: regIds } }).lean();
+            uids = [...new Set(players.map(p => p.user_uid).filter(Boolean))];
+
+            const captainEmails = regs.map(r => r.captain_email).filter(Boolean);
+            if (captainEmails.length > 0) {
+                const captains = await models.User.find({ email: { $in: captainEmails } }).select('uid').lean();
+                captains.forEach(c => {
+                    if (c.uid && !uids.includes(c.uid)) uids.push(c.uid);
+                });
+            }
+        } else {
+            res.status(400);
+            return next(new Error('Invalid target type'));
+        }
+
+        if (uids.length === 0) {
+            res.status(404);
+            return next(new Error('No players found matching the selected target segment'));
+        }
+
+        let nextId = await nextNumberId(models.Notification);
+        const notificationsToCreate = uids.map(uid => ({
+            id: nextId++,
+            user_uid: uid,
+            type: 'alert',
+            title: title,
+            message: message,
+            content: message,
+            read: false,
+            created_at: new Date()
+        }));
+
+        if (notificationsToCreate.length > 0) {
+            await models.Notification.insertMany(notificationsToCreate);
+        }
+
+        await logAdminAction(req, 'SEND_TARGETED_INBOX_MESSAGES', { targetType, targetIds, title });
+        res.json({ success: true, message: `Inbox message successfully delivered to ${uids.length} active players` });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     getStats,
     getRegistrations,
@@ -987,5 +1253,9 @@ module.exports = {
     promoteUser,
     createProduct,
     updateProduct,
-    deleteProduct
+    deleteProduct,
+    bulkActionRegistrations,
+    renameGroup,
+    autoDivideGroups,
+    sendInboxMessages
 };

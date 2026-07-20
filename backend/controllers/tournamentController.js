@@ -177,6 +177,77 @@ const createRegistration = async (req, res, next) => {
             return next(new Error('Solo entries are restricted for this championship'));
         }
 
+        // 1. Team confirmation requirement check (Teammate invitations confirmation)
+        if (type !== 'Solo') {
+            const captainUid = req.user.uid;
+            let userTeam = await models.Team.findOne({ captain_uid: captainUid }).lean();
+            if (!userTeam) {
+                const memberRecord = await models.TeamMember.findOne({ user_uid: captainUid, confirmed: true }).lean();
+                if (memberRecord) {
+                    userTeam = await models.Team.findOne({ id: memberRecord.team_id }).lean();
+                }
+            }
+
+            if (userTeam) {
+                const unconfirmedMembers = await models.TeamMember.find({ team_id: userTeam.id, confirmed: false }).lean();
+                if (unconfirmedMembers.length > 0) {
+                    res.status(400);
+                    return next(new Error('All teammates must confirm their invitation before the team can register for a tournament.'));
+                }
+            } else {
+                res.status(400);
+                return next(new Error('You must belong to a squad (team) to register for a team tournament.'));
+            }
+
+            // 2. Duplicate registration check
+            if (userTeam) {
+                // Check by team name (case-insensitive)
+                const teamNameRegex = new RegExp(`^${userTeam.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i');
+                const existingRegByTeamName = await models.Registration.findOne({
+                    tournament_id: tournamentId,
+                    team_name: teamNameRegex
+                }).lean();
+
+                if (existingRegByTeamName) {
+                    res.status(400);
+                    return next(new Error('Your team has already been registered for this tournament. Please check your website inbox for updates.'));
+                }
+
+                // Check by teammate player UIDs (case-insensitive)
+                const members = await models.TeamMember.find({ team_id: userTeam.id, confirmed: true }).lean();
+                const teamUids = [userTeam.captain_uid, ...members.map(m => m.user_uid)].filter(Boolean).map(uid => uid.toLowerCase());
+
+                // Find all registrations for this tournament
+                const registrations = await models.Registration.find({ tournament_id: tournamentId }).lean();
+                const regIds = registrations.map(r => r.id);
+
+                if (regIds.length > 0) {
+                    const existingRegPlayer = await models.RegistrationPlayer.findOne({
+                        registration_id: { $in: regIds },
+                        user_uid: { $in: teamUids.map(uid => new RegExp(`^${uid}$`, 'i')) }
+                    }).lean();
+
+                    if (existingRegPlayer) {
+                        res.status(400);
+                        return next(new Error('Your team has already been registered for this tournament. Please check your website inbox for updates.'));
+                    }
+                }
+            }
+        } else {
+            // Solo registration duplicate check
+            const existingSolo = await models.Registration.findOne({
+                tournament_id: tournamentId,
+                $or: [
+                    { player_email: req.user.email },
+                    { game_uid: gameUid }
+                ]
+            }).lean();
+            if (existingSolo) {
+                res.status(400);
+                return next(new Error('You have already registered for this tournament. Please check your website inbox for updates.'));
+            }
+        }
+
         let regId;
         do {
             regId = 'REG-' + Math.floor(10000 + Math.random() * 90000);
@@ -640,7 +711,7 @@ const confirmJoin = async (req, res, next) => {
         const allConfirmed = allPlayers.every((p) => p.confirmed === true);
 
         if (allConfirmed) {
-            await models.Registration.updateOne({ id: regId }, { $set: { stage: 2 } });
+            await models.Registration.updateOne({ id: regId }, { $set: { stage: 2, status: 'Ready to Confirm' } });
         }
 
         // Notify all team members about the confirmed player
@@ -1017,10 +1088,47 @@ const updateMyTeam = async (req, res, next) => {
             return next(new Error('Team name already taken by another squad'));
         }
 
+        // Duplicate validations on input array
+        const activeUidsSet = new Set();
+        const gameUidsSet = new Set();
+
+        // Check captain gameUid
+        const capGameUid = members[0].gameUid || members[0].game_uid;
+        if (capGameUid) {
+            gameUidsSet.add(capGameUid.trim().toLowerCase());
+        }
+
+        for (let i = 1; i < members.length; i++) {
+            const m = members[i];
+            if (!m.user_uid) continue;
+            const cleanUid = m.user_uid.trim().toLowerCase();
+            if (cleanUid === user.uid.toLowerCase()) {
+                res.status(400);
+                return next(new Error('You cannot add yourself as a teammate'));
+            }
+            if (activeUidsSet.has(cleanUid)) {
+                res.status(400);
+                return next(new Error(`Duplicate teammate Gamer UID detected: ${m.user_uid}`));
+            }
+            activeUidsSet.add(cleanUid);
+
+            const gUid = m.gameUid || m.game_uid;
+            if (gUid) {
+                const cleanGUid = gUid.trim().toLowerCase();
+                if (gameUidsSet.has(cleanGUid)) {
+                    res.status(400);
+                    return next(new Error(`Duplicate Free Fire Max UID detected: ${gUid}`));
+                }
+                gameUidsSet.add(cleanGUid);
+            }
+        }
+
         team.name = name.toUpperCase();
         team.description = description;
         if (logo) team.logo = logo;
         await team.save();
+
+        const activeUids = [user.uid]; // Captain is always active
 
         for (let i = 0; i < members.length; i++) {
             const m = members[i];
@@ -1044,7 +1152,7 @@ const updateMyTeam = async (req, res, next) => {
                 const invitee = await models.User.findOne({ uid: cleanUid }).lean();
                 if (!invitee) {
                     res.status(400);
-                    return next(new Error(`Invalid Strikz Gamer UID: ${cleanUid}`));
+                    return next(new Error(`Invalid Strikz Gamer UID: ${m.user_uid}`));
                 }
 
                 const inviteeCaptain = await models.Team.findOne({ 
@@ -1058,8 +1166,10 @@ const updateMyTeam = async (req, res, next) => {
                 }).lean();
                 if (inviteeCaptain || inviteeMember) {
                     res.status(400);
-                    return next(new Error(`Player ${invitee.username} (${cleanUid}) is already registered in another squad`));
+                    return next(new Error(`Player ${invitee.username} (${m.user_uid}) is already registered in another squad`));
                 }
+
+                activeUids.push(invitee.uid);
 
                 const existingInThisTeam = await models.TeamMember.findOne({ team_id: team.id, user_uid: invitee.uid });
                 if (existingInThisTeam) {
@@ -1084,7 +1194,7 @@ const updateMyTeam = async (req, res, next) => {
             }
         }
 
-        const activeUids = members.map(m => m.user_uid).filter(Boolean);
+        // Clean up members that were removed from the roster
         await models.TeamMember.deleteMany({ 
             team_id: team.id, 
             user_uid: { $nin: activeUids } 

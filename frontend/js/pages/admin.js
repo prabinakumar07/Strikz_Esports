@@ -230,6 +230,7 @@
                     renderOverviewTab(panelContent, stats, db);
                 } 
                 else if (tab === 'registrations') {
+                    db = await window.strikzDb.fetchSnapshot();
                     const regs = await window.strikzDb.getAdminRegistrations();
                     db = { ...db, registrations: regs };
                     renderRegistrationsTab(panelContent, db);
@@ -400,36 +401,226 @@
 
     // 2. REGISTRATIONS LIST PANEL
     function renderRegistrationsTab(mount, db) {
+        // Add custom styles for status-ready if not already present
+        if (!document.getElementById('admin-reg-styles')) {
+            const style = document.createElement('style');
+            style.id = 'admin-reg-styles';
+            style.innerHTML = `
+                .status-ready {
+                    background: rgba(255, 215, 0, 0.1) !important;
+                    color: var(--neon-yellow) !important;
+                    border: 1px solid rgba(255, 215, 0, 0.3) !important;
+                }
+                .badge-status {
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 10px;
+                    text-transform: uppercase;
+                    font-weight: 700;
+                    display: inline-block;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        function showAdminModal(title, contentHtml, onConfirm = null, confirmText = 'Save') {
+            const modal = document.createElement('div');
+            modal.className = 'admin-custom-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.85);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 999999;
+                backdrop-filter: blur(8px);
+                animation: fadeIn 0.2s ease;
+            `;
+            modal.innerHTML = `
+                <div class="glass-panel" style="width: 90%; max-width: 600px; padding: 25px; border: 1.5px solid var(--neon-cyan); border-radius: 12px; background: rgba(14, 14, 18, 0.98); box-shadow: 0 0 25px rgba(0, 242, 254, 0.15); animation: scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); overflow-y: auto; max-height: 90vh;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
+                        <h3 class="font-orbitron" style="color: var(--neon-cyan); font-size: 14px; margin: 0; letter-spacing: 0.05em;">${title}</h3>
+                        <button class="modal-close-btn" style="background: none; border: none; color: #fff; cursor: pointer; font-size: 20px;"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div style="color: #eee; margin-bottom: 25px;">
+                        ${contentHtml}
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                        <button class="cta-button btn-cancel" style="padding: 8px 18px; font-size: 11px; border: 1px solid var(--glass-border); background: none; color: #fff;">CANCEL</button>
+                        ${onConfirm ? `<button class="cta-button btn-confirm btn-neon-cyan" style="padding: 8px 18px; font-size: 11px;">${confirmText}</button>` : ''}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.querySelector('.modal-close-btn').onclick = () => modal.remove();
+            modal.querySelector('.btn-cancel').onclick = () => modal.remove();
+            if (onConfirm) {
+                modal.querySelector('.btn-confirm').onclick = () => {
+                    onConfirm(modal);
+                };
+            }
+            return modal;
+        }
+
         mount.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
                 <h3 class="font-orbitron" style="font-size: 18px; color: var(--neon-cyan);"><i class="fa-solid fa-address-card"></i> REGISTRATIONS MANAGEMENT</h3>
                 <button class="cta-button btn-neon-orange" id="btn-export-csv" style="padding: 8px 16px; font-size: 11px;">
-                    <i class="fa-solid fa-file-csv"></i> EXPORT CSV
+                    <i class="fa-solid fa-file-csv"></i> ADVANCED EXPORT
                 </button>
             </div>
 
+            <!-- Group Management Section -->
+            <div class="glass-panel" style="padding: 15px; border: 1px solid var(--glass-border); border-radius: 8px; margin-bottom: 20px; background: rgba(255, 255, 255, 0.01);">
+                <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" id="toggle-group-mgmt">
+                    <h4 class="font-orbitron" style="font-size: 13px; color: var(--neon-yellow); margin: 0;"><i class="fa-solid fa-users-gear"></i> GROUP MANAGEMENT & TOOLS</h4>
+                    <span id="group-mgmt-icon" style="color: var(--neon-yellow);"><i class="fa-solid fa-chevron-down"></i></span>
+                </div>
+                <div id="group-mgmt-content" style="display: none; margin-top: 15px; border-top: 1px dashed var(--glass-border); padding-top: 15px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                        
+                        <!-- Auto Division -->
+                        <div style="border-right: 1px dashed var(--glass-border); padding-right: 15px;">
+                            <h5 style="margin-top: 0; color: #fff; font-size: 12px; margin-bottom: 10px;">Auto Divide Teams Into Groups</h5>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-size: 11px; color: var(--text-dim);">Select Tournament:</label>
+                                <select id="auto-group-tourney" class="admin-select" style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 5px;">
+                                    ${db.tournaments ? db.tournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('') : ''}
+                                </select>
+                                <div style="display: flex; gap: 10px;">
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 11px; color: var(--text-dim);">Groups (e.g. 12):</label>
+                                        <input type="number" id="auto-group-count" value="12" class="admin-search-input" style="padding: 5px; width: 100%;">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 11px; color: var(--text-dim);">Size (e.g. 12):</label>
+                                        <input type="number" id="auto-group-size" value="12" class="admin-search-input" style="padding: 5px; width: 100%;">
+                                    </div>
+                                </div>
+                                <button class="cta-button btn-neon-cyan" id="btn-run-auto-group" style="padding: 8px; font-size: 10px; margin-top: 5px;">
+                                    DIVIDE SQUADS
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Rename Group -->
+                        <div style="border-right: 1px dashed var(--glass-border); padding-right: 15px;">
+                            <h5 style="margin-top: 0; color: #fff; font-size: 12px; margin-bottom: 10px;">Rename Specific Group</h5>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-size: 11px; color: var(--text-dim);">Select Tournament:</label>
+                                <select id="rename-group-tourney" class="admin-select" style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 5px;">
+                                    ${db.tournaments ? db.tournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('') : ''}
+                                </select>
+                                <div style="display: flex; gap: 10px;">
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 11px; color: var(--text-dim);">Current Name:</label>
+                                        <input type="text" id="rename-group-old" placeholder="e.g. Group A" class="admin-search-input" style="padding: 5px; width: 100%;">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 11px; color: var(--text-dim);">New Name:</label>
+                                        <input type="text" id="rename-group-new" placeholder="e.g. Alpha" class="admin-search-input" style="padding: 5px; width: 100%;">
+                                    </div>
+                                </div>
+                                <button class="cta-button btn-neon-orange" id="btn-run-rename-group" style="padding: 8px; font-size: 10px; margin-top: 5px;">
+                                    RENAME GROUP
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Group Messaging -->
+                        <div>
+                            <h5 style="margin-top: 0; color: #fff; font-size: 12px; margin-bottom: 10px;">Broadcast Msg to Tournament/Groups</h5>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-size: 11px; color: var(--text-dim);">Select Target:</label>
+                                <select id="msg-broadcast-target" class="admin-select" style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 5px;">
+                                    <option value="tournament">Whole Tournament</option>
+                                    <option value="group">Specific Group</option>
+                                </select>
+                                <div id="msg-broadcast-group-select-wrapper" style="display: none;">
+                                    <label style="font-size: 11px; color: var(--text-dim);">Group Name:</label>
+                                    <input type="text" id="msg-broadcast-group-name" placeholder="e.g. Group A" class="admin-search-input" style="padding: 5px; width: 100%;">
+                                </div>
+                                <button class="cta-button btn-neon-cyan" id="btn-msg-broadcast" style="padding: 8px; font-size: 10px; margin-top: 5px;">
+                                    COMPOSE MESSAGE
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
             <!-- Controls (Search + Filters) -->
-            <div class="admin-table-controls">
+            <div class="admin-table-controls" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px;">
                 <input type="text" id="admin-reg-search" class="admin-search-input" placeholder="Search team, captain, player ID...">
+                
+                <select id="admin-reg-tourney-filter" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); padding: 8px 15px; border-radius: 4px; color: #fff; font-size: 13px;">
+                    <option value="All">All Tournaments</option>
+                    ${db.tournaments ? db.tournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join('') : ''}
+                </select>
+
+                <select id="admin-reg-group-filter" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); padding: 8px 15px; border-radius: 4px; color: #fff; font-size: 13px;">
+                    <option value="All">All Groups</option>
+                </select>
                 
                 <select id="admin-reg-filter" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); padding: 8px 15px; border-radius: 4px; color: #fff; font-size: 13px;">
                     <option value="All">All Statuses</option>
                     <option value="Pending">Pending Only</option>
-                    <option value="Approved">Approved Only</option>
+                    <option value="Ready to Confirm">Ready to Confirm Only</option>
+                    <option value="Confirmed">Confirmed Only</option>
                     <option value="Rejected">Rejected Only</option>
                 </select>
             </div>
 
+            <!-- Bulk Action Bar -->
+            <div id="admin-reg-bulk-bar" class="glass-panel" style="display: none; align-items: center; justify-content: space-between; padding: 12px 20px; border: 1.5px solid var(--neon-cyan); border-radius: 8px; margin-bottom: 15px; background: rgba(0, 242, 254, 0.05); box-shadow: 0 0 10px rgba(0,242,254,0.1); flex-wrap: wrap; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="admin-reg-select-all" style="cursor: pointer; transform: scale(1.1);">
+                    <span style="font-size: 13px; color: #fff; font-weight: 600;"><span id="admin-reg-bulk-count" style="color: var(--neon-cyan);">0</span> Selected</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    
+                    <!-- Change Status -->
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <select id="bulk-status-select" class="admin-select" style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); color: #fff; padding: 6px 10px; font-size: 11px; border-radius: 4px;">
+                            <option value="Pending">Pending</option>
+                            <option value="Ready to Confirm">Ready to Confirm</option>
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                        <button class="cta-button btn-neon-cyan" id="btn-bulk-status" style="padding: 6px 10px; font-size: 10px; border-radius: 4px;">CHANGE STATUS</button>
+                    </div>
+
+                    <!-- Assign Group -->
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <input type="text" id="bulk-group-input" placeholder="Group A" class="admin-search-input" style="padding: 6px 10px; font-size: 11px; width: 100px; border-radius: 4px;">
+                        <button class="cta-button btn-neon-cyan" id="btn-bulk-group" style="padding: 6px 10px; font-size: 10px; border-radius: 4px;">ASSIGN GROUP</button>
+                    </div>
+
+                    <!-- Message Selected -->
+                    <button class="cta-button btn-neon-yellow" id="btn-bulk-message" style="padding: 6px 10px; font-size: 10px; border-radius: 4px;"><i class="fa-solid fa-envelope"></i> MSG</button>
+
+                    <!-- Delete Selected -->
+                    <button class="cta-button btn-neon-orange" id="btn-bulk-delete" style="padding: 6px 10px; font-size: 10px; border-radius: 4px;"><i class="fa-solid fa-trash"></i> DEL</button>
+                </div>
+            </div>
+
             <!-- Scrollable Table -->
-            <div class="history-table-container" style="max-height: 400px; overflow-y: auto;">
+            <div class="history-table-container" style="max-height: 480px; overflow-y: auto; margin-top: 10px;">
                 <table class="history-table" id="admin-reg-table">
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="header-select-all" style="cursor: pointer;"></th>
                             <th>Ticket ID</th>
                             <th>Competitor</th>
                             <th>Type</th>
                             <th>Tournament</th>
-                            <th>Date</th>
+                            <th>Group</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -442,16 +633,276 @@
         `;
 
         const searchInput = document.getElementById('admin-reg-search');
+        const tourneyFilterSelect = document.getElementById('admin-reg-tourney-filter');
+        const groupFilterSelect = document.getElementById('admin-reg-group-filter');
         const filterSelect = document.getElementById('admin-reg-filter');
         const tableBody = document.getElementById('admin-reg-table-body');
         const csvBtn = document.getElementById('btn-export-csv');
 
+        // Collapsible Group Mgmt toggle
+        const toggleGroupBtn = document.getElementById('toggle-group-mgmt');
+        const groupMgmtContent = document.getElementById('group-mgmt-content');
+        const groupMgmtIcon = document.getElementById('group-mgmt-icon');
+        toggleGroupBtn.onclick = () => {
+            if (groupMgmtContent.style.display === 'none') {
+                groupMgmtContent.style.display = 'block';
+                groupMgmtIcon.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+            } else {
+                groupMgmtContent.style.display = 'none';
+                groupMgmtIcon.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+            }
+        };
+
+        // Broadcast messaging elements
+        const msgBroadcastTarget = document.getElementById('msg-broadcast-target');
+        const msgBroadcastGroupWrapper = document.getElementById('msg-broadcast-group-select-wrapper');
+        const btnMsgBroadcast = document.getElementById('btn-msg-broadcast');
+        
+        msgBroadcastTarget.onchange = function() {
+            if (this.value === 'group') {
+                msgBroadcastGroupWrapper.style.display = 'block';
+            } else {
+                msgBroadcastGroupWrapper.style.display = 'none';
+            }
+        };
+
+        btnMsgBroadcast.onclick = function() {
+            const type = msgBroadcastTarget.value;
+            const tourneyId = document.getElementById('auto-group-tourney').value;
+            const targetName = type === 'group' ? document.getElementById('msg-broadcast-group-name').value.trim() : '';
+
+            if (type === 'group' && !targetName) {
+                alert("Please enter a group name to send to.");
+                return;
+            }
+
+            const composeHtml = `
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-dim);">Message Title:</label>
+                        <input type="text" id="composer-title" placeholder="e.g. Group A Match Timings" class="admin-search-input" style="width: 100%; margin-top: 5px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-dim);">Message Body:</label>
+                        <textarea id="composer-message" placeholder="Type your notification description here..." class="admin-search-input" style="width: 100%; height: 100px; margin-top: 5px; resize: none; font-family: sans-serif; font-size: 13px;"></textarea>
+                    </div>
+                </div>
+            `;
+
+            showAdminModal("COMPOSE BROADCAST INBOX MESSAGE", composeHtml, async (modalEl) => {
+                const title = document.getElementById('composer-title').value.trim();
+                const message = document.getElementById('composer-message').value.trim();
+
+                if (!title || !message) {
+                    alert("Please enter both title and message content.");
+                    return;
+                }
+
+                try {
+                    const targetIds = type === 'group' ? [targetName] : [tourneyId];
+                    await window.strikzDb.sendInboxMessages(type, targetIds, title, message, tourneyId);
+                    alert("Broadcast message delivered successfully!");
+                    modalEl.remove();
+                } catch (e) {
+                    alert("Error: " + e.message);
+                }
+            }, "SEND MESSAGE");
+        };
+
+        // Group management auto division
+        const btnRunAutoGroup = document.getElementById('btn-run-auto-group');
+        btnRunAutoGroup.onclick = async function() {
+            const tourneyId = document.getElementById('auto-group-tourney').value;
+            const count = document.getElementById('auto-group-count').value;
+            const size = document.getElementById('auto-group-size').value;
+
+            if (confirm(`Are you sure you want to divide teams for this tournament into ${count} groups of ${size}? This will overwrite existing group assignments.`)) {
+                try {
+                    await window.strikzDb.autoDivideGroups(tourneyId, count, size, 'All');
+                    alert("Squads successfully grouped!");
+                    await loadTabContentAndRefresh();
+                } catch (e) {
+                    alert("Error: " + e.message);
+                }
+            }
+        };
+
+        // Group renaming
+        const btnRunRenameGroup = document.getElementById('btn-run-rename-group');
+        btnRunRenameGroup.onclick = async function() {
+            const tourneyId = document.getElementById('rename-group-tourney').value;
+            const oldName = document.getElementById('rename-group-old').value.trim();
+            const newName = document.getElementById('rename-group-new').value.trim();
+
+            if (!oldName || !newName) {
+                alert("Please fill in both current and new group names.");
+                return;
+            }
+
+            try {
+                await window.strikzDb.renameGroup(tourneyId, oldName, newName);
+                alert("Group renamed successfully!");
+                await loadTabContentAndRefresh();
+            } catch (e) {
+                alert("Error: " + e.message);
+            }
+        };
+
+        // Checkboxes bulk logic
+        const bulkBar = document.getElementById('admin-reg-bulk-bar');
+        const bulkCountSpan = document.getElementById('admin-reg-bulk-count');
+        const headerCheckbox = document.getElementById('header-select-all');
+        const adminSelectAll = document.getElementById('admin-reg-select-all');
+
+        let selectedIds = [];
+
+        function updateBulkBarVisibility() {
+            const checkedBoxes = tableBody.querySelectorAll('.admin-reg-row-select:checked');
+            selectedIds = Array.from(checkedBoxes).map(cb => cb.dataset.id);
+            bulkCountSpan.textContent = selectedIds.length;
+
+            if (selectedIds.length > 0) {
+                bulkBar.style.display = 'flex';
+                adminSelectAll.checked = (selectedIds.length === tableBody.querySelectorAll('.admin-reg-row-select').length);
+                headerCheckbox.checked = adminSelectAll.checked;
+            } else {
+                bulkBar.style.display = 'none';
+                headerCheckbox.checked = false;
+                adminSelectAll.checked = false;
+            }
+        }
+
+        headerCheckbox.onclick = function() {
+            const isChecked = this.checked;
+            adminSelectAll.checked = isChecked;
+            tableBody.querySelectorAll('.admin-reg-row-select').forEach(cb => {
+                cb.checked = isChecked;
+            });
+            updateBulkBarVisibility();
+        };
+
+        adminSelectAll.onclick = function() {
+            const isChecked = this.checked;
+            headerCheckbox.checked = isChecked;
+            tableBody.querySelectorAll('.admin-reg-row-select').forEach(cb => {
+                cb.checked = isChecked;
+            });
+            updateBulkBarVisibility();
+        };
+
+        // Bulk operations
+        document.getElementById('btn-bulk-status').onclick = async function() {
+            const status = document.getElementById('bulk-status-select').value;
+            if (selectedIds.length === 0) return;
+            if (confirm(`Change status of ${selectedIds.length} squads to '${status}'?`)) {
+                try {
+                    await window.strikzDb.bulkActionRegistrations(selectedIds, 'status', status);
+                    alert("Status changed successfully!");
+                    await loadTabContentAndRefresh();
+                } catch (e) {
+                    alert("Error: " + e.message);
+                }
+            }
+        };
+
+        document.getElementById('btn-bulk-group').onclick = async function() {
+            const group = document.getElementById('bulk-group-input').value.trim();
+            if (selectedIds.length === 0) return;
+            if (confirm(`Assign ${selectedIds.length} squads to group '${group || '[Clear Group]'}'?`)) {
+                try {
+                    await window.strikzDb.bulkActionRegistrations(selectedIds, 'group', group);
+                    alert("Group assigned successfully!");
+                    await loadTabContentAndRefresh();
+                } catch (e) {
+                    alert("Error: " + e.message);
+                }
+            }
+        };
+
+        document.getElementById('btn-bulk-delete').onclick = async function() {
+            if (selectedIds.length === 0) return;
+            if (confirm(`Permanently DELETE ${selectedIds.length} selected registration records? This action cannot be undone.`)) {
+                try {
+                    await window.strikzDb.bulkActionRegistrations(selectedIds, 'delete', null);
+                    alert("Records removed successfully!");
+                    await loadTabContentAndRefresh();
+                } catch (e) {
+                    alert("Error: " + e.message);
+                }
+            }
+        };
+
+        document.getElementById('btn-bulk-message').onclick = function() {
+            if (selectedIds.length === 0) return;
+            const composeHtml = `
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-dim);">Message Title:</label>
+                        <input type="text" id="bulk-composer-title" placeholder="e.g. Registration Status Updated" class="admin-search-input" style="width: 100%; margin-top: 5px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-dim);">Message Body:</label>
+                        <textarea id="bulk-composer-message" placeholder="Type message for selected teams..." class="admin-search-input" style="width: 100%; height: 100px; margin-top: 5px; resize: none; font-family: sans-serif; font-size: 13px;"></textarea>
+                    </div>
+                </div>
+            `;
+
+            showAdminModal(`MESSAGE SELECTED SQUADS (${selectedIds.length})`, composeHtml, async (modalEl) => {
+                const title = document.getElementById('bulk-composer-title').value.trim();
+                const message = document.getElementById('bulk-composer-message').value.trim();
+
+                if (!title || !message) {
+                    alert("Please enter both title and message body.");
+                    return;
+                }
+
+                try {
+                    await window.strikzDb.bulkActionRegistrations(selectedIds, 'message', { title, message });
+                    alert("Messages dispatched successfully!");
+                    modalEl.remove();
+                } catch (e) {
+                    alert("Error: " + e.message);
+                }
+            }, "DISPATCH MESSAGE");
+        };
+
+        function updateGroupFilterDropdown() {
+            const tourneyFilter = tourneyFilterSelect.value;
+            let list = db.registrations || [];
+            if (tourneyFilter !== 'All') {
+                list = list.filter(r => r.tournamentId === tourneyFilter);
+            }
+            const groups = [...new Set(list.map(r => r.group).filter(Boolean))].sort();
+            
+            groupFilterSelect.innerHTML = `
+                <option value="All">All Groups</option>
+                <option value="[No Group]">No Assigned Group</option>
+                ${groups.map(g => `<option value="${g}">${g}</option>`).join('')}
+            `;
+        }
+
         function loadTable() {
             const query = searchInput.value.trim().toLowerCase();
+            const tourneyFilter = tourneyFilterSelect.value;
+            const groupFilter = groupFilterSelect.value;
             const statusFilter = filterSelect.value;
-            let list = db.registrations;
+            let list = db.registrations || [];
 
-            // Apply filter
+            // Apply tournament filter
+            if (tourneyFilter !== 'All') {
+                list = list.filter(r => r.tournamentId === tourneyFilter);
+            }
+
+            // Apply group filter
+            if (groupFilter !== 'All') {
+                if (groupFilter === '[No Group]') {
+                    list = list.filter(r => !r.group);
+                } else {
+                    list = list.filter(r => r.group === groupFilter);
+                }
+            }
+
+            // Apply status filter
             if (statusFilter !== 'All') {
                 list = list.filter(r => r.status === statusFilter);
             }
@@ -470,6 +921,7 @@
                            (competitorName && competitorName.toLowerCase().includes(query)) || 
                            (contactName && contactName.toLowerCase().includes(query)) ||
                            (r.tournamentName && r.tournamentName.toLowerCase().includes(query)) ||
+                           (r.group && r.group.toLowerCase().includes(query)) ||
                            matchesPlayers;
                 });
             }
@@ -477,14 +929,16 @@
             if (list.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="text-center" style="padding: 30px; color: var(--text-dim);">No registration applications found.</td>
+                        <td colspan="8" class="text-center" style="padding: 30px; color: var(--text-dim);">No registration applications found.</td>
                     </tr>
                 `;
+                bulkBar.style.display = 'none';
                 return;
             }
 
             tableBody.innerHTML = list.map(r => {
-                const statusClass = r.status === 'Approved' ? 'status-approved' : (r.status === 'Pending' ? 'status-pending' : 'status-rejected');
+                const isChecked = selectedIds.includes(r.id);
+                const statusClass = (r.status === 'Confirmed' || r.status === 'Approved') ? 'status-approved' : (r.status === 'Pending' ? 'status-pending' : (r.status === 'Ready to Confirm' ? 'status-ready' : 'status-rejected'));
                 const competitorName = r.type === 'Team' ? r.teamName : r.playerName;
 
                 let confirmationsLabel = '';
@@ -494,29 +948,19 @@
                     confirmationsLabel = `
                         <div style="font-size: 11px; margin-top: 5px; color: var(--text-dim);">
                             Confirmations: <strong style="color: var(--neon-yellow);">${confirmedCount}/${totalPlayers}</strong>
-                            <span style="cursor: pointer; color: var(--neon-orange); margin-left: 8px;" class="toggle-roster-btn" data-id="${r.id}">(View Details)</span>
-                            <div id="roster-details-${r.id}" style="display: none; margin-top: 5px; background: rgba(0,0,0,0.3); padding: 8px; border: 1px solid var(--glass-border); border-radius: 4px; max-width: 250px; text-align: left;">
-                                ${r.players ? r.players.map(p => `
-                                    <div style="font-size: 10px; display: flex; justify-content: space-between; margin-bottom: 2px; border-bottom: 1px solid rgba(255,255,255,0.02); padding-bottom: 2px;">
-                                        <span style="color: #eee;">${p.name} (${p.realName || 'No Real Name'})</span>
-                                        <span style="color: ${p.confirmed ? 'var(--neon-green)' : 'var(--neon-orange)'}; font-weight: bold;">
-                                            ${p.confirmed ? 'Confirmed' : 'Pending'}
-                                        </span>
-                                    </div>
-                                `).join('') : ''}
-                            </div>
                         </div>
                     `;
                 } else {
                     confirmationsLabel = `
                         <div style="font-size: 11px; margin-top: 5px; color: var(--text-dim);">
-                            UID: <strong style="color: var(--neon-yellow);">${r.gameUid || 'N/A'}</strong> | Role: <strong>${r.role || 'N/A'}</strong>
+                            UID: <strong style="color: var(--neon-yellow);">${r.gameUid || 'N/A'}</strong>
                         </div>
                     `;
                 }
 
                 return `
-                    <tr>
+                    <tr style="${isChecked ? 'background: rgba(0, 242, 254, 0.02);' : ''}">
+                        <td style="text-align: center;"><input type="checkbox" class="admin-reg-row-select" data-id="${r.id}" ${isChecked ? 'checked' : ''} style="cursor: pointer;"></td>
                         <td class="font-orbitron" style="font-size: 11px; font-weight: 700; color: var(--neon-cyan);">${r.id}</td>
                         <td style="font-weight: 600; color: #fff; text-align: left;">
                             <div>${competitorName}</div>
@@ -524,10 +968,11 @@
                         </td>
                         <td><span style="font-size: 10px; color: var(--text-silver); text-transform: uppercase;">${r.type}</span></td>
                         <td style="font-size: 12px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${r.tournamentName}</td>
-                        <td style="font-size: 12px;">${window.strikzFormatDate(r.submissionDate)}</td>
+                        <td style="font-size: 12px; color: var(--neon-yellow); font-weight: 500;">${r.group || '-'}</td>
                         <td><span class="badge-status ${statusClass}">${r.status}</span></td>
                         <td>
-                            <div style="display: flex; gap: 8px;">
+                            <div style="display: flex; gap: 8px; justify-content: center;">
+                                <button class="action-icon-btn view-details-trigger" data-id="${r.id}" title="Open Details" style="border: 1px solid var(--glass-border);"><i class="fa-solid fa-eye" style="color: var(--neon-cyan);"></i></button>
                                 <button class="action-icon-btn approve" data-id="${r.id}" title="Approve Registration"><i class="fa-solid fa-check"></i></button>
                                 <button class="action-icon-btn reject" data-id="${r.id}" title="Reject Registration"><i class="fa-solid fa-xmark"></i></button>
                                 <button class="action-icon-btn delete" data-id="${r.id}" title="Delete Record"><i class="fa-solid fa-trash-can"></i></button>
@@ -537,18 +982,118 @@
                 `;
             }).join('');
 
-            // Bind Roster Toggle click
-            tableBody.querySelectorAll('.toggle-roster-btn').forEach(btn => {
+            // Bind Roster Row Checkboxes
+            tableBody.querySelectorAll('.admin-reg-row-select').forEach(cb => {
+                cb.onchange = function() {
+                    updateBulkBarVisibility();
+                };
+            });
+
+            // Bind Details Modal view-details-trigger
+            tableBody.querySelectorAll('.view-details-trigger').forEach(btn => {
                 btn.onclick = function() {
                     const id = this.dataset.id;
-                    const detailsDiv = document.getElementById(`roster-details-${id}`);
-                    if (detailsDiv.style.display === 'none') {
-                        detailsDiv.style.display = 'block';
-                        this.textContent = '(Hide Details)';
+                    const r = db.registrations.find(x => x.id === id);
+                    if (!r) return;
+
+                    const competitorName = r.type === 'Team' ? r.teamName : r.playerName;
+
+                    let detailsHtml = `
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; border-bottom: 1px dashed var(--glass-border); padding-bottom: 15px;">
+                            <div>
+                                <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">Registration ID</p>
+                                <strong style="color: var(--neon-cyan);">${r.id}</strong>
+                            </div>
+                            <div>
+                                <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">Tournament</p>
+                                <strong>${r.tournamentName}</strong>
+                            </div>
+                            <div>
+                                <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">Competitor Name</p>
+                                <strong style="color: #fff;">${competitorName}</strong>
+                            </div>
+                            <div>
+                                <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">Group</p>
+                                <strong style="color: var(--neon-yellow);">${r.group || 'Not Assigned'}</strong>
+                            </div>
+                            <div>
+                                <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">Submission Date</p>
+                                <strong>${window.strikzFormatDate(r.submissionDate)}</strong>
+                            </div>
+                            <div>
+                                <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">Verification Status</p>
+                                <span class="badge-status ${r.status === 'Confirmed' || r.status === 'Approved' ? 'status-approved' : (r.status === 'Pending' ? 'status-pending' : (r.status === 'Ready to Confirm' ? 'status-ready' : 'status-rejected'))}">
+                                    ${r.status}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+
+                    if (r.type === 'Team' || r.type === 'Squad' || r.type === 'Duo') {
+                        detailsHtml += `
+                            <h4 class="font-orbitron" style="font-size: 11px; color: var(--neon-cyan); margin-bottom: 10px;">CAPTAIN INFORMATION</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; border-bottom: 1px dashed var(--glass-border); padding-bottom: 15px;">
+                                <div>
+                                    <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">Captain Name</p>
+                                    <strong>${r.captainName}</strong>
+                                </div>
+                                <div>
+                                    <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">Captain Email</p>
+                                    <strong>${r.captainEmail}</strong>
+                                </div>
+                                <div>
+                                    <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">Captain WhatsApp</p>
+                                    <strong>${r.captainPhone}</strong>
+                                </div>
+                                <div>
+                                    <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">In-Game UID</p>
+                                    <strong style="color: var(--neon-yellow);">${r.gameUid || 'N/A'}</strong>
+                                </div>
+                            </div>
+
+                            <h4 class="font-orbitron" style="font-size: 11px; color: var(--neon-cyan); margin-bottom: 10px;">ROSTER & CONFIRMATIONS</h4>
+                            <div style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 4px; padding: 10px;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid var(--glass-border); text-align: left; color: var(--text-dim);">
+                                            <th style="padding: 5px;">Gamer ID</th>
+                                            <th style="padding: 5px;">Real Name</th>
+                                            <th style="padding: 5px;">In-Game UID</th>
+                                            <th style="padding: 5px;">Confirmation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${r.players ? r.players.map(p => `
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                                <td style="padding: 5px; color: #fff; font-weight: 600;">${p.name}</td>
+                                                <td style="padding: 5px; color: var(--text-silver);">${p.realName || 'N/A'}</td>
+                                                <td style="padding: 5px; color: var(--neon-yellow);">${p.gameUid || 'N/A'}</td>
+                                                <td style="padding: 5px; color: ${p.confirmed ? 'var(--neon-green)' : 'var(--neon-orange)'}; font-weight: bold;">
+                                                    ${p.confirmed ? 'Confirmed' : 'Pending'}
+                                                </td>
+                                            </tr>
+                                        `).join('') : `<tr><td colspan="4" style="text-align: center; padding: 10px;">No players registered.</td></tr>`}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
                     } else {
-                        detailsDiv.style.display = 'none';
-                        this.textContent = '(View Details)';
+                        detailsHtml += `
+                            <h4 class="font-orbitron" style="font-size: 11px; color: var(--neon-cyan); margin-bottom: 10px;">PLAYER CONTACT DETAILS</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                                <div>
+                                    <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">Email Address</p>
+                                    <strong>${r.playerEmail}</strong>
+                                </div>
+                                <div>
+                                    <p style="margin: 3px 0; font-size: 11px; color: var(--text-dim);">Phone / WhatsApp</p>
+                                    <strong>${r.playerPhone}</strong>
+                                </div>
+                            </div>
+                        `;
                     }
+
+                    showAdminModal(`REGISTRATION DETAILS - ${r.id}`, detailsHtml, null);
                 };
             });
 
@@ -557,7 +1102,7 @@
                 btn.onclick = async function() {
                     const id = this.dataset.id;
                     try {
-                        await window.strikzDb.updateRegistrationStatus(id, 'Approved');
+                        await window.strikzDb.updateRegistrationStatus(id, 'Confirmed');
                         if (window.strikzPlaySuccessSound) window.strikzPlaySuccessSound();
                         await loadTabContentAndRefresh();
                     } catch (err) {
@@ -594,58 +1139,151 @@
         }
 
         async function loadTabContentAndRefresh() {
+            selectedIds = [];
             const regs = await window.strikzDb.getAdminRegistrations();
             db.registrations = regs;
+            updateGroupFilterDropdown();
             loadTable();
+            updateBulkBarVisibility();
         }
 
-        // CSV Export Logic
-        csvBtn.onclick = function() {
-            const list = db.registrations || [];
-            let csvContent = "Ticket ID,Competitor,Type,Tournament,Contact Email,Contact Phone,Filed Date,Status,Roster Details\n";
-
-            list.forEach(r => {
-                const competitorName = r.type === 'Team' ? (r.teamName || '') : (r.playerName || '');
-                const contactEmail = r.type === 'Team' ? (r.captainEmail || '') : (r.playerEmail || '');
-                const contactPhone = r.type === 'Team' ? (r.captainPhone || '') : (r.playerPhone || '');
-                
-                let rosterStr = '';
-                if (r.players && r.players.length > 0) {
-                    rosterStr = r.players.map(p => `${p.name || ''} (${p.realName || 'N/A'}) [${p.gameUid || 'N/A'}] - ${p.confirmed ? 'Confirmed' : 'Pending'}`).join('; ');
-                } else {
-                    rosterStr = 'Solo Competitor';
-                }
-
-                const row = [
-                    r.id || '',
-                    `"${competitorName.replace(/"/g, '""')}"`,
-                    r.type || '',
-                    `"${(r.tournamentName || '').replace(/"/g, '""')}"`,
-                    contactEmail,
-                    contactPhone,
-                    window.strikzFormatDate(r.submissionDate),
-                    r.status || '',
-                    `"${rosterStr.replace(/"/g, '""')}"`
-                ].join(",");
-                csvContent += row + "\n";
-            });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `strikz_registrations_${Date.now()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        };
-
-        // Inputs binding
+        // Search and filter triggers
         searchInput.oninput = loadTable;
+        tourneyFilterSelect.onchange = function() {
+            updateGroupFilterDropdown();
+            loadTable();
+        };
+        groupFilterSelect.onchange = loadTable;
         filterSelect.onchange = loadTable;
 
-        // Run initial load
+        // Initialize Export button
+        if (csvBtn) {
+            csvBtn.onclick = function() {
+                const list = db.registrations || [];
+                if (list.length === 0) {
+                    alert("No registrations to export.");
+                    return;
+                }
+
+                const tourneyFilter = tourneyFilterSelect.value;
+                const groupFilter = groupFilterSelect.value;
+                const statusFilter = filterSelect.value;
+
+                let exportList = list;
+                if (tourneyFilter !== 'All') exportList = exportList.filter(r => r.tournamentId === tourneyFilter);
+                if (groupFilter !== 'All') {
+                    if (groupFilter === '[No Group]') exportList = exportList.filter(r => !r.group);
+                    else exportList = exportList.filter(r => r.group === groupFilter);
+                }
+                if (statusFilter !== 'All') exportList = exportList.filter(r => r.status === statusFilter);
+
+                const exportHtml = `
+                    <p style="font-size: 12.5px; color: var(--text-silver); margin-bottom: 15px;">
+                        Configure CSV export columns. Matches <strong style="color: var(--neon-cyan);">${exportList.length}</strong> filtered records.
+                    </p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;" id="csv-export-columns">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="id" checked> Ticket ID
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="type" checked> Entry Type
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="tournamentName" checked> Tournament
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="competitor" checked> Competitor Name
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="captainName" checked> Captain/Player Name
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="captainEmail" checked> Email Address
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="captainPhone" checked> WhatsApp Number
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="status" checked> Status
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="group" checked> Group
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="submissionDate" checked> Submission Date
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="playerList"> Teammates Gamer Tags
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px;">
+                            <input type="checkbox" value="playerUids"> Teammates Gamer UIDs
+                        </label>
+                    </div>
+                `;
+
+                showAdminModal("ADVANCED CSV EXPORT", exportHtml, (modalEl) => {
+                    const checkedCols = [];
+                    modalEl.querySelectorAll('#csv-export-columns input[type="checkbox"]').forEach(cb => {
+                        if (cb.checked) checkedCols.push(cb.value);
+                    });
+
+                    if (checkedCols.length === 0) {
+                        alert("Please select at least one column to export.");
+                        return;
+                    }
+
+                    const headers = checkedCols.map(c => {
+                        if (c === 'id') return 'Ticket ID';
+                        if (c === 'type') return 'Entry Type';
+                        if (c === 'tournamentName') return 'Tournament';
+                        if (c === 'competitor') return 'Competitor Name';
+                        if (c === 'captainName') return 'Captain/Player Name';
+                        if (c === 'captainEmail') return 'Email';
+                        if (c === 'captainPhone') return 'WhatsApp/Phone';
+                        if (c === 'status') return 'Status';
+                        if (c === 'group') return 'Group';
+                        if (c === 'submissionDate') return 'Submission Date';
+                        if (c === 'playerList') return 'Teammates Gamer Tags';
+                        if (c === 'playerUids') return 'Teammates Gamer UIDs';
+                        return c;
+                    });
+
+                    const rows = exportList.map(r => {
+                        return checkedCols.map(c => {
+                            if (c === 'id') return r.id;
+                            if (c === 'type') return r.type;
+                            if (c === 'tournamentName') return r.tournamentName;
+                            if (c === 'competitor') return r.type === 'Team' ? r.teamName : r.playerName;
+                            if (c === 'captainName') return r.type === 'Team' ? r.captainName : r.playerName;
+                            if (c === 'captainEmail') return r.type === 'Team' ? r.captainEmail : r.playerEmail;
+                            if (c === 'captainPhone') return r.type === 'Team' ? r.captainPhone : r.playerPhone;
+                            if (c === 'status') return r.status;
+                            if (c === 'group') return r.group || '';
+                            if (c === 'submissionDate') return r.submissionDate;
+                            if (c === 'playerList') return r.players ? r.players.map(p => p.name).join('; ') : '';
+                            if (c === 'playerUids') return r.players ? r.players.map(p => p.gameUid).join('; ') : '';
+                            return '';
+                        });
+                    });
+
+                    let csvContent = "data:text/csv;charset=utf-8,";
+                    csvContent += [headers.join(",")].concat(rows.map(e => e.map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(","))).join("\n");
+                    
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", `strikz_export_${Date.now()}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    modalEl.remove();
+                }, "DOWNLOAD CSV");
+            };
+        }
+
+        // Initial loading of options and table
+        updateGroupFilterDropdown();
         loadTable();
     }
 

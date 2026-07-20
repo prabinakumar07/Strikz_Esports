@@ -223,6 +223,26 @@
             return res.success;
         },
 
+        bulkActionRegistrations: async function(ids, action, value) {
+            const res = await apiRequest('/admin/registrations/bulk', 'POST', { ids, action, value });
+            return res.success;
+        },
+
+        renameGroup: async function(tournamentId, oldGroupName, newGroupName) {
+            const res = await apiRequest('/admin/registrations/groups/rename', 'POST', { tournamentId, oldGroupName, newGroupName });
+            return res.success;
+        },
+
+        autoDivideGroups: async function(tournamentId, numGroups, groupSize, statusFilter) {
+            const res = await apiRequest('/admin/registrations/groups/auto-divide', 'POST', { tournamentId, numGroups, groupSize, statusFilter });
+            return res.success;
+        },
+
+        sendInboxMessages: async function(targetType, targetIds, title, message, tournamentId) {
+            const res = await apiRequest('/admin/messages/send', 'POST', { targetType, targetIds, title, message, tournamentId });
+            return res.success;
+        },
+
         addTournament: async function(t) {
             const res = await apiRequest('/admin/tournaments', 'POST', t);
             this.fetchSnapshot();
