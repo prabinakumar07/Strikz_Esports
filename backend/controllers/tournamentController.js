@@ -817,7 +817,7 @@ const getMyTeamInbox = async (req, res, next) => {
             const team = await models.Team.findOne({ id: invite.team_id }).lean();
             if (!team) continue;
             teamInvites.push({
-                id: `invite-${invite.id}-${team.id}`,
+                id: `invite-${invite.id || invite._id}-${team.id}`,
                 type: 'team_invite',
                 title: `Team Invite: ${team.name}`,
                 message: `Invite from Captain ${team.captain || 'unknown'} to join as ${invite.role}.`,
@@ -843,7 +843,7 @@ const getMyTeamInbox = async (req, res, next) => {
             if (!reg) continue;
             const tourney = await models.Tournament.findOne({ id: reg.tournament_id }).select('name').lean();
             tourneyConfirms.push({
-                id: `confirm-${player.id}-${reg.id}`,
+                id: `confirm-${player.id || player._id}-${reg.id}`,
                 type: 'tournament_confirm',
                 title: 'Tournament Roster Join Verification',
                 message: `Roster join confirmation requested for squad '${reg.team_name}' in the tournament '${tourney ? tourney.name : 'Unknown Championship'}'.`,
@@ -862,7 +862,7 @@ const getMyTeamInbox = async (req, res, next) => {
         // 3. Fetch general alerts/notifications from DB
         const alerts = await models.Notification.find({ user_uid: uid }).lean();
         const alertList = alerts.map(a => ({
-            id: `alert-${a.id}`,
+            id: `alert-${a.id || a._id}`,
             type: 'alert',
             title: a.title,
             message: a.content,
@@ -870,7 +870,7 @@ const getMyTeamInbox = async (req, res, next) => {
             timestamp: a.created_at ? new Date(a.created_at).getTime() : Date.now(),
             read: a.read === true,
             metadata: {
-                dbNotifId: a.id
+                dbNotifId: a.id || a._id
             }
         }));
 
@@ -887,13 +887,20 @@ const dismissNotification = async (req, res, next) => {
     try {
         let { id } = req.params;
         const uid = req.user.uid;
+        const mongoose = require('mongoose');
 
         if (id.startsWith('alert-')) {
             id = id.substring(6);
         }
 
         const numericId = Number(id);
-        await models.Notification.deleteOne({ id: isNaN(numericId) ? id : numericId, user_uid: uid });
+        if (!isNaN(numericId)) {
+            await models.Notification.deleteOne({ id: numericId, user_uid: uid });
+        } else if (mongoose.Types.ObjectId.isValid(id)) {
+            await models.Notification.deleteOne({ _id: id, user_uid: uid });
+        } else {
+            await models.Notification.deleteOne({ id: id, user_uid: uid });
+        }
         res.json({ success: true, message: 'Notification dismissed' });
     } catch (err) {
         next(err);
@@ -904,6 +911,7 @@ const markMessageAsRead = async (req, res, next) => {
     try {
         const { id } = req.params;
         const uid = req.user.uid;
+        const mongoose = require('mongoose');
 
         if (!id) {
             res.status(400);
@@ -914,30 +922,49 @@ const markMessageAsRead = async (req, res, next) => {
 
         if (id.startsWith('invite-')) {
             const parts = id.split('-');
-            const inviteId = parseInt(parts[1]);
+            const rawId = parts[1];
+            const inviteId = parseInt(rawId);
             if (!isNaN(inviteId)) {
-                await models.TeamMember.updateOne({ id: inviteId, user_uid: uid }, { $set: { read: true } });
-                updated = true;
+                const updateRes = await models.TeamMember.updateOne({ id: inviteId, user_uid: uid }, { $set: { read: true } });
+                if (updateRes.matchedCount > 0) updated = true;
+            }
+            if (!updated && mongoose.Types.ObjectId.isValid(rawId)) {
+                const updateRes = await models.TeamMember.updateOne({ _id: rawId, user_uid: uid }, { $set: { read: true } });
+                if (updateRes.matchedCount > 0) updated = true;
             }
         } else if (id.startsWith('confirm-')) {
             const parts = id.split('-');
-            const playerId = parseInt(parts[1]);
+            const rawId = parts[1];
+            const playerId = parseInt(rawId);
             if (!isNaN(playerId)) {
-                await models.RegistrationPlayer.updateOne({ id: playerId, user_uid: uid }, { $set: { read: true } });
-                updated = true;
+                const updateRes = await models.RegistrationPlayer.updateOne({ id: playerId, user_uid: uid }, { $set: { read: true } });
+                if (updateRes.matchedCount > 0) updated = true;
+            }
+            if (!updated && mongoose.Types.ObjectId.isValid(rawId)) {
+                const updateRes = await models.RegistrationPlayer.updateOne({ _id: rawId, user_uid: uid }, { $set: { read: true } });
+                if (updateRes.matchedCount > 0) updated = true;
             }
         } else if (id.startsWith('alert-')) {
             const parts = id.split('-');
-            const alertId = parseInt(parts[1]);
+            const rawId = parts[1];
+            const alertId = parseInt(rawId);
             if (!isNaN(alertId)) {
-                await models.Notification.updateOne({ id: alertId, user_uid: uid }, { $set: { read: true } });
-                updated = true;
+                const updateRes = await models.Notification.updateOne({ id: alertId, user_uid: uid }, { $set: { read: true } });
+                if (updateRes.matchedCount > 0) updated = true;
+            }
+            if (!updated && mongoose.Types.ObjectId.isValid(rawId)) {
+                const updateRes = await models.Notification.updateOne({ _id: rawId, user_uid: uid }, { $set: { read: true } });
+                if (updateRes.matchedCount > 0) updated = true;
             }
         } else {
             const alertId = parseInt(id);
             if (!isNaN(alertId)) {
-                await models.Notification.updateOne({ id: alertId, user_uid: uid }, { $set: { read: true } });
-                updated = true;
+                const updateRes = await models.Notification.updateOne({ id: alertId, user_uid: uid }, { $set: { read: true } });
+                if (updateRes.matchedCount > 0) updated = true;
+            }
+            if (!updated && mongoose.Types.ObjectId.isValid(id)) {
+                const updateRes = await models.Notification.updateOne({ _id: id, user_uid: uid }, { $set: { read: true } });
+                if (updateRes.matchedCount > 0) updated = true;
             }
         }
 
